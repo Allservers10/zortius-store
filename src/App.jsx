@@ -850,21 +850,40 @@ const sendActualEmail = async (templateId, toEmail, customerName, orderId, statu
   };
 
   const handleApplicationDecision = async (submission, decision) => {
-    if (!db || !isAdmin || !['Accepted', 'Denied'].includes(decision)) return;
-    try {
-      await updateDoc(doc(db, 'artifacts', appId, 'applicationSubmissions', submission.id), {
-        status: decision, reviewedAt: new Date().toISOString(), reviewedBy: user?.uid || null
-      });
-      const message = decision === 'Accepted'
-        ? `Hi ${submission.applicantName},\n\nThank you for applying for ${submission.applicationTitle} at Zortius. Your application has been accepted. We will contact you further with the next steps.\n\nKind regards,\nZortius Team`
-        : `Hi ${submission.applicantName},\n\nThank you for taking the time to apply for ${submission.applicationTitle} at Zortius. Unfortunately, we will not be progressing your application at this time. We appreciate your interest and wish you the best.\n\nKind regards,\nZortius Team`;
-      await sendActualEmail(EMAILJS_CONTACT_TEMPLATE_ID, submission.applicantEmail, submission.applicantName, `APPLICATION-${submission.id}`, decision.toUpperCase(), message);
-      showNotification(`${decision} decision saved; email dispatch attempted.`);
-    } catch (err) {
-      console.error(err);
-      showNotification('Could not save the decision. Check your database permissions.', 'error');
-    }
-  };
+  if (!db || !isAdmin || !['Accepted', 'Denied'].includes(decision)) return;
+
+  const toEmail = submission.applicantEmail || submission.email;
+  if (!toEmail) {
+    showNotification('No applicant email found on this submission.', 'error');
+    return;
+  }
+
+  try {
+    await updateDoc(doc(db, 'artifacts', appId, 'applicationSubmissions', submission.id), {
+      status: decision,
+      reviewedAt: new Date().toISOString(),
+      reviewedBy: user?.uid || null
+    });
+
+    const message = decision === 'Accepted'
+      ? `Hi ${submission.applicantName || 'there'},\n\nThank you for applying for ${submission.applicationTitle} at Zortius. Your application has been accepted. We will contact you further with the next steps.\n\nKind regards,\nZortius Team`
+      : `Hi ${submission.applicantName || 'there'},\n\nThank you for taking the time to apply for ${submission.applicationTitle} at Zortius. Unfortunately, we will not be progressing your application at this time. We appreciate your interest and wish you the best.\n\nKind regards,\nZortius Team`;
+
+    await sendActualEmail(
+      EMAILJS_CONTACT_TEMPLATE_ID,
+      toEmail,
+      submission.applicantName || 'Applicant',
+      `APPLICATION-${submission.id}`,
+      decision.toUpperCase(),
+      message
+    );
+
+    showNotification(`${decision} decision saved and email sent to ${toEmail}.`);
+  } catch (err) {
+    console.error(err);
+    showNotification('Could not save the decision or send email. Check console.', 'error');
+  }
+};
 
   // Admin Actions
   const handleSaveProduct = async (e) => {
