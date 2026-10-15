@@ -343,56 +343,27 @@ export default function App() {
 
   // --- DUAL-TEMPLATE EMAILJS DISPATCH ENGINE ---
   // --- HYBRID EMAIL DISPATCH (EmailJS + Resend) ---
+// --- EMAILJS ONLY (contact + orders + applications) ---
 const sendActualEmail = async (templateId, toEmail, customerName, orderId, statusVal, messageDetails) => {
-  // Decide which service to use
-  const isApplicationEmail = orderId && String(orderId).startsWith('APPLICATION-');
-
-  if (isApplicationEmail) {
-    // ========== RESEND (for applications) ==========
-    const subject = `Zortius application update - ${statusVal || 'Received'}`;
-
-    try {
-      const response = await fetch('/api/send-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: toEmail,
-          subject: subject,
-          name: customerName,
-          message: messageDetails
-        })
-      });
-
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.error || 'Resend failed');
-      }
-
-      console.log(`[Resend] Application email sent to: ${toEmail}`);
-    } catch (err) {
-      console.error('Resend dispatch failed:', err);
-    }
-
-  } else {
-    // ========== EMAILJS (for contact + orders) ==========
-    const templateParams = {
-      to_email: toEmail,
-      name: customerName,
-      order_id: orderId || 'N/A',
-      status: statusVal ? statusVal.toUpperCase() : 'GENERAL',
-      time: new Date().toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }),
-      subject: orderId
+  const templateParams = {
+    to_email: toEmail,
+    name: customerName,
+    order_id: orderId || 'N/A',
+    status: statusVal ? statusVal.toUpperCase() : 'GENERAL',
+    time: new Date().toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }),
+    subject: orderId && String(orderId).startsWith('APPLICATION-')
+      ? `Zortius application – ${statusVal || 'Received'}`
+      : orderId
         ? `Order Receipt #${orderId} - ZORTIUS`
         : `Technical Inquiry Support`,
-      message: messageDetails
-    };
+    message: messageDetails
+  };
 
-    try {
-      await emailjs.send(EMAILJS_SERVICE_ID, templateId, templateParams, EMAILJS_PUBLIC_KEY);
-      console.log(`[EmailJS] Success → ${toEmail} | Template: ${templateId}`);
-    } catch (err) {
-      console.error('EmailJS dispatch failed:', err);
-    }
+  try {
+    await emailjs.send(EMAILJS_SERVICE_ID, templateId, templateParams, EMAILJS_PUBLIC_KEY);
+    console.log(`[EmailJS] Success → ${toEmail}`);
+  } catch (err) {
+    console.error('EmailJS failed:', err);
   }
 };
 
