@@ -1545,27 +1545,35 @@ const sendActualEmail = async (templateId, toEmail, customerName, orderId, statu
               </div>
             </div>
 
-            {/* Filter & Search Bar */}
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
-              <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0">
-                {['All', 'Workstations', 'Desktops', 'Displays', 'Peripherals', 'Accessories', 'Audio'].map((cat) => (
-                  <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${selectedCategory === cat ? 'bg-cyan-500 text-slate-950 shadow-md' : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'}`}>
-                    {cat}
-                  </button>
-                ))}
-              </div>
+            {/* Filter & Search Bar - Mobile Friendly */}
+<div className="space-y-4 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
+  <div className="flex flex-wrap gap-2">
+    {['All', 'Workstations', 'Desktops', 'Displays', 'Peripherals', 'Accessories', 'Audio'].map((cat) => (
+      <button
+        key={cat}
+        onClick={() => setSelectedCategory(cat)}
+        className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+          selectedCategory === cat
+            ? 'bg-cyan-500 text-slate-950 shadow-md'
+            : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+        }`}
+      >
+        {cat}
+      </button>
+    ))}
+  </div>
 
-              <div className="relative w-full md:w-72">
-                <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input 
-                  type="text" 
-                  placeholder="Search catalog items, specs..." 
-                  value={searchQuery} 
-                  onChange={(e) => setSearchQuery(e.target.value)} 
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2 text-xs text-white focus:outline-none focus:border-cyan-500" 
-                />
-              </div>
-            </div>
+  <div className="relative w-full">
+    <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+    <input
+      type="text"
+      placeholder="Search catalog items, specs..."
+      value={searchQuery}
+      onChange={(e) => setSearchQuery(e.target.value)}
+      className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500"
+    />
+  </div>
+</div>
 
             {/* Products Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1880,6 +1888,182 @@ const sendActualEmail = async (templateId, toEmail, customerName, orderId, statu
         </div>
       )}
 
+    {/* ========== AUTH / PROFILE MODAL ========== */}
+{profileModalOpen && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
+    <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative">
+      <button
+        onClick={() => {
+          setProfileModalOpen(false);
+          setAuthError('');
+          setEmail('');
+          setPassword('');
+        }}
+        className="absolute top-5 right-5 p-2 rounded-xl bg-slate-950 text-slate-400 hover:text-white"
+      >
+        <X className="w-5 h-5" />
+      </button>
+
+      {user ? (
+        <div className="space-y-6">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center">
+              <User className="w-6 h-6 text-cyan-400" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white">Your Account</h3>
+              <p className="text-xs text-slate-400">{user.email}</p>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-400 mb-1.5">Display Name</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={userName}
+                onChange={(e) => setUserName(e.target.value)}
+                className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500"
+              />
+              <button
+                onClick={async () => {
+                  await saveUserDataToFirestore(cart, orders, userName);
+                  showNotification('Display name updated');
+                }}
+                className="px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+
+          {isAdmin && (
+            <div className="rounded-xl bg-cyan-500/10 border border-cyan-500/30 p-3 text-xs text-cyan-300">
+              You are logged in as <strong>Admin</strong>
+            </div>
+          )}
+
+          <button
+            onClick={handleSignOut}
+            className="w-full py-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 font-bold text-sm flex items-center justify-center gap-2"
+          >
+            <LogOut className="w-4 h-4" /> Sign Out
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-5">
+          <div className="text-center">
+            <h3 className="text-xl font-bold text-white">
+              {authMode === 'login' ? 'Welcome back' : 'Create account'}
+            </h3>
+            <p className="text-xs text-slate-400 mt-1">
+              {authMode === 'login' ? 'Sign in to continue' : 'Join Zortius'}
+            </p>
+          </div>
+
+          <div className="flex bg-slate-950 rounded-xl p-1 border border-slate-800">
+            <button
+              onClick={() => { setAuthMode('login'); setAuthError(''); }}
+              className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${
+                authMode === 'login' ? 'bg-cyan-500 text-slate-950' : 'text-slate-400'
+              }`}
+            >
+              Login
+            </button>
+            <button
+              onClick={() => { setAuthMode('signup'); setAuthError(''); }}
+              className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${
+                authMode === 'signup' ? 'bg-cyan-500 text-slate-950' : 'text-slate-400'
+              }`}
+            >
+              Sign Up
+            </button>
+          </div>
+
+          <form
+            onSubmit={authMode === 'login' ? handleEmailSignIn : handleEmailSignUp}
+            className="space-y-4"
+          >
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-1">Email</label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-1">Password</label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500 pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <label className="flex items-center gap-2 text-xs text-slate-400">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+              />
+              Remember me
+            </label>
+
+            {authError && (
+              <div className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-xl p-3">
+                {authError}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={authSubmitting}
+              className="w-full py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+              {authSubmitting ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : authMode === 'login' ? (
+                <LogIn className="w-4 h-4" />
+              ) : (
+                <UserCheck className="w-4 h-4" />
+              )}
+              {authSubmitting
+                ? 'Please wait...'
+                : authMode === 'login'
+                ? 'Sign In'
+                : 'Create Account'}
+            </button>
+          </form>
+
+          <button
+            onClick={handleGoogleSignIn}
+            disabled={authSubmitting}
+            className="w-full py-3 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-white font-bold text-sm flex items-center justify-center gap-2"
+          >
+            Continue with Google
+          </button>
+        </div>
+      )}
+    </div>
+  </div>
+)}
     </div>
   );
 }
