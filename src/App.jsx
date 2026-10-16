@@ -225,36 +225,15 @@ export default function App() {
       setAuthLoading(false);
       return;
     }
-    getRedirectResult(auth)
-      .then((result) => {
-        if (result?.user) {
-          const u = result.user;
-          setUser(u);
-          setUserId(u.uid);
-          setUserName(u.displayName || u.email?.split('@')[0] || 'Engineer');
-          const em = (u.email || '').toLowerCase().trim();
-          setIsAdmin(em === ADMIN_EMAIL.toLowerCase() || em === LIMITED_ADMIN_EMAIL.toLowerCase());
-          setIsFullAdmin(em === ADMIN_EMAIL.toLowerCase());
-          setContactEmail(u.email || '');
-          setContactName(u.displayName || u.email?.split('@')[0] || '');
-          setProfileModalOpen(false);
-          setTimeout(() => {
-            setNotification({ message: 'Signed in with Google successfully.', type: 'success' });
-            setTimeout(() => setNotification(null), 3500);
-          }, 150);
-        }
-      })
-      .catch((err) => {
-        if (err?.code && err.code !== 'auth/popup-closed-by-user') {
-          console.error('Google redirect:', err);
-        }
-      });
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+
+    let unsub = () => {};
+
+    const applyUser = (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
         setUserId(currentUser.uid);
         setUserName(currentUser.displayName || currentUser.email?.split('@')[0] || 'Engineer');
-        const em = (currentUser.email || '').toLowerCase();
+        const em = (currentUser.email || '').toLowerCase().trim();
         setIsAdmin(em === ADMIN_EMAIL.toLowerCase() || em === LIMITED_ADMIN_EMAIL.toLowerCase());
         setIsFullAdmin(em === ADMIN_EMAIL.toLowerCase());
         setContactEmail(currentUser.email || '');
@@ -267,8 +246,42 @@ export default function App() {
         setIsFullAdmin(false);
       }
       setAuthLoading(false);
-    });
-    return () => unsubscribe();
+    };
+
+    (async () => {
+      try {
+        // Must run on every load — this is how phone Google login finishes
+        await setPersistence(auth, browserLocalPersistence);
+        const result = await getRedirectResult(auth);
+        if (result?.user) {
+          applyUser(result.user);
+          setProfileModalOpen(false);
+          setNotification({ message: 'Signed in with Google successfully.', type: 'success' });
+          setTimeout(() => setNotification(null), 3500);
+        }
+      } catch (err) {
+        console.error('getRedirectResult error:', err);
+        if (err?.code === 'auth/unauthorized-domain') {
+          setNotification({
+            message: 'Domain not authorized in Firebase. Add zortius.vercel.app under Auth → Settings.',
+            type: 'error'
+          });
+          setTimeout(() => setNotification(null), 6000);
+        }
+      }
+
+      // Primary listener — keeps session across refreshes
+      unsub = onAuthStateChanged(auth, (currentUser) => {
+        applyUser(currentUser);
+      });
+
+      // Extra check: if redirect user is already on auth but listener was late
+      if (auth.currentUser) {
+        applyUser(auth.currentUser);
+      }
+    })();
+
+    return () => unsub();
   }, []);
 
   // -------------------- FIRESTORE SYNC --------------------
@@ -520,62 +533,28 @@ export default function App() {
     setAuthError('');
     try {
       if (!auth) {
-        setAuthError('Auth is not ready. Refresh the page.');
+        setAuthError('Auth is not ready. Refresh the page and try again.');
         return;
       }
-      await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+      // Always local persistence so session survives Google redirect
+      await setPersistence(auth, browserLocalPersistence);
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
       provider.addScope('email');
       provider.addScope('profile');
 
-      // Prefer popup on desktop; redirect on phones
-      const useRedirect = isMobileDevice();
-
-      if (useRedirect) {
-        await signInWithRedirect(auth, provider);
-        return; // page will navigate away
-      }
-
-      const result = await signInWithPopup(auth, provider);
-      if (result?.user) {
-        // Explicitly confirm session — onAuthStateChanged will also fire
-        setUser(result.user);
-        setUserId(result.user.uid);
-        setUserName(result.user.displayName || result.user.email?.split('@')[0] || 'Engineer');
-        const em = (result.user.email || '').toLowerCase().trim();
-        setIsAdmin(em === ADMIN_EMAIL.toLowerCase() || em === LIMITED_ADMIN_EMAIL.toLowerCase());
-        setIsFullAdmin(em === ADMIN_EMAIL.toLowerCase());
-        setContactEmail(result.user.email || '');
-        setContactName(result.user.displayName || result.user.email?.split('@')[0] || '');
-        showNotification('Signed in with Google successfully.');
-        setProfileModalOpen(false);
-      } else {
-        setAuthError('Google sign-in did not return a user. Try again.');
-      }
+      // Redirect works on phone AND laptop when popup storage is blocked
+      await signInWithRedirect(auth, provider);
+      // Browser leaves this page; when it returns, getRedirectResult completes login
     } catch (err) {
       console.error('Google sign-in error:', err);
       const code = err?.code || '';
       const msg = (err?.message || '').replace('Firebase: ', '');
-      // If popup blocked or closed oddly, fall back to redirect
-      if (
-        code === 'auth/popup-blocked' ||
-        code === 'auth/popup-closed-by-user' ||
-        code === 'auth/cancelled-popup-request' ||
-        code === 'auth/network-request-failed'
-      ) {
-        try {
-          await signInWithRedirect(auth, new GoogleAuthProvider());
-          return;
-        } catch (e2) {
-          setAuthError((e2?.message || msg).replace('Firebase: ', ''));
-        }
-      } else if (code === 'auth/unauthorized-domain') {
-        setAuthError('This domain is not authorized in Firebase. Add zortius.vercel.app under Authentication → Settings → Authorized domains.');
+      if (code === 'auth/unauthorized-domain') {
+        setAuthError('Add zortius.vercel.app in Firebase → Authentication → Settings → Authorized domains.');
       } else {
         setAuthError(msg || 'Google sign-in failed. Try again.');
       }
-    } finally {
       setAuthSubmitting(false);
     }
   };
