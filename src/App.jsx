@@ -228,12 +228,20 @@ export default function App() {
     getRedirectResult(auth)
       .then((result) => {
         if (result?.user) {
+          const u = result.user;
+          setUser(u);
+          setUserId(u.uid);
+          setUserName(u.displayName || u.email?.split('@')[0] || 'Engineer');
+          const em = (u.email || '').toLowerCase().trim();
+          setIsAdmin(em === ADMIN_EMAIL.toLowerCase() || em === LIMITED_ADMIN_EMAIL.toLowerCase());
+          setIsFullAdmin(em === ADMIN_EMAIL.toLowerCase());
+          setContactEmail(u.email || '');
+          setContactName(u.displayName || u.email?.split('@')[0] || '');
           setProfileModalOpen(false);
-          // notification after state settles
           setTimeout(() => {
             setNotification({ message: 'Signed in with Google successfully.', type: 'success' });
             setTimeout(() => setNotification(null), 3500);
-          }, 100);
+          }, 150);
         }
       })
       .catch((err) => {
@@ -511,28 +519,61 @@ export default function App() {
     setAuthSubmitting(true);
     setAuthError('');
     try {
-      if (!auth) return;
+      if (!auth) {
+        setAuthError('Auth is not ready. Refresh the page.');
+        return;
+      }
       await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
-      if (isMobileDevice()) {
+      provider.addScope('email');
+      provider.addScope('profile');
+
+      // Prefer popup on desktop; redirect on phones
+      const useRedirect = isMobileDevice();
+
+      if (useRedirect) {
         await signInWithRedirect(auth, provider);
-        return;
+        return; // page will navigate away
       }
-      await signInWithPopup(auth, provider);
-      showNotification('Authenticated with Google successfully.');
-      setProfileModalOpen(false);
+
+      const result = await signInWithPopup(auth, provider);
+      if (result?.user) {
+        // Explicitly confirm session — onAuthStateChanged will also fire
+        setUser(result.user);
+        setUserId(result.user.uid);
+        setUserName(result.user.displayName || result.user.email?.split('@')[0] || 'Engineer');
+        const em = (result.user.email || '').toLowerCase().trim();
+        setIsAdmin(em === ADMIN_EMAIL.toLowerCase() || em === LIMITED_ADMIN_EMAIL.toLowerCase());
+        setIsFullAdmin(em === ADMIN_EMAIL.toLowerCase());
+        setContactEmail(result.user.email || '');
+        setContactName(result.user.displayName || result.user.email?.split('@')[0] || '');
+        showNotification('Signed in with Google successfully.');
+        setProfileModalOpen(false);
+      } else {
+        setAuthError('Google sign-in did not return a user. Try again.');
+      }
     } catch (err) {
-      const msg = (err.message || '').replace('Firebase: ', '');
-      if (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user') {
+      console.error('Google sign-in error:', err);
+      const code = err?.code || '';
+      const msg = (err?.message || '').replace('Firebase: ', '');
+      // If popup blocked or closed oddly, fall back to redirect
+      if (
+        code === 'auth/popup-blocked' ||
+        code === 'auth/popup-closed-by-user' ||
+        code === 'auth/cancelled-popup-request' ||
+        code === 'auth/network-request-failed'
+      ) {
         try {
           await signInWithRedirect(auth, new GoogleAuthProvider());
           return;
         } catch (e2) {
-          setAuthError((e2.message || msg).replace('Firebase: ', ''));
+          setAuthError((e2?.message || msg).replace('Firebase: ', ''));
         }
+      } else if (code === 'auth/unauthorized-domain') {
+        setAuthError('This domain is not authorized in Firebase. Add zortius.vercel.app under Authentication → Settings → Authorized domains.');
       } else {
-        setAuthError(msg);
+        setAuthError(msg || 'Google sign-in failed. Try again.');
       }
     } finally {
       setAuthSubmitting(false);
@@ -837,6 +878,39 @@ export default function App() {
     setNewSectionName('');
     showNotification('Application section created.');
   };
+
+  const handleDeleteSection = async (sectionId, sectionName) => {
+    if (!db || !isAdmin) return;
+    if (!window.confirm(`Delete section "${sectionName}"? Applications in this section will remain but the section label may be empty.`)) return;
+    try {
+      await deleteDoc(doc(db, 'artifacts', appId, 'applicationSections', sectionId));
+      showNotification('Section deleted.');
+    } catch (err) {
+      console.error(err);
+      showNotification('Could not delete section.', 'error');
+    }
+  };
+
+  const handleDeleteApplication = async (applicationId, title) => {
+    if (!db || !isAdmin) return;
+    if (!window.confirm(`Delete application form "${title}"? This cannot be undone.`)) return;
+    try {
+      await deleteDoc(doc(db, 'artifacts', appId, 'jobApplications', applicationId));
+      if (editingApplicationId === applicationId) {
+        setEditingApplicationId(null);
+        setAppTitle('');
+        setAppSection('');
+        setAppDescription('');
+        setAppQuestions([]);
+      }
+      showNotification('Application form deleted.');
+    } catch (err) {
+      console.error(err);
+      showNotification('Could not delete application.', 'error');
+    }
+  };
+
+
 
   const addApplicationQuestion = () => {
     if (!questionDraft.trim()) {
@@ -1482,8 +1556,11 @@ export default function App() {
                   </form>
                   <div className="flex flex-wrap gap-2">
                     {applicationSections.map((section) => (
-                      <span key={section.id} className="rounded-full border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-slate-200">
+                      <span key={section.id} className="inline-flex items-center gap-1.5 rounded-full border border-slate-700 bg-slate-900 pl-3 pr-1.5 py-1.5 text-xs text-slate-200">
                         {section.name}
+                        <button type="button" title="Delete section" onClick={() => handleDeleteSection(section.id, section.name)} className="p-1 rounded-full text-slate-500 hover:text-rose-400 hover:bg-rose-500/10">
+                          <Trash2 className="w-3 h-3" />
+                        </button>
                       </span>
                     ))}
                     {!applicationSections.length && <p className="text-xs text-slate-500">No sections yet — create your first one above.</p>}
@@ -1610,6 +1687,13 @@ export default function App() {
                           className="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-200 hover:border-cyan-400"
                         >
                           Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteApplication(application.id, application.title)}
+                          className="rounded-lg border border-rose-500/40 px-3 py-2 text-xs text-rose-300 hover:bg-rose-500/10"
+                        >
+                          Delete
                         </button>
                         <button
                           onClick={() => {
