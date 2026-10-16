@@ -225,7 +225,22 @@ export default function App() {
       setAuthLoading(false);
       return;
     }
-    getRedirectResult(auth).catch(() => {});
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          setProfileModalOpen(false);
+          // notification after state settles
+          setTimeout(() => {
+            setNotification({ message: 'Signed in with Google successfully.', type: 'success' });
+            setTimeout(() => setNotification(null), 3500);
+          }, 100);
+        }
+      })
+      .catch((err) => {
+        if (err?.code && err.code !== 'auth/popup-closed-by-user') {
+          console.error('Google redirect:', err);
+        }
+      });
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
@@ -484,8 +499,12 @@ export default function App() {
   };
 
   const isMobileDevice = () => {
-    if (typeof navigator === 'undefined') return false;
-    return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+    if (typeof navigator === 'undefined' || typeof window === 'undefined') return false;
+    const ua = navigator.userAgent || '';
+    const mobileUA = /Android|iPhone|iPad|iPod|Mobile|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+    const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    const narrow = window.innerWidth > 0 && window.innerWidth < 768;
+    return mobileUA || coarse || narrow;
   };
 
   const handleGoogleSignIn = async () => {
@@ -2159,6 +2178,15 @@ export default function App() {
               </div>
             </div>
 
+            
+            <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 sm:px-5 sm:py-4 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-bold text-amber-200">Not taking orders yet</p>
+                <p className="text-xs text-amber-100/80 mt-0.5">You can browse the catalog and build a basket, but checkout is not available at the moment. Please check back later.</p>
+              </div>
+            </div>
+
             <div className="space-y-4 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
               <div className="flex flex-wrap gap-2">
                 {['All', 'Workstations', 'Desktops', 'Displays', 'Peripherals', 'Accessories', 'Audio'].map((cat) => (
@@ -2260,15 +2288,15 @@ export default function App() {
               ← Back to Catalog
             </button>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-slate-900/60 rounded-3xl border border-slate-800 p-6 sm:p-8 shadow-2xl">
-              <div className="aspect-square rounded-2xl overflow-hidden bg-slate-950 border border-slate-800">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-10 bg-slate-900/60 rounded-2xl sm:rounded-3xl border border-slate-800 p-4 sm:p-10 shadow-2xl">
+              <div className="aspect-square min-h-[280px] sm:min-h-[400px] rounded-2xl overflow-hidden bg-slate-950 border border-slate-800">
                 <img src={selectedProduct.image} alt={selectedProduct.name} className="w-full h-full object-cover" />
               </div>
 
               <div className="space-y-6 flex flex-col justify-between">
                 <div>
                   <span className="px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-semibold">{renderSafe(selectedProduct.category)}</span>
-                  <h1 className="text-2xl sm:text-3xl font-extrabold text-white mt-3 mb-2">{renderSafe(selectedProduct.name)}</h1>
+                  <h1 className="text-2xl sm:text-4xl font-extrabold text-white mt-3 mb-2">{renderSafe(selectedProduct.name)}</h1>
                   <div className="flex items-center gap-2 text-amber-400 text-sm mb-4">
                     <Star className="w-4 h-4 fill-current" />
                     <span className="font-bold text-white">{renderSafe(selectedProduct.rating)}</span>
@@ -2287,7 +2315,7 @@ export default function App() {
 
                   {selectedProduct.options?.colors && (
                     <div className="mb-4">
-                      <span className="text-xs font-bold text-slate-400 block mb-2">Color Finish Selector:</span>
+                      <span className="text-sm font-bold text-slate-300 block mb-3">Choose colour / finish</span>
                       <div className="flex flex-wrap gap-2">
                         {selectedProduct.options.colors.map((col, idx) => (
                           <button
