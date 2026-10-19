@@ -12,6 +12,7 @@ import {
   signOut,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  sendPasswordResetEmail,
   GoogleAuthProvider,
   signInWithPopup,
   signInWithRedirect,
@@ -223,6 +224,8 @@ export default function App() {
   const [rememberMe, setRememberMe] = useState(true);
   const [authError, setAuthError] = useState('');
   const [authSubmitting, setAuthSubmitting] = useState(false);
+  const [forgotMode, setForgotMode] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
 
   const [newReviewRating, setNewReviewRating] = useState(5);
   const [newReviewComment, setNewReviewComment] = useState('');
@@ -262,35 +265,47 @@ export default function App() {
 
     (async () => {
       try {
-        // Must run on every load — this is how phone Google login finishes
         await setPersistence(auth, browserLocalPersistence);
+      } catch (e) {
+        console.warn('persistence', e);
+      }
+
+      // Finish Google redirect FIRST (critical on phones)
+      try {
         const result = await getRedirectResult(auth);
         if (result?.user) {
           applyUser(result.user);
           setProfileModalOpen(false);
           setNotification({ message: 'Signed in with Google successfully.', type: 'success' });
-          setTimeout(() => setNotification(null), 3500);
+          setTimeout(() => setNotification(null), 4000);
         }
       } catch (err) {
         console.error('getRedirectResult error:', err);
-        if (err?.code === 'auth/unauthorized-domain') {
+        const code = err?.code || '';
+        if (code === 'auth/unauthorized-domain') {
           setNotification({
-            message: 'Domain not authorized in Firebase. Add zortius.vercel.app under Auth → Settings.',
+            message: 'Add zortius.vercel.app in Firebase → Authentication → Settings → Authorized domains.',
             type: 'error'
           });
-          setTimeout(() => setNotification(null), 6000);
+          setTimeout(() => setNotification(null), 7000);
+        } else if (code) {
+          setNotification({ message: `Google sign-in error: ${code}`, type: 'error' });
+          setTimeout(() => setNotification(null), 5000);
         }
       }
 
-      // Primary listener — keeps session across refreshes
       unsub = onAuthStateChanged(auth, (currentUser) => {
         applyUser(currentUser);
       });
 
-      // Extra check: if redirect user is already on auth but listener was late
-      if (auth.currentUser) {
-        applyUser(auth.currentUser);
-      }
+      // Phones sometimes restore session a moment later
+      if (auth.currentUser) applyUser(auth.currentUser);
+      setTimeout(() => {
+        if (auth.currentUser) applyUser(auth.currentUser);
+      }, 800);
+      setTimeout(() => {
+        if (auth.currentUser) applyUser(auth.currentUser);
+      }, 2000);
     })();
 
     return () => unsub();
@@ -661,28 +676,47 @@ export default function App() {
     setAuthError('');
     try {
       if (!auth) {
-        setAuthError('Auth is not ready. Refresh the page and try again.');
+        setAuthError('Auth not ready. Refresh the page.');
         return;
       }
-      // Always local persistence so session survives Google redirect
       await setPersistence(auth, browserLocalPersistence);
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
       provider.addScope('email');
       provider.addScope('profile');
-
-      // Redirect works on phone AND laptop when popup storage is blocked
+      // Redirect is required on most phones; also most reliable on desktop browsers that block popups
       await signInWithRedirect(auth, provider);
-      // Browser leaves this page; when it returns, getRedirectResult completes login
     } catch (err) {
       console.error('Google sign-in error:', err);
       const code = err?.code || '';
       const msg = (err?.message || '').replace('Firebase: ', '');
       if (code === 'auth/unauthorized-domain') {
-        setAuthError('Add zortius.vercel.app in Firebase → Authentication → Settings → Authorized domains.');
+        setAuthError('Domain not allowed. In Firebase Console → Authentication → Settings → Authorized domains, add: zortius.vercel.app');
       } else {
-        setAuthError(msg || 'Google sign-in failed. Try again.');
+        setAuthError(msg || 'Google sign-in failed.');
       }
+      setAuthSubmitting(false);
+    }
+  };
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    const em = (email || '').trim();
+    if (!em || !em.includes('@')) {
+      setAuthError('Enter the email for your account.');
+      return;
+    }
+    setAuthSubmitting(true);
+    setAuthError('');
+    try {
+      if (!auth) throw new Error('Auth not ready');
+      await sendPasswordResetEmail(auth, em);
+      setForgotSent(true);
+      showNotification('Password reset email sent. Check your inbox.');
+    } catch (err) {
+      const msg = (err?.message || '').replace('Firebase: ', '');
+      setAuthError(msg || 'Could not send reset email.');
+    } finally {
       setAuthSubmitting(false);
     }
   };
@@ -3032,6 +3066,8 @@ export default function App() {
                 setAuthError('');
                 setEmail('');
                 setPassword('');
+                setForgotMode(false);
+                setForgotSent(false);
               }}
               className="absolute top-5 right-5 p-2 rounded-xl bg-slate-950 text-slate-400 hover:text-white"
             >
@@ -3155,9 +3191,45 @@ export default function App() {
                     {authSubmitting ? 'Please wait...' : authMode === 'login' ? 'Sign In' : 'Create Account'}
                   </button>
                 </form>
-                <button onClick={handleGoogleSignIn} disabled={authSubmitting} className="w-full py-3 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-white font-bold text-sm flex items-center justify-center gap-2">
-                  Continue with Google
-                </button>
+                {!forgotMode ? (
+                  <>
+                    <button type="button" onClick={() => { setForgotMode(true); setAuthError(''); setForgotSent(false); }} className="w-full text-center text-xs text-cyan-400 hover:text-cyan-300">
+                      Forgot password?
+                    </button>
+                    <button onClick={handleGoogleSignIn} disabled={authSubmitting} className="w-full py-3 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-white font-bold text-sm flex items-center justify-center gap-2">
+                      Continue with Google
+                    </button>
+                    <p className="text-[10px] text-slate-500 text-center leading-relaxed">
+                      On phones, Google opens a secure page then returns you here signed in. Use the same browser — not private mode.
+                    </p>
+                  </>
+                ) : (
+                  <div className="space-y-3 border-t border-slate-800 pt-4">
+                    <p className="text-sm font-bold text-white">Reset password</p>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      We email a reset link to your address. We cannot see or send your current password — it is encrypted and only you can set a new one.
+                    </p>
+                    {forgotSent ? (
+                      <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-3 text-xs text-emerald-300">
+                        Reset email sent to <strong>{email}</strong>. Check inbox and spam. Then sign in with the new password.
+                      </div>
+                    ) : (
+                      <form onSubmit={handleForgotPassword} className="space-y-3">
+                        <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Account email" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500" />
+                        {authError && <div className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-xl p-3">{authError}</div>}
+                        <button type="submit" disabled={authSubmitting} className="w-full py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-sm disabled:opacity-60">
+                          {authSubmitting ? 'Sending…' : 'Send reset email'}
+                        </button>
+                      </form>
+                    )}
+                    <button type="button" onClick={() => { setForgotMode(false); setForgotSent(false); setAuthError(''); }} className="w-full text-center text-xs text-slate-400 hover:text-white">
+                      ← Back to sign in
+                    </button>
+                    <button type="button" onClick={() => { setProfileModalOpen(false); setContactModalOpen(true); setForgotMode(false); }} className="w-full text-center text-xs text-cyan-400 hover:text-cyan-300">
+                      Still stuck? Contact support
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
