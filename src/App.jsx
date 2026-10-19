@@ -157,6 +157,8 @@ export default function App() {
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [waitlistEmail, setWaitlistEmail] = useState('');
+  const [waitlistSubmitting, setWaitlistSubmitting] = useState(false);
 
   // Contact
   const [contactModalOpen, setContactModalOpen] = useState(false);
@@ -364,7 +366,7 @@ export default function App() {
     if (clean === '/shop' || clean.startsWith('/shop/')) return 'shop';
     if (clean === '/cart') return 'cart';
     if (clean === '/account/orders') return 'orders';
-    if (clean === '/applications' || clean.startsWith('/applications/')) return 'applications';
+    if (clean === '/careers' || clean.startsWith('/careers/')) return 'applications';
     if (clean === '/about') return 'about';
     if (clean === '/contact') return 'contact';
     if (clean === '/faq') return 'faq';
@@ -386,7 +388,7 @@ export default function App() {
     const syncRoute = () => {
       const path = window.location.pathname;
       setActiveTab(routeToTab(path));
-      if (path.startsWith('/applications/')) {
+      if (path.startsWith('/careers/')) {
         const slug = path.split('/')[2];
         const found = jobApplications.find((a) => a.slug === slug || a.id === slug);
         if (found) setSelectedApplication(found);
@@ -425,6 +427,41 @@ export default function App() {
     setNotification({ message: msg, type });
     setTimeout(() => setNotification(null), 3500);
   };
+
+  const handleJoinWaitlist = async (e) => {
+    e.preventDefault();
+    const em = (waitlistEmail || '').trim();
+    if (!em || !em.includes('@')) {
+      showNotification('Enter a valid email to join the waitlist.', 'error');
+      return;
+    }
+    setWaitlistSubmitting(true);
+    try {
+      if (db) {
+        await addDoc(collection(db, 'artifacts', appId, 'waitlist'), {
+          email: em.toLowerCase(),
+          createdAt: new Date().toISOString(),
+          source: 'shop-banner'
+        });
+      }
+      await sendActualEmail(
+        EMAILJS_CONTACT_TEMPLATE_ID,
+        em,
+        em.split('@')[0],
+        'WAITLIST',
+        'JOINED',
+        `Hi,\n\nYou have joined the Zortius launch waitlist. We will email you when orders open.\n\n— Zortius Team`
+      );
+      setWaitlistEmail('');
+      showNotification('You are on the waitlist. We will notify you at launch.');
+    } catch (err) {
+      console.error(err);
+      showNotification('Could not join waitlist. Try again.', 'error');
+    } finally {
+      setWaitlistSubmitting(false);
+    }
+  };
+
 
   // -------------------- EMAIL (EmailJS only) --------------------
   const sendActualEmail = async (templateId, toEmail, customerName, orderId, statusVal, messageDetails) => {
@@ -1077,7 +1114,7 @@ export default function App() {
       );
       setApplicationAnswers({});
       setSelectedApplication(null);
-      navigateTo('applications', '/applications');
+      navigateTo('applications', '/careers');
       showNotification('Application submitted. A confirmation email has been requested.');
     } catch (err) {
       console.error(err);
@@ -1254,42 +1291,31 @@ export default function App() {
             <nav className="hidden md:flex items-center gap-8">
               <button
                 onClick={() => navigateTo('shop', '/shop')}
-                className={`text-sm font-medium transition-colors hover:text-cyan-400 cursor-pointer ${
-                  activeTab === 'shop' && !selectedProduct ? 'text-cyan-400' : 'text-slate-400'
+                className={`relative text-sm font-medium transition-colors hover:text-cyan-400 cursor-pointer pb-1 ${
+                  activeTab === 'shop' ? 'text-cyan-400' : 'text-slate-400'
                 }`}
               >
                 Catalog
+                {activeTab === 'shop' && <span className="absolute left-0 right-0 -bottom-0.5 h-0.5 rounded-full bg-cyan-400" />}
               </button>
               <button
-                onClick={() => navigateTo('applications', '/applications')}
-                className={`text-sm font-medium transition-colors hover:text-cyan-400 cursor-pointer ${
+                onClick={() => navigateTo('applications', '/careers')}
+                className={`relative text-sm font-medium transition-colors hover:text-cyan-400 cursor-pointer pb-1 ${
                   activeTab === 'applications' ? 'text-cyan-400' : 'text-slate-400'
                 }`}
               >
                 Careers
-              </button>
-              <button
-                onClick={() => navigateTo('orders', '/account/orders')}
-                className={`text-sm font-medium transition-colors hover:text-cyan-400 cursor-pointer ${
-                  activeTab === 'orders' ? 'text-cyan-400' : 'text-slate-400'
-                }`}
-              >
-                Order History ({orders.length})
-              </button>
-              <button
-                onClick={() => setContactModalOpen(true)}
-                className="text-sm font-medium text-slate-400 hover:text-cyan-400 transition-colors flex items-center gap-1.5 cursor-pointer"
-              >
-                <Headphones className="w-4 h-4 text-cyan-400" /> Contact Support
+                {activeTab === 'applications' && <span className="absolute left-0 right-0 -bottom-0.5 h-0.5 rounded-full bg-cyan-400" />}
               </button>
               {isAdmin && (
                 <button
                   onClick={() => navigateTo('admin', '/admin')}
-                  className={`text-sm font-bold transition-colors hover:text-cyan-400 cursor-pointer ${
+                  className={`relative text-sm font-bold transition-colors hover:text-cyan-400 cursor-pointer pb-1 ${
                     activeTab === 'admin' ? 'text-cyan-400' : 'text-cyan-600'
                   }`}
                 >
-                  Admin Panel 🔒
+                  Admin
+                  {activeTab === 'admin' && <span className="absolute left-0 right-0 -bottom-0.5 h-0.5 rounded-full bg-cyan-400" />}
                 </button>
               )}
             </nav>
@@ -1345,13 +1371,13 @@ export default function App() {
           <div className="md:hidden border-t border-slate-800 bg-slate-950">
             <nav className="px-4 py-3 flex flex-col gap-1">
               <button type="button" onClick={() => navigateTo('shop', '/shop')} className={`text-left px-4 py-3 rounded-xl text-sm font-medium ${activeTab === 'shop' ? 'bg-cyan-500/10 text-cyan-400' : 'text-slate-300'}`}>Catalog</button>
-              <button type="button" onClick={() => navigateTo('applications', '/applications')} className={`text-left px-4 py-3 rounded-xl text-sm font-medium ${activeTab === 'applications' ? 'bg-cyan-500/10 text-cyan-400' : 'text-slate-300'}`}>Careers</button>
+              <button type="button" onClick={() => navigateTo('applications', '/careers')} className={`text-left px-4 py-3 rounded-xl text-sm font-medium ${activeTab === 'applications' ? 'bg-cyan-500/10 text-cyan-400' : 'text-slate-300'}`}>Careers</button>
               <button type="button" onClick={() => navigateTo('orders', '/account/orders')} className={`text-left px-4 py-3 rounded-xl text-sm font-medium ${activeTab === 'orders' ? 'bg-cyan-500/10 text-cyan-400' : 'text-slate-300'}`}>My Orders ({orders.length})</button>
               <button type="button" onClick={() => { setContactModalOpen(true); setMobileMenuOpen(false); }} className="text-left px-4 py-3 rounded-xl text-sm font-medium text-slate-300">Contact Support</button>
-              <button type="button" onClick={() => navigateTo('about', '/about')} className="text-left px-4 py-3 rounded-xl text-sm font-medium text-slate-300">About</button>
-              <button type="button" onClick={() => navigateTo('faq', '/faq')} className="text-left px-4 py-3 rounded-xl text-sm font-medium text-slate-300">FAQ</button>
+              <button type="button" onClick={() => navigateTo('about', '/about')} className={`text-left px-4 py-3 rounded-xl text-sm font-medium ${activeTab === 'about' ? 'bg-cyan-500/10 text-cyan-400' : 'text-slate-300'}`}>About</button>
+              <button type="button" onClick={() => navigateTo('faq', '/faq')} className={`text-left px-4 py-3 rounded-xl text-sm font-medium ${activeTab === 'faq' ? 'bg-cyan-500/10 text-cyan-400' : 'text-slate-300'}`}>FAQ</button>
               {isAdmin && (
-                <button type="button" onClick={() => navigateTo('admin', '/admin')} className={`text-left px-4 py-3 rounded-xl text-sm font-bold ${activeTab === 'admin' ? 'text-cyan-400' : 'text-cyan-500'}`}>Admin Panel</button>
+                <button type="button" onClick={() => navigateTo('admin', '/admin')} className={`text-left px-4 py-3 rounded-xl text-sm font-bold ${activeTab === 'admin' ? 'text-cyan-400 bg-cyan-500/10' : 'text-cyan-500'}`}>Admin Panel</button>
               )}
               <button type="button" onClick={() => { setProfileModalOpen(true); setMobileMenuOpen(false); }} className="text-left px-4 py-3 rounded-xl text-sm font-medium text-slate-300">{user ? 'Account' : 'Sign In'}</button>
               <button type="button" onClick={() => { setAiDrawerOpen(true); setMobileMenuOpen(false); }} className="text-left px-4 py-3 rounded-xl text-sm font-medium text-cyan-400">AI Configurator</button>
@@ -1521,7 +1547,7 @@ export default function App() {
                     <h4 className="font-bold text-white flex items-center gap-2">
                       <Layers className="w-4 h-4 text-cyan-400" /> 1. Manage sections
                     </h4>
-                    <p className="text-xs text-slate-500 mt-1">Examples: Leadership, Marketing, Product Development, General Staff.</p>
+                    <p className="text-xs text-slate-400 mt-1">Examples: Leadership, Marketing, Product Development, General Staff.</p>
                   </div>
                   <form onSubmit={handleCreateSection} className="flex gap-2">
                     <input
@@ -1551,7 +1577,7 @@ export default function App() {
                     <h4 className="font-bold text-white flex items-center gap-2">
                       <FileText className="w-4 h-4 text-cyan-400" /> 2. Build an application
                     </h4>
-                    <p className="text-xs text-slate-500 mt-1">Add questions, assign marks and publish the form.</p>
+                    <p className="text-xs text-slate-400 mt-1">Add questions, assign marks and publish the form.</p>
                   </div>
                   <form onSubmit={handleSaveApplication} className="space-y-3">
                     <input
@@ -1677,7 +1703,7 @@ export default function App() {
                         <button
                           onClick={() => {
                             setSelectedApplication(application);
-                            navigateTo('applications', `/applications/${application.slug || application.id}`);
+                            navigateTo('applications', `/careers/${application.slug || application.id}`);
                           }}
                           className="rounded-lg border border-cyan-500/30 px-3 py-2 text-xs text-cyan-300 hover:bg-cyan-500/10"
                         >
@@ -1724,7 +1750,7 @@ export default function App() {
                           <p className="text-sm text-cyan-300 mt-1">
                             {submission.applicationTitle} · {submission.section}
                           </p>
-                          <p className="text-xs text-slate-500 mt-1">Submitted {new Date(submission.submittedAt).toLocaleString('en-GB')}</p>
+                          <p className="text-xs text-slate-400 mt-1">Submitted {new Date(submission.submittedAt).toLocaleString('en-GB')}</p>
                         </div>
                         <div className="flex gap-2 items-center">
                           <span className="rounded-full bg-slate-900 border border-slate-700 px-3 py-1 text-xs">{submission.status || 'Pending'}</span>
@@ -2011,7 +2037,7 @@ export default function App() {
                 <button
                   onClick={() => {
                     setSelectedApplication(null);
-                    navigateTo('applications', '/applications');
+                    navigateTo('applications', '/careers');
                   }}
                   className="text-sm text-cyan-300 hover:text-cyan-200"
                 >
@@ -2076,7 +2102,7 @@ export default function App() {
                       <div className="flex items-end justify-between">
                         <div>
                           <h2 className="text-xl font-black text-white">{section.name}</h2>
-                          <p className="text-sm text-slate-500 mt-1">Opportunities in {section.name.toLowerCase()}.</p>
+                          <p className="text-sm text-slate-400 mt-1">Opportunities in {section.name.toLowerCase()}.</p>
                         </div>
                         <span className="text-xs text-slate-500">
                           {sectionApps.length} open {sectionApps.length === 1 ? 'role' : 'roles'}
@@ -2095,14 +2121,14 @@ export default function App() {
                               <h3 className="mt-4 text-lg font-black text-white">{a.title}</h3>
                               <p className="mt-2 text-sm text-slate-400 line-clamp-3">{a.description || 'Apply to join the Zortius team and help us build great things.'}</p>
                               <div className="mt-5 flex items-center justify-between gap-3">
-                                <span className="text-xs text-slate-500">
-                                  {(a.questions || []).length} questions · {(a.questions || []).reduce((sum, q) => sum + (Number(q.marks) || 0), 0)} marks
+                                <span className="text-xs text-slate-400">
+                                  {(a.questions || []).length} questions · ~{Math.max(5, Math.round((a.questions || []).length * 1.5))} mins
                                 </span>
                                 <button
                                   onClick={() => {
                                     setSelectedApplication(a);
                                     setApplicationAnswers({});
-                                    navigateTo('applications', `/applications/${a.slug || a.id}`);
+                                    navigateTo('applications', `/careers/${a.slug || a.id}`);
                                   }}
                                   className="flex items-center gap-2 rounded-xl bg-cyan-500 px-4 py-2.5 text-xs font-black text-slate-950 group-hover:bg-cyan-400"
                                 >
@@ -2235,18 +2261,40 @@ export default function App() {
                   <Zap className="w-3.5 h-3.5" /> Next-Gen Hardware Systems
                 </span>
                 <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight leading-tight">Precision Engineering for High Performance</h1>
-                <p className="mt-4 text-sm sm:text-base text-slate-400 leading-relaxed">
+                <p className="mt-4 text-sm sm:text-base text-slate-300 leading-relaxed max-w-xl">
                   Discover workstation class compute systems, acoustically engineered chassis, reference displays, and ultra-low noise peripherals.
                 </p>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <button type="button" onClick={() => { const el = document.getElementById('catalog-grid'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }} className="px-5 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-sm">Browse Catalog</button>
+                  <button type="button" onClick={() => setAiDrawerOpen(true)} className="px-5 py-3 rounded-xl border border-cyan-500/40 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 font-bold text-sm flex items-center gap-2"><Bot className="w-4 h-4" /> Configure Custom System</button>
+                </div>
               </div>
             </div>
 
             
-            <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 sm:px-5 sm:py-4 flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-bold text-amber-200">Not taking orders yet</p>
-                <p className="text-xs text-amber-100/80 mt-0.5">You can browse the catalog and build a basket, but checkout is not available at the moment. Please check back later.</p>
+            <div className="rounded-2xl border border-cyan-500/30 bg-gradient-to-r from-slate-900 via-slate-900 to-cyan-950/40 px-4 py-4 sm:px-6 sm:py-5">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-white">Not taking orders yet — join the launch waitlist</p>
+                  <p className="text-xs text-slate-300 mt-1 leading-relaxed">Browse the catalog and save your basket. Enter your email and we will notify you the moment checkout opens.</p>
+                </div>
+                <form onSubmit={handleJoinWaitlist} className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto sm:min-w-[320px]">
+                  <input
+                    type="email"
+                    required
+                    value={waitlistEmail}
+                    onChange={(e) => setWaitlistEmail(e.target.value)}
+                    placeholder="you@email.com"
+                    className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-cyan-500"
+                  />
+                  <button
+                    type="submit"
+                    disabled={waitlistSubmitting}
+                    className="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-60 text-slate-950 font-bold text-sm whitespace-nowrap"
+                  >
+                    {waitlistSubmitting ? 'Joining…' : 'Notify me'}
+                  </button>
+                </form>
               </div>
             </div>
 
@@ -2276,7 +2324,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div id="catalog-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredProducts.map((product) => (
                 <div
                   key={product.id}
@@ -2570,7 +2618,7 @@ export default function App() {
                             {renderSafe(order.status || 'Processing')}
                           </span>
                         </div>
-                        <span className="text-xs text-slate-500 mt-1 block">
+                        <span className="text-xs text-slate-400 mt-1 block">
                           Placed on {renderSafe(order.date)} via {renderSafe(order.paymentMethod)}
                         </span>
                         {order.shippingAddress && <span className="text-xs text-slate-400 mt-1 block">Ship to: {order.shippingAddress}</span>}
@@ -2610,7 +2658,7 @@ export default function App() {
               <button onClick={() => navigateTo('shop', '/shop')} className="hover:text-cyan-300">
                 Shop
               </button>
-              <button onClick={() => navigateTo('applications', '/applications')} className="hover:text-cyan-300">
+              <button onClick={() => navigateTo('applications', '/careers')} className="hover:text-cyan-300">
                 Applications
               </button>
               <button onClick={() => navigateTo('about', '/about')} className="hover:text-cyan-300">
@@ -2704,6 +2752,32 @@ export default function App() {
                     You are logged in as <strong>{isFullAdmin ? 'Full Admin' : 'Limited Admin'}</strong>
                   </div>
                 )}
+                <div className="space-y-2 border-t border-slate-800 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => { setProfileModalOpen(false); navigateTo('orders', '/account/orders'); }}
+                    className="w-full text-left px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-sm text-slate-200 hover:border-cyan-500/40 flex items-center justify-between"
+                  >
+                    <span className="flex items-center gap-2"><Package className="w-4 h-4 text-cyan-400" /> Order history</span>
+                    <span className="text-xs text-slate-500">{orders.length}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setProfileModalOpen(false); setContactModalOpen(true); }}
+                    className="w-full text-left px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-sm text-slate-200 hover:border-cyan-500/40 flex items-center gap-2"
+                  >
+                    <Headphones className="w-4 h-4 text-cyan-400" /> Contact support
+                  </button>
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => { setProfileModalOpen(false); navigateTo('admin', '/admin'); }}
+                      className="w-full text-left px-4 py-3 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-sm text-cyan-300 font-bold"
+                    >
+                      Admin panel
+                    </button>
+                  )}
+                </div>
                 <button onClick={handleSignOut} className="w-full py-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 font-bold text-sm flex items-center justify-center gap-2">
                   <LogOut className="w-4 h-4" /> Sign Out
                 </button>
