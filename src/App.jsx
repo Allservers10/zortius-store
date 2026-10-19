@@ -2444,6 +2444,17 @@ export default function App() {
               </div>
             </section>
 
+            
+            <section className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-[11px] sm:text-xs text-slate-500 tracking-wide">
+              <span>Secure accounts</span>
+              <span className="hidden sm:inline text-slate-700">·</span>
+              <span>GBP pricing</span>
+              <span className="hidden sm:inline text-slate-700">·</span>
+              <span>Pre-order interest open</span>
+              <span className="hidden sm:inline text-slate-700">·</span>
+              <span>UK support</span>
+            </section>
+
             {/* Pre-order strip */}
             <section className="rounded-[1.5rem] border border-cyan-500/20 bg-cyan-500/5 px-6 py-8 sm:px-10 flex flex-col lg:flex-row lg:items-center gap-6">
               <div className="flex-1">
@@ -2989,8 +3000,8 @@ export default function App() {
 
       {/* CHECKOUT MODAL — proper address + Stripe */}
       {checkoutModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-5 relative">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/80 backdrop-blur-md">
+          <div className="bg-slate-900 border border-slate-800 rounded-t-3xl sm:rounded-3xl p-5 sm:p-7 max-w-md w-full shadow-2xl space-y-5 relative max-h-[92vh] overflow-y-auto">
             <button onClick={() => setCheckoutModalOpen(false)} className="absolute top-5 right-5 p-2 rounded-xl bg-slate-950 text-slate-400 hover:text-white">
               <X className="w-5 h-5" />
             </button>
@@ -3013,8 +3024,8 @@ export default function App() {
       )}
 
             {profileModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/80 backdrop-blur-md">
+          <div className="bg-slate-900 border border-slate-800 rounded-t-3xl sm:rounded-3xl p-5 sm:p-7 max-w-md w-full shadow-2xl relative max-h-[92vh] overflow-y-auto">
             <button
               onClick={() => {
                 setProfileModalOpen(false);
@@ -3038,27 +3049,27 @@ export default function App() {
                     <p className="text-xs text-slate-400">{user.email}</p>
                   </div>
                 </div>
-                <div className="space-y-3">
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Profile details</p>
+                <div className="space-y-2.5">
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Profile details</p>
                   <div>
                     <label className="block text-xs font-semibold text-slate-400 mb-1">Display name</label>
-                    <input type="text" value={userName} onChange={(e) => setUserName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500" />
+                    <input type="text" value={userName} onChange={(e) => setUserName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-400 mb-1">Phone</label>
-                    <input type="tel" value={profilePhone} onChange={(e) => setProfilePhone(e.target.value)} placeholder="+44…" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500" />
+                    <input type="tel" value={profilePhone} onChange={(e) => setProfilePhone(e.target.value)} placeholder="+44…" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-400 mb-1">Company / school</label>
-                    <input type="text" value={profileCompany} onChange={(e) => setProfileCompany(e.target.value)} placeholder="Optional" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500" />
+                    <input type="text" value={profileCompany} onChange={(e) => setProfileCompany(e.target.value)} placeholder="Optional" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-400 mb-1">Location</label>
-                    <input type="text" value={profileLocation} onChange={(e) => setProfileLocation(e.target.value)} placeholder="City, country" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500" />
+                    <input type="text" value={profileLocation} onChange={(e) => setProfileLocation(e.target.value)} placeholder="City, country" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-400 mb-1">Bio</label>
-                    <textarea rows="2" value={profileBio} onChange={(e) => setProfileBio(e.target.value)} placeholder="Short intro…" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500" />
+                    <textarea rows="2" value={profileBio} onChange={(e) => setProfileBio(e.target.value)} placeholder="Short intro…" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
                   </div>
                   <button
                     type="button"
@@ -3123,7 +3134,7 @@ export default function App() {
                 <form onSubmit={authMode === 'login' ? handleEmailSignIn : handleEmailSignUp} className="space-y-4">
                   <div>
                     <label className="block text-xs font-semibold text-slate-400 mb-1">Email</label>
-                    <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500" />
+                    <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-400 mb-1">Password</label>
