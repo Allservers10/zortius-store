@@ -226,6 +226,10 @@ export default function App() {
 
   const [newReviewRating, setNewReviewRating] = useState(5);
   const [newReviewComment, setNewReviewComment] = useState('');
+  const [profilePhone, setProfilePhone] = useState('');
+  const [profileCompany, setProfileCompany] = useState('');
+  const [profileBio, setProfileBio] = useState('');
+  const [profileLocation, setProfileLocation] = useState('');
 
   // -------------------- AUTH --------------------
   useEffect(() => {
@@ -291,6 +295,21 @@ export default function App() {
 
     return () => unsub();
   }, []);
+
+
+  useEffect(() => {
+    if (!db || !userId) return;
+    const unsub = onSnapshot(doc(db, 'artifacts', appId, 'users', userId), (snap) => {
+      if (!snap.exists()) return;
+      const d = snap.data() || {};
+      if (d.displayName) setUserName(d.displayName);
+      if (d.phone) setProfilePhone(d.phone);
+      if (d.company) setProfileCompany(d.company);
+      if (d.bio) setProfileBio(d.bio);
+      if (d.location) setProfileLocation(d.location);
+    });
+    return () => unsub();
+  }, [userId]);
 
   // Persist cart across refresh (guest + logged-in)
   useEffect(() => {
@@ -401,7 +420,10 @@ export default function App() {
 
   const navigateTo = (tab, path) => {
     setActiveTab(tab);
-    setSelectedProduct(null);
+    // Only clear product when leaving product detail (not when opening one)
+    if (!path || !String(path).startsWith('/shop/')) {
+      setSelectedProduct(null);
+    }
     if (path && window.location.pathname !== path) window.history.pushState({}, '', path);
     setMobileMenuOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -438,7 +460,16 @@ export default function App() {
       const userRef = doc(db, 'artifacts', appId, 'users', userId);
       await setDoc(
         userRef,
-        { cart: updatedCart, orders: updatedOrders, displayName: customName, updatedAt: new Date().toISOString() },
+        {
+          cart: updatedCart,
+          orders: updatedOrders,
+          displayName: customName,
+          phone: profilePhone || '',
+          company: profileCompany || '',
+          bio: profileBio || '',
+          location: profileLocation || '',
+          updatedAt: new Date().toISOString()
+        },
         { merge: true }
       );
     } catch (e) {
@@ -1364,7 +1395,7 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigateTo('home', '/')}>
-              <img src="/logo.png" alt="Zortius" className="h-10 sm:h-12 w-auto object-contain shrink-0" />
+              <img src="/logo.jpg" alt="Zortius" className="h-10 sm:h-12 w-auto object-contain shrink-0" onError={(e) => { e.currentTarget.style.display='none'; }} />
               <div>
                 <span className="text-xl font-black tracking-wider bg-gradient-to-r from-white via-slate-200 to-cyan-400 bg-clip-text text-transparent">
                   ZORTIUS
@@ -1378,7 +1409,10 @@ export default function App() {
                 { tab: 'home', path: '/', label: 'Home' },
                 { tab: 'shop', path: '/shop', label: 'Shop' },
                 { tab: 'applications', path: '/careers', label: 'Careers' },
-                { tab: 'contact', path: '/contact', label: 'Support' },
+                { tab: 'orders', path: '/account/orders', label: 'Orders' },
+                { tab: 'about', path: '/about', label: 'About' },
+                { tab: 'faq', path: '/faq', label: 'FAQ' },
+                { tab: 'contact', path: '/contact', label: 'Contact' },
               ].map((item) => (
                 <button
                   key={item.tab}
@@ -1392,7 +1426,7 @@ export default function App() {
                   }`}
                 >
                   {item.label}
-                  {activeTab === item.tab && item.tab !== 'contact' && (
+                  {activeTab === item.tab && (
                     <span className="absolute left-0 right-0 -bottom-0.5 h-[2px] rounded-full bg-cyan-400" />
                   )}
                 </button>
@@ -2547,16 +2581,16 @@ export default function App() {
               {filteredProducts.map((product) => (
                 <div
                   key={product.id}
-                  className="group bg-slate-900/60 hover:bg-slate-900 border border-slate-800 hover:border-cyan-500/50 rounded-2xl overflow-hidden transition-all duration-300 shadow-xl flex flex-col justify-between"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openProduct(product)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') openProduct(product); }}
+                  className="group bg-slate-900/70 hover:bg-slate-900 border border-white/5 hover:border-cyan-500/40 rounded-[1.25rem] overflow-hidden transition-all duration-300 shadow-xl flex flex-col justify-between cursor-pointer"
                 >
                   <div>
                     <div
                       className="relative aspect-video overflow-hidden bg-slate-950 cursor-pointer"
-                      onClick={() => {
-                        setSelectedProduct(product);
-                        if (product.options?.colors?.length) setSelectedColor(product.options.colors[0]);
-                        navigateTo('shop', `/shop/${product.id}`);
-                      }}
+                      onClick={() => openProduct(product)}
                     >
                       <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90" />
                       <span className="absolute top-3 right-3 px-2.5 py-1 bg-slate-950/80 backdrop-blur-md rounded-lg text-[10px] font-bold text-cyan-400 border border-slate-800">
@@ -2570,11 +2604,7 @@ export default function App() {
                         <span className="text-slate-500">({renderSafe(product.reviewsCount)} reviews)</span>
                       </div>
                       <h3
-                        onClick={() => {
-                          setSelectedProduct(product);
-                          if (product.options?.colors?.length) setSelectedColor(product.options.colors[0]);
-                          navigateTo('shop', `/shop/${product.id}`);
-                        }}
+                        onClick={() => openProduct(product)}
                         className="text-lg font-bold text-white group-hover:text-cyan-400 transition-colors cursor-pointer line-clamp-1"
                       >
                         {renderSafe(product.name)}
@@ -2589,8 +2619,9 @@ export default function App() {
                         <span className="text-xl font-black text-white">£{Number(product.price).toLocaleString('en-GB', { minimumFractionDigits: 2 })}</span>
                       </div>
                       <button
-                        onClick={() => {
-                          if (product.options?.colors?.length) setSelectedColor(product.options.colors[0]);
+                        onClick={(e) => {
+                        e.stopPropagation();
+                        if (product.options?.colors?.length) setSelectedColor(product.options.colors[0]);
                           addToCart(product);
                         }}
                         className="px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer"
@@ -3007,20 +3038,38 @@ export default function App() {
                     <p className="text-xs text-slate-400">{user.email}</p>
                   </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1.5">Display Name</label>
-                  <div className="flex gap-2">
-                    <input type="text" value={userName} onChange={(e) => setUserName(e.target.value)} className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500" />
-                    <button
-                      onClick={async () => {
-                        await saveUserDataToFirestore(cart, orders, userName);
-                        showNotification('Display name updated');
-                      }}
-                      className="px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs"
-                    >
-                      Save
-                    </button>
+                <div className="space-y-3">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Profile details</p>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Display name</label>
+                    <input type="text" value={userName} onChange={(e) => setUserName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500" />
                   </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Phone</label>
+                    <input type="tel" value={profilePhone} onChange={(e) => setProfilePhone(e.target.value)} placeholder="+44…" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Company / school</label>
+                    <input type="text" value={profileCompany} onChange={(e) => setProfileCompany(e.target.value)} placeholder="Optional" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Location</label>
+                    <input type="text" value={profileLocation} onChange={(e) => setProfileLocation(e.target.value)} placeholder="City, country" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Bio</label>
+                    <textarea rows="2" value={profileBio} onChange={(e) => setProfileBio(e.target.value)} placeholder="Short intro…" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500" />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await saveUserDataToFirestore(cart, orders, userName);
+                      showNotification('Profile saved');
+                    }}
+                    className="w-full px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-sm"
+                  >
+                    Save profile
+                  </button>
                 </div>
                 {isAdmin && (
                   <div className="rounded-xl bg-cyan-500/10 border border-cyan-500/30 p-3 text-xs text-cyan-300">
