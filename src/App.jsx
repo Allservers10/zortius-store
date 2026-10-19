@@ -74,6 +74,7 @@ const INITIAL_PRODUCTS = [
     rating: 4.9,
     reviewsCount: 42,
     image: 'https://images.unsplash.com/photo-1587831990711-23ca6441447b?auto=format&fit=crop&w=800&q=80',
+    images: ['https://images.unsplash.com/photo-1587831990711-23ca6441447b?auto=format&fit=crop&w=800&q=80','https://images.unsplash.com/photo-1593640408182-31c70c8268f5?auto=format&fit=crop&w=800&q=80'],
     description:
       'Engineered for extreme computational demands. Features bespoke liquid immersion cooling, redundant power architectures, and uncompromised multi-threaded throughput for professional simulation and rendering.',
     specs: ['64-Core Thread Processor', '128GB ECC DDR5 RAM', 'Dual PCIe Gen 5 Workstation Graphics', '4TB NVMe Ultra-Dense Storage'],
@@ -87,6 +88,7 @@ const INITIAL_PRODUCTS = [
     rating: 4.8,
     reviewsCount: 88,
     image: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=800&q=80',
+    images: ['https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=800&q=80','https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?auto=format&fit=crop&w=800&q=80'],
     description:
       'Precision-milled anodized aluminum chassis paired with acoustically optimized thermal tunnels. Built for pristine signal integrity and silent operation under heavy sustained workloads.',
     specs: ['Acoustically Tuned Airflow', 'Modular Toolless Bays', 'Anodized Gunmetal Finish', 'Integrated Cable Routing Matrix'],
@@ -191,7 +193,11 @@ export default function App() {
   const [prodCategory, setProdCategory] = useState('Workstations');
   const [prodImage, setProdImage] = useState('');
   const [prodDesc, setProdDesc] = useState('');
-  const [prodColorOption, setProdColorOption] = useState('Default');
+  const [prodColorOption, setProdColorOption] = useState('Dark Anodized, Titanium Silver');
+  const [prodImages, setProdImages] = useState('');
+  const [prodVideo, setProdVideo] = useState('');
+  const [preorders, setPreorders] = useState([]);
+  const [productGalleryIndex, setProductGalleryIndex] = useState(0);
 
   // Admin discount form
   const [discCode, setDiscCode] = useState('');
@@ -668,6 +674,7 @@ export default function App() {
 
   const openProduct = (product) => {
     setSelectedProduct(product);
+    setProductGalleryIndex(0);
     if (product?.options?.colors?.length) setSelectedColor(product.options.colors[0]);
     else setSelectedColor('Standard');
     setActiveTab('shop');
@@ -1226,16 +1233,27 @@ export default function App() {
   const handleSaveProduct = async (e) => {
     e.preventDefault();
     if (!db || !isAdmin) return;
+    const colorList = (prodColorOption || 'Default')
+      .split(',')
+      .map((x) => x.trim())
+      .filter(Boolean);
+    const imageList = (prodImages || '')
+      .split('\n')
+      .map((x) => x.trim())
+      .filter(Boolean);
+    if (prodImage && !imageList.includes(prodImage)) imageList.unshift(prodImage);
     const payload = {
       name: prodName,
       price: parseFloat(prodPrice),
       category: prodCategory,
-      image: prodImage || 'https://images.unsplash.com/photo-1587831990711-23ca6441447b?auto=format&fit=crop&w=800&q=80',
+      image: imageList[0] || prodImage || 'https://images.unsplash.com/photo-1587831990711-23ca6441447b?auto=format&fit=crop&w=800&q=80',
+      images: imageList.length ? imageList : [prodImage || 'https://images.unsplash.com/photo-1587831990711-23ca6441447b?auto=format&fit=crop&w=800&q=80'],
+      videoUrl: (prodVideo || '').trim() || null,
       description: prodDesc || 'High-performance computing component.',
       rating: 5.0,
       reviewsCount: 1,
       specs: ['ZORTIUS Certified', 'High Throughput'],
-      options: { colors: [prodColorOption || 'Default'] }
+      options: { colors: colorList.length ? colorList : ['Default'] }
     };
     if (editingProductId) {
       await updateDoc(doc(db, 'artifacts', appId, 'products', editingProductId), payload);
@@ -1248,7 +1266,10 @@ export default function App() {
     setProdName('');
     setProdPrice('');
     setProdImage('');
+    setProdImages('');
+    setProdVideo('');
     setProdDesc('');
+    setProdColorOption('Dark Anodized, Titanium Silver');
   };
 
   const handleDeleteProduct = async (id) => {
@@ -1343,14 +1364,12 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigateTo('home', '/')}>
-              <div className="relative w-12 h-12 bg-slate-900 border border-slate-700 rounded-xl flex items-center justify-center overflow-hidden shadow-inner">
-                <Zap className="w-6 h-6 text-cyan-400" />
-              </div>
+              <img src="/logo.png" alt="Zortius" className="h-10 sm:h-12 w-auto object-contain shrink-0" />
               <div>
                 <span className="text-xl font-black tracking-wider bg-gradient-to-r from-white via-slate-200 to-cyan-400 bg-clip-text text-transparent">
                   ZORTIUS
                 </span>
-                <span className="block text-[10px] tracking-widest text-cyan-500 font-semibold uppercase">Hardware Engineering</span>
+                <span className="block text-[10px] tracking-widest text-cyan-500 font-semibold uppercase">Innovation without a limit</span>
               </div>
             </div>
 
@@ -1881,7 +1900,9 @@ export default function App() {
                 <input type="number" step="0.01" placeholder="Price (£)" required value={prodPrice} onChange={(e) => setProdPrice(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none font-mono" />
                 <input type="text" placeholder="Category" value={prodCategory} onChange={(e) => setProdCategory(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none" />
                 <input type="url" placeholder="Image URL" value={prodImage} onChange={(e) => setProdImage(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none md:col-span-2" />
-                <input type="text" placeholder="Color Option" value={prodColorOption} onChange={(e) => setProdColorOption(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none" />
+                <textarea placeholder="Extra image URLs (one per line) — Amazon-style gallery" value={prodImages} onChange={(e) => setProdImages(e.target.value)} rows="3" className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-cyan-500 sm:col-span-2 font-mono text-xs" />
+                <input type="url" placeholder="Product video URL (YouTube / MP4)" value={prodVideo} onChange={(e) => setProdVideo(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-cyan-500 sm:col-span-2" />
+                <input type="text" placeholder="Colors (comma-separated)" value={prodColorOption} onChange={(e) => setProdColorOption(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none" />
                 <textarea placeholder="Description" value={prodDesc} onChange={(e) => setProdDesc(e.target.value)} rows="2" className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none md:col-span-3" />
                 <button type="submit" className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold py-2.5 rounded-xl text-xs md:col-span-3 cursor-pointer">
                   {editingProductId ? 'Update Product' : 'Add Product to Live Store'}
@@ -1902,9 +1923,11 @@ export default function App() {
                           setProdName(p.name);
                           setProdPrice(p.price);
                           setProdCategory(p.category);
-                          setProdImage(p.image);
+                          setProdImage(p.image || '');
+                          setProdImages((p.images || (p.image ? [p.image] : [])).join('\n'));
+                          setProdVideo(p.videoUrl || '');
                           setProdDesc(p.description || '');
-                          setProdColorOption(p.options?.colors?.[0] || 'Default');
+                          setProdColorOption((p.options?.colors || ['Default']).join(', '));
                         }}
                         className="text-slate-400 hover:text-cyan-400 cursor-pointer"
                       >
@@ -1944,6 +1967,40 @@ export default function App() {
                 ))}
               </div>
             </section>
+
+            
+            {isFullAdmin && (
+              <section className="bg-slate-900 border border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-4">
+                <h3 className="text-sm font-mono font-bold text-cyan-400 uppercase tracking-wider">Pre-order interest list</h3>
+                <p className="text-xs text-slate-400">People who registered interest. Contact them when you open orders.</p>
+                {preorders.length === 0 ? (
+                  <p className="text-xs text-slate-500">No pre-order signups yet.</p>
+                ) : (
+                  <div className="overflow-x-auto rounded-xl border border-slate-800">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-950 text-slate-400">
+                        <tr>
+                          <th className="px-3 py-2 font-semibold">Email</th>
+                          <th className="px-3 py-2 font-semibold">Product</th>
+                          <th className="px-3 py-2 font-semibold">Colour</th>
+                          <th className="px-3 py-2 font-semibold">Date</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800">
+                        {preorders.map((row) => (
+                          <tr key={row.id} className="text-slate-200">
+                            <td className="px-3 py-2.5 break-all">{row.email}</td>
+                            <td className="px-3 py-2.5">{row.productName || 'General'}</td>
+                            <td className="px-3 py-2.5 text-cyan-300">{row.color || '—'}</td>
+                            <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap">{row.createdAt ? new Date(row.createdAt).toLocaleString('en-GB') : '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+            )}
 
             {/* ORDERS — FULL ADMIN ONLY */}
             {isFullAdmin && (
@@ -2259,7 +2316,7 @@ export default function App() {
               ← Back to store
             </button>
             <section className="rounded-3xl border border-slate-800 bg-slate-900/60 p-8 sm:p-12">
-              <span className="text-xs font-bold uppercase tracking-widest text-cyan-400">ZORTIUS · Hardware Engineering</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-cyan-400">ZORTIUS · Innovation without a limit</span>
               <h1 className="mt-3 text-3xl sm:text-4xl font-black text-white">
                 {
                   {
@@ -2562,8 +2619,56 @@ export default function App() {
             </button>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-10 bg-slate-900/60 rounded-2xl sm:rounded-3xl border border-slate-800 p-4 sm:p-10 shadow-2xl">
-              <div className="aspect-square min-h-[280px] sm:min-h-[400px] rounded-2xl overflow-hidden bg-slate-950 border border-slate-800">
-                <img src={selectedProduct.image} alt={selectedProduct.name} className="w-full h-full object-cover" />
+              <div className="space-y-3">
+                <div className="aspect-square min-h-[280px] sm:min-h-[420px] rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 relative">
+                  {(selectedProduct.images && selectedProduct.images.length
+                    ? selectedProduct.images
+                    : [selectedProduct.image]
+                  ).map((src, i) => (
+                    i === productGalleryIndex ? (
+                      <img key={src + i} src={src} alt={`${selectedProduct.name} ${i + 1}`} className="w-full h-full object-cover" />
+                    ) : null
+                  ))}
+                  {selectedProduct.videoUrl && productGalleryIndex === -1 && (
+                    selectedProduct.videoUrl.includes('youtube.com') || selectedProduct.videoUrl.includes('youtu.be') ? (
+                      <iframe
+                        title="Product video"
+                        className="absolute inset-0 w-full h-full"
+                        src={selectedProduct.videoUrl.replace('watch?v=', 'embed/').replace('youtu.be/', 'www.youtube.com/embed/')}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    ) : (
+                      <video src={selectedProduct.videoUrl} controls className="w-full h-full object-cover" />
+                    )
+                  )}
+                </div>
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {(selectedProduct.images && selectedProduct.images.length
+                    ? selectedProduct.images
+                    : selectedProduct.image
+                      ? [selectedProduct.image]
+                      : []
+                  ).map((src, i) => (
+                    <button
+                      key={src + i}
+                      type="button"
+                      onClick={() => setProductGalleryIndex(i)}
+                      className={`shrink-0 w-16 h-16 rounded-lg overflow-hidden border ${productGalleryIndex === i ? 'border-cyan-400 ring-1 ring-cyan-400' : 'border-slate-800'}`}
+                    >
+                      <img src={src} alt="" className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                  {selectedProduct.videoUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setProductGalleryIndex(-1)}
+                      className={`shrink-0 w-16 h-16 rounded-lg border flex items-center justify-center text-[10px] font-bold ${productGalleryIndex === -1 ? 'border-cyan-400 text-cyan-300' : 'border-slate-800 text-slate-400'}`}
+                    >
+                      VIDEO
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-6 flex flex-col justify-between">
