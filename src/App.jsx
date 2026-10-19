@@ -125,7 +125,7 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isFullAdmin, setIsFullAdmin] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('shop');
+  const [activeTab, setActiveTab] = useState('home');
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [cart, setCart] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -286,6 +286,22 @@ export default function App() {
     return () => unsub();
   }, []);
 
+  // Persist cart across refresh (guest + logged-in)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('zortius_cart');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length) setCart(parsed);
+      }
+    } catch (_) {}
+  }, []);
+  useEffect(() => {
+    try {
+      localStorage.setItem('zortius_cart', JSON.stringify(cart));
+    } catch (_) {}
+  }, [cart]);
+
   // -------------------- FIRESTORE SYNC --------------------
   useEffect(() => {
     if (!db) return;
@@ -362,6 +378,7 @@ export default function App() {
   // -------------------- ROUTING --------------------
   const routeToTab = (path) => {
     const clean = (path || '/').replace(/\/$/, '') || '/';
+    if (clean === '/' || clean === '/home') return 'home';
     if (clean === '/admin') return 'admin';
     if (clean === '/shop' || clean.startsWith('/shop/')) return 'shop';
     if (clean === '/cart') return 'cart';
@@ -373,7 +390,7 @@ export default function App() {
     if (clean === '/privacy') return 'privacy';
     if (clean === '/terms') return 'terms';
     if (clean === '/account') return 'account';
-    return 'shop';
+    return 'home';
   };
 
   const navigateTo = (tab, path) => {
@@ -426,6 +443,43 @@ export default function App() {
   const showNotification = (msg, type = 'success') => {
     setNotification({ message: msg, type });
     setTimeout(() => setNotification(null), 3500);
+  };
+
+
+  const handlePreorder = async (product = null) => {
+    const em = (waitlistEmail || user?.email || '').trim();
+    if (!em || !em.includes('@')) {
+      showNotification('Enter your email to pre-order / join the list.', 'error');
+      return;
+    }
+    setWaitlistSubmitting(true);
+    try {
+      if (db) {
+        await addDoc(collection(db, 'artifacts', appId, 'preorders'), {
+          email: em.toLowerCase(),
+          productId: product?.id || null,
+          productName: product?.name || 'General interest',
+          color: selectedColor || null,
+          createdAt: new Date().toISOString(),
+          userId: user?.uid || null
+        });
+      }
+      await sendActualEmail(
+        EMAILJS_CONTACT_TEMPLATE_ID,
+        em,
+        em.split('@')[0],
+        'PREORDER',
+        'REGISTERED',
+        `Hi,\n\nThanks for your interest in ${product?.name || 'Zortius hardware'}. You are on the pre-order list. We will contact you when ordering opens.\n\n— Zortius`
+      );
+      showNotification('You are on the pre-order list. We will email you at launch.');
+      if (!user) setWaitlistEmail('');
+    } catch (err) {
+      console.error(err);
+      showNotification('Could not register pre-order. Try again.', 'error');
+    } finally {
+      setWaitlistSubmitting(false);
+    }
   };
 
   const handleJoinWaitlist = async (e) => {
@@ -611,6 +665,18 @@ export default function App() {
   };
 
   // -------------------- CART --------------------
+
+  const openProduct = (product) => {
+    setSelectedProduct(product);
+    if (product?.options?.colors?.length) setSelectedColor(product.options.colors[0]);
+    else setSelectedColor('Standard');
+    setActiveTab('shop');
+    const path = `/shop/${product.id}`;
+    if (window.location.pathname !== path) window.history.pushState({}, '', path);
+    setMobileMenuOpen(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const addToCart = (product) => {
     const color = selectedColor || product.options?.colors?.[0] || 'Standard';
     const customItem = { ...product, selectedColor: color };
@@ -1276,7 +1342,7 @@ export default function App() {
       <header className="sticky top-0 z-40 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
-            <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigateTo('shop', '/shop')}>
+            <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigateTo('home', '/')}>
               <div className="relative w-12 h-12 bg-slate-900 border border-slate-700 rounded-xl flex items-center justify-center overflow-hidden shadow-inner">
                 <Zap className="w-6 h-6 text-cyan-400" />
               </div>
@@ -1288,34 +1354,40 @@ export default function App() {
               </div>
             </div>
 
-            <nav className="hidden md:flex items-center gap-8">
-              <button
-                onClick={() => navigateTo('shop', '/shop')}
-                className={`relative text-sm font-medium transition-colors hover:text-cyan-400 cursor-pointer pb-1 ${
-                  activeTab === 'shop' ? 'text-cyan-400' : 'text-slate-400'
-                }`}
-              >
-                Catalog
-                {activeTab === 'shop' && <span className="absolute left-0 right-0 -bottom-0.5 h-0.5 rounded-full bg-cyan-400" />}
-              </button>
-              <button
-                onClick={() => navigateTo('applications', '/careers')}
-                className={`relative text-sm font-medium transition-colors hover:text-cyan-400 cursor-pointer pb-1 ${
-                  activeTab === 'applications' ? 'text-cyan-400' : 'text-slate-400'
-                }`}
-              >
-                Careers
-                {activeTab === 'applications' && <span className="absolute left-0 right-0 -bottom-0.5 h-0.5 rounded-full bg-cyan-400" />}
-              </button>
+            <nav className="hidden md:flex items-center gap-7">
+              {[
+                { tab: 'home', path: '/', label: 'Home' },
+                { tab: 'shop', path: '/shop', label: 'Shop' },
+                { tab: 'applications', path: '/careers', label: 'Careers' },
+                { tab: 'contact', path: '/contact', label: 'Support' },
+              ].map((item) => (
+                <button
+                  key={item.tab}
+                  type="button"
+                  onClick={() => {
+                    if (item.tab === 'contact') { setContactModalOpen(true); return; }
+                    navigateTo(item.tab, item.path);
+                  }}
+                  className={`relative text-[13px] font-medium tracking-wide transition-colors hover:text-white pb-1 ${
+                    activeTab === item.tab ? 'text-white' : 'text-slate-400'
+                  }`}
+                >
+                  {item.label}
+                  {activeTab === item.tab && item.tab !== 'contact' && (
+                    <span className="absolute left-0 right-0 -bottom-0.5 h-[2px] rounded-full bg-cyan-400" />
+                  )}
+                </button>
+              ))}
               {isAdmin && (
                 <button
+                  type="button"
                   onClick={() => navigateTo('admin', '/admin')}
-                  className={`relative text-sm font-bold transition-colors hover:text-cyan-400 cursor-pointer pb-1 ${
+                  className={`relative text-[13px] font-semibold tracking-wide transition-colors hover:text-cyan-300 pb-1 ${
                     activeTab === 'admin' ? 'text-cyan-400' : 'text-cyan-600'
                   }`}
                 >
                   Admin
-                  {activeTab === 'admin' && <span className="absolute left-0 right-0 -bottom-0.5 h-0.5 rounded-full bg-cyan-400" />}
+                  {activeTab === 'admin' && <span className="absolute left-0 right-0 -bottom-0.5 h-[2px] rounded-full bg-cyan-400" />}
                 </button>
               )}
             </nav>
@@ -1366,21 +1438,23 @@ export default function App() {
           </div>
         </div>
       
-        {/* MOBILE NAV — 3-line menu */}
+        {/* MOBILE NAV */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-slate-800 bg-slate-950">
-            <nav className="px-4 py-3 flex flex-col gap-1">
-              <button type="button" onClick={() => navigateTo('shop', '/shop')} className={`text-left px-4 py-3 rounded-xl text-sm font-medium ${activeTab === 'shop' ? 'bg-cyan-500/10 text-cyan-400' : 'text-slate-300'}`}>Catalog</button>
-              <button type="button" onClick={() => navigateTo('applications', '/careers')} className={`text-left px-4 py-3 rounded-xl text-sm font-medium ${activeTab === 'applications' ? 'bg-cyan-500/10 text-cyan-400' : 'text-slate-300'}`}>Careers</button>
-              <button type="button" onClick={() => navigateTo('orders', '/account/orders')} className={`text-left px-4 py-3 rounded-xl text-sm font-medium ${activeTab === 'orders' ? 'bg-cyan-500/10 text-cyan-400' : 'text-slate-300'}`}>My Orders ({orders.length})</button>
-              <button type="button" onClick={() => { setContactModalOpen(true); setMobileMenuOpen(false); }} className="text-left px-4 py-3 rounded-xl text-sm font-medium text-slate-300">Contact Support</button>
-              <button type="button" onClick={() => navigateTo('about', '/about')} className={`text-left px-4 py-3 rounded-xl text-sm font-medium ${activeTab === 'about' ? 'bg-cyan-500/10 text-cyan-400' : 'text-slate-300'}`}>About</button>
-              <button type="button" onClick={() => navigateTo('faq', '/faq')} className={`text-left px-4 py-3 rounded-xl text-sm font-medium ${activeTab === 'faq' ? 'bg-cyan-500/10 text-cyan-400' : 'text-slate-300'}`}>FAQ</button>
-              {isAdmin && (
-                <button type="button" onClick={() => navigateTo('admin', '/admin')} className={`text-left px-4 py-3 rounded-xl text-sm font-bold ${activeTab === 'admin' ? 'text-cyan-400 bg-cyan-500/10' : 'text-cyan-500'}`}>Admin Panel</button>
-              )}
-              <button type="button" onClick={() => { setProfileModalOpen(true); setMobileMenuOpen(false); }} className="text-left px-4 py-3 rounded-xl text-sm font-medium text-slate-300">{user ? 'Account' : 'Sign In'}</button>
-              <button type="button" onClick={() => { setAiDrawerOpen(true); setMobileMenuOpen(false); }} className="text-left px-4 py-3 rounded-xl text-sm font-medium text-cyan-400">AI Configurator</button>
+          <div className="md:hidden border-t border-slate-800 bg-slate-950/98 backdrop-blur-xl">
+            <nav className="px-4 py-3 flex flex-col gap-0.5">
+              {[
+                { tab: 'home', path: '/', label: 'Home' },
+                { tab: 'shop', path: '/shop', label: 'Shop' },
+                { tab: 'applications', path: '/careers', label: 'Careers' },
+                { tab: 'orders', path: '/account/orders', label: `Orders (${orders.length})` },
+                { tab: 'about', path: '/about', label: 'About' },
+                { tab: 'faq', path: '/faq', label: 'FAQ' },
+              ].map((item) => (
+                <button key={item.tab} type="button" onClick={() => navigateTo(item.tab, item.path)} className={`text-left px-4 py-3.5 rounded-xl text-sm font-medium ${activeTab === item.tab ? 'bg-white/5 text-white' : 'text-slate-300'}`}>{item.label}</button>
+              ))}
+              <button type="button" onClick={() => { setContactModalOpen(true); setMobileMenuOpen(false); }} className="text-left px-4 py-3.5 rounded-xl text-sm font-medium text-slate-300">Contact Support</button>
+              {isAdmin && <button type="button" onClick={() => navigateTo('admin', '/admin')} className={`text-left px-4 py-3.5 rounded-xl text-sm font-bold ${activeTab === 'admin' ? 'text-cyan-400' : 'text-cyan-500'}`}>Admin</button>}
+              <button type="button" onClick={() => { setProfileModalOpen(true); setMobileMenuOpen(false); }} className="text-left px-4 py-3.5 rounded-xl text-sm font-medium text-slate-300">{user ? 'Account' : 'Sign In'}</button>
             </nav>
           </div>
         )}
@@ -2253,6 +2327,94 @@ export default function App() {
         )}
 
         {/* SHOP CATALOG */}
+        
+        {/* ========== HOME (Apple-style) ========== */}
+        {activeTab === 'home' && (
+          <div className="space-y-16 sm:space-y-24 -mt-2">
+            {/* Hero */}
+            <section className="relative overflow-hidden rounded-[2rem] border border-white/5 bg-gradient-to-b from-slate-900 to-slate-950 px-6 py-16 sm:px-12 sm:py-24 text-center">
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(34,211,238,0.12),_transparent_55%)]" />
+              <div className="relative max-w-3xl mx-auto">
+                <p className="text-xs sm:text-sm font-semibold tracking-[0.2em] uppercase text-cyan-400/90 mb-4">Zortius Hardware</p>
+                <h1 className="text-4xl sm:text-6xl md:text-7xl font-semibold tracking-tight text-white leading-[1.05]">
+                  Engineered for<br className="hidden sm:block" /> what comes next.
+                </h1>
+                <p className="mt-5 sm:mt-6 text-base sm:text-xl text-slate-400 max-w-xl mx-auto leading-relaxed">
+                  Workstations, displays, and precision peripherals — designed with the same clarity you expect from the best in the industry.
+                </p>
+                <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <button type="button" onClick={() => navigateTo('shop', '/shop')} className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold text-sm transition">
+                    Shop collection
+                  </button>
+                  <button type="button" onClick={() => navigateTo('applications', '/careers')} className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold text-sm transition">
+                    Explore careers
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            {/* Pre-order strip */}
+            <section className="rounded-[1.5rem] border border-cyan-500/20 bg-cyan-500/5 px-6 py-8 sm:px-10 flex flex-col lg:flex-row lg:items-center gap-6">
+              <div className="flex-1">
+                <h2 className="text-xl sm:text-2xl font-semibold text-white tracking-tight">Pre-order interest</h2>
+                <p className="mt-2 text-sm sm:text-base text-slate-400 leading-relaxed">We are not processing payments yet. Register your interest and we will notify you when pre-orders open.</p>
+              </div>
+              <form onSubmit={(e) => { e.preventDefault(); handlePreorder(null); }} className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto lg:min-w-[360px]">
+                <input type="email" required value={waitlistEmail} onChange={(e) => setWaitlistEmail(e.target.value)} placeholder="Email address" className="flex-1 rounded-full bg-slate-950 border border-slate-700 px-5 py-3 text-sm text-white outline-none focus:border-cyan-500" />
+                <button type="submit" disabled={waitlistSubmitting} className="rounded-full bg-white text-slate-950 font-semibold text-sm px-6 py-3 hover:bg-slate-100 disabled:opacity-60 whitespace-nowrap">
+                  {waitlistSubmitting ? 'Saving…' : 'Notify me'}
+                </button>
+              </form>
+            </section>
+
+            {/* Featured */}
+            <section>
+              <div className="flex items-end justify-between mb-6 sm:mb-8 px-1">
+                <div>
+                  <h2 className="text-2xl sm:text-3xl font-semibold text-white tracking-tight">Featured</h2>
+                  <p className="text-sm text-slate-400 mt-1">A closer look at the lineup.</p>
+                </div>
+                <button type="button" onClick={() => navigateTo('shop', '/shop')} className="text-sm font-medium text-cyan-400 hover:text-cyan-300">View all →</button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+                {products.slice(0, 4).map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => openProduct(p)}
+                    className="group text-left rounded-[1.5rem] border border-white/5 bg-slate-900/80 overflow-hidden hover:border-white/15 transition-all"
+                  >
+                    <div className="aspect-[16/10] bg-slate-950 overflow-hidden">
+                      <img src={p.image} alt={p.name} className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-700" />
+                    </div>
+                    <div className="p-5 sm:p-6">
+                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{p.category}</p>
+                      <h3 className="mt-1 text-lg sm:text-xl font-semibold text-white tracking-tight">{p.name}</h3>
+                      <p className="mt-2 text-sm text-slate-400 line-clamp-2">{p.description}</p>
+                      <p className="mt-4 text-base font-medium text-white">From £{Number(p.price).toLocaleString('en-GB', { minimumFractionDigits: 0 })}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            {/* Values strip */}
+            <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {[
+                { t: 'Precision build', d: 'Materials and thermal design tuned for sustained professional workloads.' },
+                { t: 'Clear pricing', d: 'Transparent GBP pricing. Pre-order interest now — checkout when we launch.' },
+                { t: 'Human support', d: 'Real engineers on the other side of Support when you need them.' },
+              ].map((x) => (
+                <div key={x.t} className="rounded-2xl border border-white/5 bg-slate-900/50 p-6">
+                  <h3 className="text-base font-semibold text-white">{x.t}</h3>
+                  <p className="mt-2 text-sm text-slate-400 leading-relaxed">{x.d}</p>
+                </div>
+              ))}
+            </section>
+          </div>
+        )}
+
+
         {activeTab === 'shop' && !selectedProduct && (
           <div className="space-y-8">
             <div className="relative rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900 to-cyan-950/40 p-8 sm:p-12 border border-slate-800 overflow-hidden shadow-2xl">
@@ -2275,10 +2437,10 @@ export default function App() {
             <div className="rounded-2xl border border-cyan-500/30 bg-gradient-to-r from-slate-900 via-slate-900 to-cyan-950/40 px-4 py-4 sm:px-6 sm:py-5">
               <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-white">Not taking orders yet — join the launch waitlist</p>
-                  <p className="text-xs text-slate-300 mt-1 leading-relaxed">Browse the catalog and save your basket. Enter your email and we will notify you the moment checkout opens.</p>
+                  <p className="text-sm font-bold text-white">Pre-order interest — get notified at launch</p>
+                  <p className="text-xs text-slate-300 mt-1 leading-relaxed">Payments are not open yet. Join the pre-order list and we will email you when you can complete a purchase.</p>
                 </div>
-                <form onSubmit={handleJoinWaitlist} className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto sm:min-w-[320px]">
+                <form onSubmit={(e) => { e.preventDefault(); handlePreorder(null); }} className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto sm:min-w-[320px]">
                   <input
                     type="email"
                     required
@@ -2292,7 +2454,7 @@ export default function App() {
                     disabled={waitlistSubmitting}
                     className="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-60 text-slate-950 font-bold text-sm whitespace-nowrap"
                   >
-                    {waitlistSubmitting ? 'Joining…' : 'Notify me'}
+                    {waitlistSubmitting ? 'Saving…' : 'Join pre-order list'}
                   </button>
                 </form>
               </div>
@@ -2449,9 +2611,14 @@ export default function App() {
                     <span className="text-xs text-slate-500 block">Total Price (GBP)</span>
                     <span className="text-3xl font-black text-white">£{Number(selectedProduct.price).toLocaleString('en-GB', { minimumFractionDigits: 2 })}</span>
                   </div>
-                  <button onClick={() => addToCart(selectedProduct)} className="px-8 py-4 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold transition-all flex items-center gap-2 cursor-pointer">
-                    <ShoppingCart className="w-5 h-5" /> Add to Basket
-                  </button>
+                  <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                    <button type="button" onClick={() => addToCart(selectedProduct)} className="px-8 py-3.5 rounded-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold text-sm flex items-center justify-center gap-2 cursor-pointer">
+                      <ShoppingCart className="w-5 h-5" /> Add to Basket
+                    </button>
+                    <button type="button" disabled={waitlistSubmitting} onClick={() => { if (user?.email) setWaitlistEmail(user.email); handlePreorder(selectedProduct); }} className="px-8 py-3.5 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-white font-semibold text-sm cursor-pointer">
+                      Pre-order interest
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2655,6 +2822,9 @@ export default function App() {
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
             <span>© {new Date().getFullYear()} Zortius. Built for what comes next.</span>
             <nav className="flex flex-wrap justify-center gap-4">
+              <button onClick={() => navigateTo('home', '/')} className="hover:text-cyan-300">
+                Home
+              </button>
               <button onClick={() => navigateTo('shop', '/shop')} className="hover:text-cyan-300">
                 Shop
               </button>
@@ -2693,8 +2863,8 @@ export default function App() {
               <h3 className="text-lg font-extrabold text-white">Checkout unavailable</h3>
             </div>
             <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-100 leading-relaxed">
-              <p className="font-bold text-amber-200 mb-1">You can&apos;t buy yet — wait.</p>
-              <p>Purchases are not enabled on the site at the moment. Please check back later. Your basket is saved while you are signed in.</p>
+              <p className="font-bold text-amber-200 mb-1">Pre-orders are not open yet.</p>
+              <p>We are not accepting payments yet. Your basket is saved. Join the pre-order list from the Shop or Home page to be notified at launch.</p>
             </div>
             <p className="text-xs text-slate-400">
               Basket total: <strong className="text-white">£{grandTotal.toFixed(2)}</strong>
