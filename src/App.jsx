@@ -49,7 +49,7 @@ const renderSafe = (val, fallback = '') => {
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'zortius-store-v2';
 const firebaseConfig = {
   apiKey: 'AIzaSyBhsCLWDETaqh1zytvnNt33O8Lls63mna0',
-  authDomain: 'zortius.com',
+  authDomain: 'zortiusweb1.firebaseapp.com',
   projectId: 'zortiusweb1',
   storageBucket: 'zortiusweb1.firebasestorage.app',
   messagingSenderId: '345352784478',
