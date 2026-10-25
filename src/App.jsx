@@ -79,7 +79,8 @@ const INITIAL_PRODUCTS = [
     description:
       'Engineered for extreme computational demands. Features bespoke liquid immersion cooling, redundant power architectures, and uncompromised multi-threaded throughput for professional simulation and rendering.',
     specs: ['64-Core Thread Processor', '128GB ECC DDR5 RAM', 'Dual PCIe Gen 5 Workstation Graphics', '4TB NVMe Ultra-Dense Storage'],
-    options: { colors: ['Dark Anodized', 'Titanium Silver'] }
+    options: { colors: ['Dark Anodized', 'Titanium Silver'] },
+    isPreorder: true
   },
   {
     id: 'zort-core-pro',
@@ -93,7 +94,8 @@ const INITIAL_PRODUCTS = [
     description:
       'Precision-milled anodized aluminum chassis paired with acoustically optimized thermal tunnels. Built for pristine signal integrity and silent operation under heavy sustained workloads.',
     specs: ['Acoustically Tuned Airflow', 'Modular Toolless Bays', 'Anodized Gunmetal Finish', 'Integrated Cable Routing Matrix'],
-    options: { colors: ['Gunmetal Black', 'Matte White'] }
+    options: { colors: ['Gunmetal Black', 'Matte White'] },
+    isPreorder: true
   },
   {
     id: 'zort-quantum-display',
@@ -105,7 +107,8 @@ const INITIAL_PRODUCTS = [
     image: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&w=800&q=80',
     description:
       '32-inch 4K UHD professional reference display with 100% DCI-P3 color gamut, hardware calibration support, and thunderbolt 4 passthrough for zero-latency studio environments.',
-    specs: ['3840 x 2160 Resolution', '165Hz Refresh Rate', 'Mini-LED Local Dimming', 'Factory Calibrated Delta E < 1']
+    specs: ['3840 x 2160 Resolution', '165Hz Refresh Rate', 'Mini-LED Local Dimming', 'Factory Calibrated Delta E < 1'],
+    isPreorder: true
   },
   {
     id: 'zort-matrix-array',
@@ -117,7 +120,8 @@ const INITIAL_PRODUCTS = [
     image: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=800&q=80',
     description:
       'Crafted from a single block of aerospace-grade aluminum. Custom linear switches factory-lubricated with gasket-mounted acoustic dampening for the ultimate tactile typing experience.',
-    specs: ['Hot-Swappable PCB', 'CNC Machined Aluminum Case', 'PBT Double-Shot Keycaps', 'Tri-Mode Wireless Connectivity']
+    specs: ['Hot-Swappable PCB', 'CNC Machined Aluminum Case', 'PBT Double-Shot Keycaps', 'Tri-Mode Wireless Connectivity'],
+    isPreorder: true
   }
 ];
 
@@ -199,6 +203,33 @@ export default function App() {
   const [prodVideo, setProdVideo] = useState('');
   const [preorders, setPreorders] = useState([]);
   const [productGalleryIndex, setProductGalleryIndex] = useState(0);
+  const [prodIsPreorder, setProdIsPreorder] = useState(true);
+
+  // Blog / Media
+  const [blogPosts, setBlogPosts] = useState([]);
+  const [selectedBlog, setSelectedBlog] = useState(null);
+  const [blogTitle, setBlogTitle] = useState('');
+  const [blogBody, setBlogBody] = useState('');
+  const [blogAllowComments, setBlogAllowComments] = useState(true);
+  const [blogAllowLikes, setBlogAllowLikes] = useState(true);
+  const [blogComment, setBlogComment] = useState('');
+
+  // Forum
+  const [forumThreads, setForumThreads] = useState([]);
+  const [selectedThread, setSelectedThread] = useState(null);
+  const [forumTitle, setForumTitle] = useState('');
+  const [forumBody, setForumBody] = useState('');
+  const [forumReply, setForumReply] = useState('');
+
+  // Support tickets (chatbot escalations)
+  const [supportTickets, setSupportTickets] = useState([]);
+  const [chatMessages, setChatMessages] = useState([
+    { role: 'bot', text: 'Hi — I\'m Zortius Support. Ask about products, pre-orders, careers, or accounts. Say "human" to reach the team.' }
+  ]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatSending, setChatSending] = useState(false);
+  const [escalateEmail, setEscalateEmail] = useState('');
+  const [escalateName, setEscalateName] = useState('');
 
   // Admin discount form
   const [discCode, setDiscCode] = useState('');
@@ -415,6 +446,61 @@ export default function App() {
     return () => unsub();
   }, []);
 
+  // Pre-orders list (admin)
+  useEffect(() => {
+    if (!db) return;
+    const unsub = onSnapshot(collection(db, 'artifacts', appId, 'preorders'), (snap) => {
+      setPreorders(
+        snap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+      );
+    });
+    return () => unsub();
+  }, []);
+
+  // Blog posts
+  useEffect(() => {
+    if (!db) return;
+    const unsub = onSnapshot(collection(db, 'artifacts', appId, 'blogPosts'), (snap) => {
+      setBlogPosts(
+        snap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+      );
+    });
+    return () => unsub();
+  }, []);
+
+  // Forum threads
+  useEffect(() => {
+    if (!db) return;
+    const unsub = onSnapshot(collection(db, 'artifacts', appId, 'forumThreads'), (snap) => {
+      setForumThreads(
+        snap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0))
+      );
+    });
+    return () => unsub();
+  }, []);
+
+  // Support tickets (admin)
+  useEffect(() => {
+    if (!db || !isAdmin) {
+      if (!isAdmin) setSupportTickets([]);
+      return;
+    }
+    const unsub = onSnapshot(collection(db, 'artifacts', appId, 'supportTickets'), (snap) => {
+      setSupportTickets(
+        snap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+      );
+    });
+    return () => unsub();
+  }, [isAdmin]);
+
   // -------------------- ROUTING --------------------
   const routeToTab = (path) => {
     const clean = (path || '/').replace(/\/$/, '') || '/';
@@ -430,6 +516,9 @@ export default function App() {
     if (clean === '/privacy') return 'privacy';
     if (clean === '/terms') return 'terms';
     if (clean === '/account') return 'account';
+    if (clean === '/blog' || clean.startsWith('/blog/')) return 'blog';
+    if (clean === '/forum' || clean.startsWith('/forum/')) return 'forum';
+    if (clean === '/compare') return 'compare';
     return 'home';
   };
 
@@ -945,14 +1034,270 @@ export default function App() {
           (p) =>
             p.name.toLowerCase().includes(aiQuery.toLowerCase()) ||
             p.category.toLowerCase().includes(aiQuery.toLowerCase()) ||
-            p.description.toLowerCase().includes(aiQuery.toLowerCase())
+            (p.description || '').toLowerCase().includes(aiQuery.toLowerCase())
         ) || products[0];
       setAiResponse({
         recommendation: matched,
         explanation: `Based on your requirements ("${aiQuery}"), the ${matched.name} delivers maximum throughput and zero-throttle reliability for your specific workflow.`
       });
       setIsAiThinking(false);
-    }, 1200);
+    }, 900);
+  };
+
+  // Free rule-based support chatbot (no paid API)
+  const getBotReply = (raw) => {
+    const q = (raw || '').toLowerCase().trim();
+    if (!q) return { text: 'Type a question about products, orders, careers, or accounts.', escalate: false };
+
+    const wantsHuman = /\b(human|agent|staff|person|manager|real person|talk to|speak to|support ticket|complaint)\b/.test(q);
+    if (wantsHuman) {
+      return {
+        text: 'I can create a support ticket for the team. Confirm your email below (or we use your signed-in email) and I will notify admin by email.',
+        escalate: true
+      };
+    }
+    if (/pre-?order|waitlist|when.*order|taking orders|buy now|checkout|stripe|payment/.test(q)) {
+      return {
+        text: 'Most Zortius systems are on pre-order interest right now. Join the list from Shop or a product page — we email you when ordering opens. Payments are not open yet.',
+        escalate: false
+      };
+    }
+    if (/shipping|delivery|ship|uk|international/.test(q)) {
+      return {
+        text: 'Shipping details will be confirmed at launch. We plan UK-first fulfilment with tracked delivery. Join pre-order to get launch updates.',
+        escalate: false
+      };
+    }
+    if (/career|job|apply|application|hire|intern/.test(q)) {
+      return {
+        text: 'Open roles are under Careers. Submit an application online — you get email confirmation, then Accept/Deny updates from the team.',
+        escalate: false
+      };
+    }
+    if (/password|login|sign in|google|account|forgot/.test(q)) {
+      return {
+        text: 'Use Sign in → Forgot password for a reset email. Google sign-in works best in the same browser (not private mode). Authorized domain must include zortius.vercel.app.',
+        escalate: false
+      };
+    }
+    if (/review|rating/.test(q)) {
+      return {
+        text: 'Only verified buyers with an order marked Delivered can leave a product review.',
+        escalate: false
+      };
+    }
+    if (/forum|community|discuss/.test(q)) {
+      return { text: 'Join the Forum (login required to post). Read threads anytime.', escalate: false };
+    }
+    if (/blog|media|news|article/.test(q)) {
+      return { text: 'Official updates are on Media. Admins publish posts; likes/comments depend on post settings.', escalate: false };
+    }
+    if (/contact|email|help@|support@/.test(q)) {
+      return {
+        text: `Support email: ${SUPPORT_EMAIL}. You can also open Contact or escalate here for a ticket in the admin panel.`,
+        escalate: false
+      };
+    }
+    // product match
+    const matched = products.find(
+      (p) =>
+        q.includes((p.name || '').toLowerCase().split(' ').slice(-1)[0]) ||
+        (p.name || '').toLowerCase().includes(q) ||
+        (p.category || '').toLowerCase().includes(q)
+    );
+    if (matched) {
+      const mode = matched.isPreorder !== false ? 'Pre-order interest' : 'Standard order';
+      return {
+        text: `${matched.name} — £${Number(matched.price).toLocaleString('en-GB')} · ${matched.category}. Mode: ${mode}. ${matched.description?.slice(0, 160) || ''}… Open it in Shop for colours, gallery and specs.`,
+        escalate: false
+      };
+    }
+    if (/spec|compare|workstation|monitor|keyboard|desktop/.test(q)) {
+      return {
+        text: 'See Shop for full specs, or open Compare for a side-by-side view. Tell me a product name for a short summary.',
+        escalate: false
+      };
+    }
+    return {
+      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say human to email the team.",
+      escalate: false
+    };
+  };
+
+  const handleChatSend = async (e) => {
+    e?.preventDefault?.();
+    const text = (chatInput || '').trim();
+    if (!text || chatSending) return;
+    setChatSending(true);
+    setChatMessages((m) => [...m, { role: 'user', text }]);
+    setChatInput('');
+    await new Promise((r) => setTimeout(r, 400));
+    const reply = getBotReply(text);
+    setChatMessages((m) => [...m, { role: 'bot', text: reply.text, escalate: reply.escalate }]);
+    setChatSending(false);
+  };
+
+  const handleEscalateTicket = async () => {
+    const em = (escalateEmail || user?.email || '').trim();
+    const nm = (escalateName || userName || em.split('@')[0] || 'Guest').trim();
+    if (!em || !em.includes('@')) {
+      showNotification('Enter a valid email so we can reach you.', 'error');
+      return;
+    }
+    const lastUser = [...chatMessages].reverse().find((m) => m.role === 'user');
+    const summary = lastUser?.text || 'Support request from chatbot';
+    try {
+      if (db) {
+        await addDoc(collection(db, 'artifacts', appId, 'supportTickets'), {
+          email: em.toLowerCase(),
+          name: nm,
+          message: summary,
+          transcript: chatMessages.slice(-12),
+          status: 'Open',
+          source: 'chatbot',
+          page: window.location.pathname,
+          createdAt: new Date().toISOString(),
+          userId: user?.uid || null
+        });
+      }
+      await sendActualEmail(
+        EMAILJS_CONTACT_TEMPLATE_ID,
+        SUPPORT_EMAIL,
+        nm,
+        'SUPPORT-TICKET',
+        'OPEN',
+        `New support ticket from ${nm} <${em}>\n\nMessage:\n${summary}\n\nPage: ${window.location.pathname}`
+      );
+      await sendActualEmail(
+        EMAILJS_CONTACT_TEMPLATE_ID,
+        em,
+        nm,
+        'SUPPORT-TICKET',
+        'RECEIVED',
+        `Hi ${nm},\n\nWe received your support request and the Zortius team will reply by email.\n\nYour message:\n${summary}\n\n— Zortius Support`
+      );
+      setChatMessages((m) => [
+        ...m,
+        { role: 'bot', text: 'Ticket created. The team has been emailed and you should get a confirmation. Check spam if needed.' }
+      ]);
+      showNotification('Support ticket sent to admin.');
+      setEscalateEmail('');
+    } catch (err) {
+      console.error(err);
+      showNotification('Could not create ticket. Try Contact form.', 'error');
+    }
+  };
+
+  const handleSaveBlog = async (e) => {
+    e.preventDefault();
+    if (!db || !isAdmin || !blogTitle.trim()) return;
+    await addDoc(collection(db, 'artifacts', appId, 'blogPosts'), {
+      title: blogTitle.trim(),
+      body: blogBody.trim(),
+      allowComments: blogAllowComments,
+      allowLikes: blogAllowLikes,
+      likes: [],
+      comments: [],
+      authorEmail: user?.email || ADMIN_EMAIL,
+      authorName: userName || 'Zortius',
+      createdAt: new Date().toISOString()
+    });
+    setBlogTitle('');
+    setBlogBody('');
+    showNotification('Media post published.');
+  };
+
+  const handleLikeBlog = async (post) => {
+    if (!user || !db || post.allowLikes === false) return;
+    const likes = Array.isArray(post.likes) ? [...post.likes] : [];
+    const uid = user.uid;
+    const idx = likes.indexOf(uid);
+    if (idx >= 0) likes.splice(idx, 1);
+    else likes.push(uid);
+    await updateDoc(doc(db, 'artifacts', appId, 'blogPosts', post.id), { likes });
+  };
+
+  const handleBlogComment = async (post) => {
+    if (!user || !db || !blogComment.trim() || post.allowComments === false) return;
+    const comments = Array.isArray(post.comments) ? [...post.comments] : [];
+    comments.push({
+      id: Date.now().toString(36),
+      userId: user.uid,
+      userName: userName || user.email,
+      text: blogComment.trim(),
+      createdAt: new Date().toISOString()
+    });
+    await updateDoc(doc(db, 'artifacts', appId, 'blogPosts', post.id), { comments });
+    setBlogComment('');
+    showNotification('Comment added.');
+  };
+
+  const handleDeleteBlog = async (id) => {
+    if (!db || !isAdmin) return;
+    if (!window.confirm('Delete this media post?')) return;
+    await deleteDoc(doc(db, 'artifacts', appId, 'blogPosts', id));
+    setSelectedBlog(null);
+    showNotification('Post deleted.');
+  };
+
+  const handleCreateThread = async (e) => {
+    e.preventDefault();
+    if (!user) {
+      showNotification('Sign in to post on the forum.', 'error');
+      setProfileModalOpen(true);
+      return;
+    }
+    if (!db || !forumTitle.trim() || !forumBody.trim()) return;
+    await addDoc(collection(db, 'artifacts', appId, 'forumThreads'), {
+      title: forumTitle.trim(),
+      body: forumBody.trim(),
+      authorId: user.uid,
+      authorName: userName || user.email,
+      authorEmail: user.email,
+      replies: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+    setForumTitle('');
+    setForumBody('');
+    showNotification('Thread posted.');
+  };
+
+  const handleForumReply = async (thread) => {
+    if (!user) {
+      showNotification('Sign in to reply.', 'error');
+      setProfileModalOpen(true);
+      return;
+    }
+    if (!db || !forumReply.trim()) return;
+    const replies = Array.isArray(thread.replies) ? [...thread.replies] : [];
+    replies.push({
+      id: Date.now().toString(36),
+      userId: user.uid,
+      userName: userName || user.email,
+      text: forumReply.trim(),
+      createdAt: new Date().toISOString()
+    });
+    await updateDoc(doc(db, 'artifacts', appId, 'forumThreads', thread.id), {
+      replies,
+      updatedAt: new Date().toISOString()
+    });
+    setForumReply('');
+    showNotification('Reply posted.');
+  };
+
+  const handleDeleteThread = async (id) => {
+    if (!db || !isAdmin) return;
+    if (!window.confirm('Delete this thread?')) return;
+    await deleteDoc(doc(db, 'artifacts', appId, 'forumThreads', id));
+    setSelectedThread(null);
+    showNotification('Thread deleted.');
+  };
+
+  const handleTicketStatus = async (id, status) => {
+    if (!db || !isAdmin) return;
+    await updateDoc(doc(db, 'artifacts', appId, 'supportTickets', id), { status });
+    showNotification(`Ticket marked ${status}.`);
   };
 
   // -------------------- REVIEWS (only after Delivered) --------------------
@@ -1318,7 +1663,8 @@ export default function App() {
       rating: 5.0,
       reviewsCount: 1,
       specs: ['ZORTIUS Certified', 'High Throughput'],
-      options: { colors: colorList.length ? colorList : ['Default'] }
+      options: { colors: colorList.length ? colorList : ['Default'] },
+      isPreorder: !!prodIsPreorder
     };
     if (editingProductId) {
       await updateDoc(doc(db, 'artifacts', appId, 'products', editingProductId), payload);
@@ -1335,6 +1681,7 @@ export default function App() {
     setProdVideo('');
     setProdDesc('');
     setProdColorOption('Dark Anodized, Titanium Silver');
+    setProdIsPreorder(true);
   };
 
   const handleDeleteProduct = async (id) => {
@@ -1442,8 +1789,10 @@ export default function App() {
               {[
                 { tab: 'home', path: '/', label: 'Home' },
                 { tab: 'shop', path: '/shop', label: 'Shop' },
+                { tab: 'blog', path: '/blog', label: 'Media' },
+                { tab: 'forum', path: '/forum', label: 'Forum' },
                 { tab: 'applications', path: '/careers', label: 'Careers' },
-                { tab: 'orders', path: '/account/orders', label: 'Orders' },
+                { tab: 'compare', path: '/compare', label: 'Compare' },
                 { tab: 'about', path: '/about', label: 'About' },
                 { tab: 'faq', path: '/faq', label: 'FAQ' },
                 { tab: 'contact', path: '/contact', label: 'Contact' },
@@ -1484,7 +1833,7 @@ export default function App() {
                 onClick={() => setAiDrawerOpen(true)}
                 className="px-3 py-2 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 rounded-xl text-cyan-400 text-xs font-bold flex items-center gap-2 transition cursor-pointer"
               >
-                <Bot className="w-4 h-4" /> <span className="hidden sm:inline">AI Configurator</span>
+                <Bot className="w-4 h-4" /> <span className="hidden sm:inline">Support</span>
               </button>
 
               <button
@@ -1532,7 +1881,10 @@ export default function App() {
               {[
                 { tab: 'home', path: '/', label: 'Home' },
                 { tab: 'shop', path: '/shop', label: 'Shop' },
+                { tab: 'blog', path: '/blog', label: 'Media' },
+                { tab: 'forum', path: '/forum', label: 'Forum' },
                 { tab: 'applications', path: '/careers', label: 'Careers' },
+                { tab: 'compare', path: '/compare', label: 'Compare' },
                 { tab: 'orders', path: '/account/orders', label: `Orders (${orders.length})` },
                 { tab: 'about', path: '/about', label: 'About' },
                 { tab: 'faq', path: '/faq', label: 'FAQ' },
@@ -1611,53 +1963,41 @@ export default function App() {
       {/* AI DRAWER */}
       {aiDrawerOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex justify-end">
-          <div className="bg-slate-900 border-l border-slate-800 w-full max-w-md h-full p-6 flex flex-col justify-between">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-                <div className="flex items-center gap-2 text-cyan-400">
-                  <Sparkles className="w-5 h-5" />
-                  <h3 className="text-base font-bold text-white">AI Hardware Configurator</h3>
+          <div className="bg-slate-900 border-l border-slate-800 w-full max-w-md h-full max-h-[100dvh] p-4 sm:p-6 flex flex-col">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3 shrink-0">
+              <div className="flex items-center gap-2 text-cyan-400">
+                <Bot className="w-5 h-5" />
+                <div>
+                  <h3 className="text-sm font-bold text-white">Zortius Support</h3>
+                  <p className="text-[10px] text-slate-500">Free assistant · escalates to admin</p>
                 </div>
-                <button onClick={() => setAiDrawerOpen(false)} className="text-slate-400 hover:text-white">
-                  <X className="w-5 h-5" />
-                </button>
               </div>
-              <p className="text-xs text-slate-400">Describe your workload and the ZORTIUS AI will recommend optimal compute hardware.</p>
-              <form onSubmit={handleAskAi} className="space-y-3">
-                <textarea
-                  rows="3"
-                  value={aiQuery}
-                  onChange={(e) => setAiQuery(e.target.value)}
-                  placeholder="Describe your engineering requirement..."
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-cyan-500"
-                />
-                <button
-                  type="submit"
-                  disabled={isAiThinking}
-                  className="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold py-2.5 rounded-xl text-xs transition cursor-pointer"
-                >
-                  {isAiThinking ? 'Analyzing Compute Requirements...' : 'Generate AI Hardware Spec'}
-                </button>
-              </form>
-              {aiResponse && (
-                <div className="bg-slate-950 border border-cyan-500/30 p-4 rounded-xl space-y-3">
-                  <span className="text-[10px] font-mono font-bold text-cyan-400 uppercase">Recommendation Result</span>
-                  <h4 className="text-sm font-bold text-white">{aiResponse.recommendation.name}</h4>
-                  <p className="text-xs text-slate-300 leading-relaxed">{aiResponse.explanation}</p>
-                  <button
-                    onClick={() => {
-                      setSelectedProduct(aiResponse.recommendation);
-                      if (aiResponse.recommendation.options?.colors?.length) setSelectedColor(aiResponse.recommendation.options.colors[0]);
-                      setActiveTab('shop');
-                      setAiDrawerOpen(false);
-                    }}
-                    className="w-full bg-slate-800 hover:bg-slate-700 text-cyan-400 text-xs font-bold py-2 rounded-lg border border-cyan-500/30 cursor-pointer"
-                  >
-                    View Recommended Spec
-                  </button>
-                </div>
-              )}
+              <button type="button" onClick={() => setAiDrawerOpen(false)} className="text-slate-400 hover:text-white p-2">
+                <X className="w-5 h-5" />
+              </button>
             </div>
+            <div className="flex-1 overflow-y-auto space-y-3 py-4 min-h-0">
+              {chatMessages.map((m, i) => (
+                <div key={i} className={`text-xs leading-relaxed max-w-[90%] rounded-2xl px-3 py-2 ${m.role === 'user' ? 'ml-auto bg-cyan-500 text-slate-950' : 'bg-slate-950 border border-slate-800 text-slate-200'}`}>
+                  {m.text}
+                  {m.escalate && (
+                    <div className="mt-3 space-y-2 border-t border-slate-800 pt-2">
+                      <input type="text" placeholder="Your name" value={escalateName} onChange={(e) => setEscalateName(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white" />
+                      <input type="email" placeholder="Your email" value={escalateEmail || user?.email || ''} onChange={(e) => setEscalateEmail(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white" />
+                      <button type="button" onClick={handleEscalateTicket} className="w-full py-2 rounded-lg bg-cyan-500 text-slate-950 font-bold text-xs">Send to admin</button>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {chatSending && <p className="text-[10px] text-slate-500">Thinking…</p>}
+            </div>
+            <form onSubmit={handleChatSend} className="shrink-0 border-t border-slate-800 pt-3 space-y-2">
+              <div className="flex gap-2">
+                <input value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Ask about pre-orders, products, careers…" className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-500" />
+                <button type="submit" disabled={chatSending} className="px-4 py-2 rounded-xl bg-cyan-500 text-slate-950 font-bold text-xs disabled:opacity-50">Send</button>
+              </div>
+              <p className="text-[10px] text-slate-500">Say “human” to open a ticket · EmailJS notifies admin</p>
+            </form>
           </div>
         </div>
       )}
@@ -1970,6 +2310,10 @@ export default function App() {
                 <input type="url" placeholder="Image URL" value={prodImage} onChange={(e) => setProdImage(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none md:col-span-2" />
                 <textarea placeholder="Extra image URLs (one per line) — Amazon-style gallery" value={prodImages} onChange={(e) => setProdImages(e.target.value)} rows="3" className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-cyan-500 sm:col-span-2 font-mono text-xs" />
                 <input type="url" placeholder="Product video URL (YouTube / MP4)" value={prodVideo} onChange={(e) => setProdVideo(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-cyan-500 sm:col-span-2" />
+                <label className="sm:col-span-2 flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-xs text-slate-300 cursor-pointer">
+                  <input type="checkbox" checked={prodIsPreorder} onChange={(e) => setProdIsPreorder(e.target.checked)} className="rounded border-slate-600" />
+                  <span><strong className="text-white">Pre-order mode</strong> — customers register interest instead of checkout</span>
+                </label>
                 <input type="text" placeholder="Colors (comma-separated)" value={prodColorOption} onChange={(e) => setProdColorOption(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none" />
                 <textarea placeholder="Description" value={prodDesc} onChange={(e) => setProdDesc(e.target.value)} rows="2" className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none md:col-span-3" />
                 <button type="submit" className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold py-2.5 rounded-xl text-xs md:col-span-3 cursor-pointer">
@@ -1996,6 +2340,7 @@ export default function App() {
                           setProdVideo(p.videoUrl || '');
                           setProdDesc(p.description || '');
                           setProdColorOption((p.options?.colors || ['Default']).join(', '));
+                          setProdIsPreorder(p.isPreorder !== false);
                         }}
                         className="text-slate-400 hover:text-cyan-400 cursor-pointer"
                       >
@@ -2067,6 +2412,56 @@ export default function App() {
                     </table>
                   </div>
                 )}
+              </section>
+            )}
+
+            {/* SUPPORT TICKETS */}
+            <section className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 space-y-4">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2"><Headphones className="w-4 h-4 text-cyan-400" /> Support tickets ({supportTickets.length})</h3>
+              <p className="text-xs text-slate-400">From the free chatbot when users ask for a human.</p>
+              {supportTickets.length === 0 ? (
+                <p className="text-xs text-slate-500">No tickets yet.</p>
+              ) : (
+                <div className="space-y-3 max-h-80 overflow-y-auto">
+                  {supportTickets.map((t) => (
+                    <div key={t.id} className="rounded-xl border border-slate-800 bg-slate-950 p-3 text-xs space-y-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-bold text-white">{t.name} · {t.email}</span>
+                        <span className={`px-2 py-0.5 rounded-full border ${t.status === 'Open' ? 'border-amber-500/40 text-amber-300' : 'border-emerald-500/40 text-emerald-300'}`}>{t.status || 'Open'}</span>
+                      </div>
+                      <p className="text-slate-300">{t.message}</p>
+                      <p className="text-slate-500">{t.createdAt ? new Date(t.createdAt).toLocaleString('en-GB') : ''} · {t.page || ''}</p>
+                      <div className="flex gap-2">
+                        <button type="button" onClick={() => handleTicketStatus(t.id, 'Open')} className="px-2 py-1 rounded-lg bg-slate-800 text-slate-200">Open</button>
+                        <button type="button" onClick={() => handleTicketStatus(t.id, 'Resolved')} className="px-2 py-1 rounded-lg bg-emerald-500/20 text-emerald-300">Resolved</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {/* MEDIA / BLOG ADMIN */}
+            {isFullAdmin && (
+              <section className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 space-y-4">
+                <h3 className="text-sm font-bold text-white flex items-center gap-2"><FileText className="w-4 h-4 text-cyan-400" /> Publish media / blog</h3>
+                <form onSubmit={handleSaveBlog} className="space-y-3">
+                  <input required value={blogTitle} onChange={(e) => setBlogTitle(e.target.value)} placeholder="Headline" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white" />
+                  <textarea required rows={5} value={blogBody} onChange={(e) => setBlogBody(e.target.value)} placeholder="Article body…" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white" />
+                  <div className="flex flex-wrap gap-4 text-xs text-slate-300">
+                    <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={blogAllowComments} onChange={(e) => setBlogAllowComments(e.target.checked)} /> Allow comments</label>
+                    <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={blogAllowLikes} onChange={(e) => setBlogAllowLikes(e.target.checked)} /> Allow likes</label>
+                  </div>
+                  <button type="submit" className="px-5 py-2.5 rounded-xl bg-cyan-500 text-slate-950 font-bold text-sm">Publish</button>
+                </form>
+                <div className="space-y-2 pt-2 border-t border-slate-800">
+                  {blogPosts.slice(0, 8).map((p) => (
+                    <div key={p.id} className="flex items-center justify-between gap-2 text-xs">
+                      <span className="text-slate-200 truncate">{p.title}</span>
+                      <button type="button" onClick={() => handleDeleteBlog(p.id)} className="text-rose-400 hover:text-rose-300">Delete</button>
+                    </div>
+                  ))}
+                </div>
               </section>
             )}
 
@@ -2793,13 +3188,19 @@ export default function App() {
                     <span className="text-3xl font-black text-white">£{Number(selectedProduct.price).toLocaleString('en-GB', { minimumFractionDigits: 2 })}</span>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                    <button type="button" onClick={() => addToCart(selectedProduct)} className="px-8 py-3.5 rounded-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold text-sm flex items-center justify-center gap-2 cursor-pointer">
-                      <ShoppingCart className="w-5 h-5" /> Add to Basket
-                    </button>
-                    <button type="button" disabled={waitlistSubmitting} onClick={() => { if (user?.email) setWaitlistEmail(user.email); handlePreorder(selectedProduct); }} className="px-8 py-3.5 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-white font-semibold text-sm cursor-pointer">
-                      Pre-order interest
-                    </button>
+                    {selectedProduct.isPreorder !== false ? (
+                      <button type="button" disabled={waitlistSubmitting} onClick={() => { if (user?.email) setWaitlistEmail(user.email); handlePreorder(selectedProduct); }} className="px-8 py-3.5 rounded-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold text-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60">
+                        {waitlistSubmitting ? 'Saving…' : 'Register pre-order interest'}
+                      </button>
+                    ) : (
+                      <button type="button" onClick={() => addToCart(selectedProduct)} className="px-8 py-3.5 rounded-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold text-sm flex items-center justify-center gap-2 cursor-pointer">
+                        <ShoppingCart className="w-5 h-5" /> Add to Basket
+                      </button>
+                    )}
                   </div>
+                  {selectedProduct.isPreorder !== false && (
+                    <p className="text-xs text-amber-200/90">This product is in <strong>pre-order</strong> mode — we notify you at launch. Checkout is not open yet.</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -2849,6 +3250,182 @@ export default function App() {
                   ))
                 )}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* MEDIA / BLOG */}
+        {activeTab === 'blog' && (
+          <div className="max-w-3xl mx-auto space-y-8">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-cyan-400/90">Official media</p>
+              <h1 className="text-3xl sm:text-4xl font-semibold text-white tracking-tight mt-1">News & engineering notes</h1>
+              <p className="text-sm text-slate-400 mt-2">Updates from the Zortius team. Admins control comments and likes per post.</p>
+            </div>
+            {selectedBlog ? (
+              <article className="space-y-6">
+                {(() => { const post = blogPosts.find((x) => x.id === selectedBlog.id) || selectedBlog; return (
+                <>
+                <button type="button" onClick={() => setSelectedBlog(null)} className="text-xs text-slate-400 hover:text-cyan-300">← All posts</button>
+                <h2 className="text-2xl font-bold text-white">{post.title}</h2>
+                <p className="text-xs text-slate-500">{post.authorName} · {post.createdAt ? new Date(post.createdAt).toLocaleDateString('en-GB') : ''}</p>
+                <div className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{post.body}</div>
+                {post.allowLikes !== false && (
+                  <button type="button" onClick={() => handleLikeBlog(post)} className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-slate-700 text-xs text-slate-200 hover:border-cyan-500/50">
+                    <ThumbsUp className="w-3.5 h-3.5 text-cyan-400" /> {(post.likes || []).length} likes {user ? '' : '(sign in)'}
+                  </button>
+                )}
+                {post.allowComments !== false && (
+                  <div className="space-y-3 border-t border-slate-800 pt-4">
+                    <h3 className="text-sm font-bold text-white">Comments</h3>
+                    {(post.comments || []).map((cm) => (
+                      <div key={cm.id} className="rounded-xl bg-slate-950 border border-slate-800 p-3 text-xs">
+                        <span className="font-bold text-cyan-300">{cm.userName}</span>
+                        <p className="text-slate-300 mt-1">{cm.text}</p>
+                      </div>
+                    ))}
+                    {user ? (
+                      <form onSubmit={(e) => { e.preventDefault(); handleBlogComment(post); }} className="flex gap-2">
+                        <input value={blogComment} onChange={(e) => setBlogComment(e.target.value)} placeholder="Write a comment…" className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white" />
+                        <button type="submit" className="px-4 py-2 rounded-xl bg-cyan-500 text-slate-950 font-bold text-xs">Post</button>
+                      </form>
+                    ) : (
+                      <p className="text-xs text-slate-500">Sign in to comment.</p>
+                    )}
+                  </div>
+                )}
+                </>
+                ); })()}
+              </article>
+            ) : blogPosts.length === 0 ? (
+              <p className="text-sm text-slate-500 py-12 text-center border border-dashed border-slate-800 rounded-3xl">No posts yet. Admins can publish from the Admin panel.</p>
+            ) : (
+              <div className="space-y-4">
+                {blogPosts.map((p) => (
+                  <button key={p.id} type="button" onClick={() => setSelectedBlog(p)} className="w-full text-left rounded-2xl border border-slate-800 bg-slate-900/50 hover:border-cyan-500/40 p-5 transition">
+                    <h2 className="text-lg font-bold text-white">{p.title}</h2>
+                    <p className="text-xs text-slate-500 mt-1">{p.authorName} · {(p.likes || []).length} likes · {(p.comments || []).length} comments</p>
+                    <p className="text-sm text-slate-400 mt-2 line-clamp-2">{p.body}</p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* FORUM */}
+        {activeTab === 'forum' && (
+          <div className="max-w-3xl mx-auto space-y-8">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-cyan-400/90">Community</p>
+              <h1 className="text-3xl font-semibold text-white tracking-tight mt-1">Forum</h1>
+              <p className="text-sm text-slate-400 mt-2">Anyone can read. Posting requires sign-in.</p>
+            </div>
+            {selectedThread ? (
+              <div className="space-y-6">
+                {(() => { const thread = forumThreads.find((x) => x.id === selectedThread.id) || selectedThread; return (
+                <>
+                <button type="button" onClick={() => setSelectedThread(null)} className="text-xs text-slate-400 hover:text-cyan-300">← All threads</button>
+                <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5 space-y-3">
+                  <div className="flex justify-between gap-2">
+                    <h2 className="text-xl font-bold text-white">{thread.title}</h2>
+                    {isAdmin && <button type="button" onClick={() => handleDeleteThread(thread.id)} className="text-xs text-rose-400">Delete</button>}
+                  </div>
+                  <p className="text-xs text-slate-500">{thread.authorName} · {thread.createdAt ? new Date(thread.createdAt).toLocaleString('en-GB') : ''}</p>
+                  <p className="text-sm text-slate-300 whitespace-pre-wrap">{thread.body}</p>
+                </div>
+                <div className="space-y-3">
+                  <h3 className="text-sm font-bold text-white">Replies ({(thread.replies || []).length})</h3>
+                  {(thread.replies || []).map((r) => (
+                    <div key={r.id} className="rounded-xl border border-slate-800 bg-slate-950 p-3 text-xs">
+                      <span className="font-bold text-cyan-300">{r.userName}</span>
+                      <p className="text-slate-300 mt-1 whitespace-pre-wrap">{r.text}</p>
+                    </div>
+                  ))}
+                  {user ? (
+                    <form onSubmit={(e) => { e.preventDefault(); handleForumReply(thread); }} className="space-y-2">
+                      <textarea rows={3} value={forumReply} onChange={(e) => setForumReply(e.target.value)} placeholder="Write a reply…" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white" />
+                      <button type="submit" className="px-4 py-2 rounded-xl bg-cyan-500 text-slate-950 font-bold text-xs">Reply</button>
+                    </form>
+                  ) : (
+                    <button type="button" onClick={() => setProfileModalOpen(true)} className="text-xs text-cyan-400">Sign in to reply</button>
+                  )}
+                </div>
+                </>
+                ); })()}
+              </div>
+            ) : (
+              <>
+                <form onSubmit={handleCreateThread} className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5 space-y-3">
+                  <h3 className="text-sm font-bold text-white">New thread</h3>
+                  {!user && <p className="text-xs text-amber-200">You must be signed in to post.</p>}
+                  <input value={forumTitle} onChange={(e) => setForumTitle(e.target.value)} placeholder="Title" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white" disabled={!user} />
+                  <textarea rows={4} value={forumBody} onChange={(e) => setForumBody(e.target.value)} placeholder="What's on your mind?" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white" disabled={!user} />
+                  <button type="submit" disabled={!user} className="px-5 py-2.5 rounded-xl bg-cyan-500 text-slate-950 font-bold text-sm disabled:opacity-50">Post thread</button>
+                </form>
+                <div className="space-y-3">
+                  {forumThreads.length === 0 ? (
+                    <p className="text-sm text-slate-500 text-center py-10">No threads yet — start the first discussion.</p>
+                  ) : forumThreads.map((t) => (
+                    <button key={t.id} type="button" onClick={() => setSelectedThread(t)} className="w-full text-left rounded-2xl border border-slate-800 hover:border-cyan-500/40 bg-slate-900/40 p-4 transition">
+                      <h2 className="text-base font-bold text-white">{t.title}</h2>
+                      <p className="text-xs text-slate-500 mt-1">{t.authorName} · {(t.replies || []).length} replies</p>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* COMPARE SPECS */}
+        {activeTab === 'compare' && (
+          <div className="max-w-6xl mx-auto space-y-8">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-cyan-400/90">Specs</p>
+              <h1 className="text-3xl font-semibold text-white tracking-tight mt-1">Compare systems</h1>
+            </div>
+            <div className="overflow-x-auto rounded-2xl border border-slate-800">
+              <table className="w-full text-left text-xs min-w-[640px]">
+                <thead className="bg-slate-950 text-slate-400">
+                  <tr>
+                    <th className="px-4 py-3">Feature</th>
+                    {products.slice(0, 4).map((p) => (
+                      <th key={p.id} className="px-4 py-3 text-white font-bold">{p.name}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800 text-slate-300">
+                  <tr>
+                    <td className="px-4 py-3 text-slate-500">Price</td>
+                    {products.slice(0, 4).map((p) => (
+                      <td key={p.id} className="px-4 py-3 text-cyan-300 font-bold">£{Number(p.price).toLocaleString('en-GB')}</td>
+                    ))}
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-3 text-slate-500">Category</td>
+                    {products.slice(0, 4).map((p) => (
+                      <td key={p.id} className="px-4 py-3">{p.category}</td>
+                    ))}
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-3 text-slate-500">Mode</td>
+                    {products.slice(0, 4).map((p) => (
+                      <td key={p.id} className="px-4 py-3">{p.isPreorder !== false ? 'Pre-order' : 'Standard'}</td>
+                    ))}
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-3 text-slate-500 align-top">Specs</td>
+                    {products.slice(0, 4).map((p) => (
+                      <td key={p.id} className="px-4 py-3">
+                        <ul className="space-y-1 list-disc list-inside">
+                          {(p.specs || []).map((s, i) => <li key={i}>{s}</li>)}
+                        </ul>
+                      </td>
+                    ))}
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         )}
@@ -3009,8 +3586,14 @@ export default function App() {
               <button onClick={() => navigateTo('shop', '/shop')} className="hover:text-cyan-300">
                 Shop
               </button>
+              <button onClick={() => navigateTo('blog', '/blog')} className="hover:text-cyan-300">
+                Media
+              </button>
+              <button onClick={() => navigateTo('forum', '/forum')} className="hover:text-cyan-300">
+                Forum
+              </button>
               <button onClick={() => navigateTo('applications', '/careers')} className="hover:text-cyan-300">
-                Applications
+                Careers
               </button>
               <button onClick={() => navigateTo('about', '/about')} className="hover:text-cyan-300">
                 About
