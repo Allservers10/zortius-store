@@ -760,12 +760,13 @@ export default function App() {
     return mobileUA || coarse || narrow;
   };
 
-  const handleGoogleSignIn = async () => {
+    const handleGoogleSignIn = async () => {
     setAuthSubmitting(true);
     setAuthError('');
     try {
       if (!auth) {
         setAuthError('Auth not ready. Refresh the page.');
+        setAuthSubmitting(false);
         return;
       }
       await setPersistence(auth, browserLocalPersistence);
@@ -773,17 +774,47 @@ export default function App() {
       provider.setCustomParameters({ prompt: 'select_account' });
       provider.addScope('email');
       provider.addScope('profile');
-      // Redirect is required on most phones; also most reliable on desktop browsers that block popups
-      await signInWithRedirect(auth, provider);
+
+      // Mobile / iOS: redirect. Desktop: popup (session sticks more reliably on custom domains)
+      const ua = typeof navigator !== 'undefined' ? navigator.userAgent || '' : '';
+      const isMobile = /iPhone|iPad|iPod|Android|Mobile/i.test(ua);
+
+      if (isMobile) {
+        await signInWithRedirect(auth, provider);
+        return;
+      }
+
+      try {
+        const result = await signInWithPopup(auth, provider);
+        if (result?.user) {
+          setUser(result.user);
+          setUserId(result.user.uid);
+          setUserName(result.user.displayName || result.user.email?.split('@')[0] || 'Engineer');
+          const em = (result.user.email || '').toLowerCase().trim();
+          setIsAdmin(em === ADMIN_EMAIL.toLowerCase() || em === LIMITED_ADMIN_EMAIL.toLowerCase());
+          setIsFullAdmin(em === ADMIN_EMAIL.toLowerCase());
+          setProfileModalOpen(false);
+          showNotification('Signed in with Google.');
+        }
+      } catch (popupErr) {
+        const code = popupErr?.code || '';
+        // Popup blocked or unsupported → fall back to redirect
+        if (code === 'auth/popup-blocked' || code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+          await signInWithRedirect(auth, provider);
+          return;
+        }
+        throw popupErr;
+      }
     } catch (err) {
       console.error('Google sign-in error:', err);
       const code = err?.code || '';
       const msg = (err?.message || '').replace('Firebase: ', '');
       if (code === 'auth/unauthorized-domain') {
-        setAuthError('Domain not allowed. In Firebase Console → Authentication → Settings → Authorized domains, add: zortius.vercel.app');
+        setAuthError('Add zortius.com and www.zortius.com in Firebase → Authentication → Settings → Authorized domains.');
       } else {
         setAuthError(msg || 'Google sign-in failed.');
       }
+    } finally {
       setAuthSubmitting(false);
     }
   };
@@ -1119,7 +1150,7 @@ export default function App() {
       };
     }
     return {
-      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say human to email the team.",
+      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say 'human' to email the team.",
       escalate: false
     };
   };
