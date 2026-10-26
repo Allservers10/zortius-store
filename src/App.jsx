@@ -257,6 +257,10 @@ export default function App() {
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [forgotMode, setForgotMode] = useState(false);
   const [forgotSent, setForgotSent] = useState(false);
+  const [verifyMode, setVerifyMode] = useState(false);
+  const [verifyCode, setVerifyCode] = useState('');
+  const [pendingVerifyEmail, setPendingVerifyEmail] = useState('');
+  const [emailVerifiedMap, setEmailVerifiedMap] = useState({});
 
   const [newReviewRating, setNewReviewRating] = useState(5);
   const [newReviewComment, setNewReviewComment] = useState('');
@@ -700,10 +704,56 @@ export default function App() {
   };
 
   // -------------------- AUTH HANDLERS --------------------
+
+  const generateVerifyCode = () => String(Math.floor(100000 + Math.random() * 900000));
+
+  const sendVerifyCodeEmail = async (toEmail, code, name) => {
+    await sendActualEmail(
+      EMAILJS_CONTACT_TEMPLATE_ID,
+      toEmail,
+      name || toEmail.split('@')[0],
+      'VERIFY',
+      'CODE',
+      `Your Zortius verification code is: ${code}\n\nEnter this code in the app to verify your email. It expires in 30 minutes.\n\nIf you did not sign up, ignore this email.`
+    );
+  };
+
+  const saveVerifyCode = async (em, code, uid) => {
+    if (!db) return;
+    await setDoc(doc(db, 'artifacts', appId, 'emailCodes', em.toLowerCase()), {
+      code,
+      uid: uid || null,
+      createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString()
+    });
+  };
+
+  const markEmailVerified = async (em, uid) => {
+    if (!db || !uid) return;
+    await setDoc(doc(db, 'artifacts', appId, 'users', uid), { emailVerified: true, email: em.toLowerCase() }, { merge: true });
+    setEmailVerifiedMap((m) => ({ ...m, [em.toLowerCase()]: true }));
+  };
+
+  const isEmailVerifiedUser = async (uid, em) => {
+    if (!db || !uid) return false;
+    // Google accounts are trusted
+    return new Promise((resolve) => {
+      const unsub = onSnapshot(doc(db, 'artifacts', appId, 'users', uid), (snap) => {
+        unsub();
+        const data = snap.data() || {};
+        resolve(!!data.emailVerified);
+      }, () => resolve(false));
+    });
+  };
+
   const handleEmailSignUp = async (e) => {
     e.preventDefault();
     if (!email || !password) {
       setAuthError('Please enter both email and password.');
+      return;
+    }
+    if (password.length < 6) {
+      setAuthError('Password must be at least 6 characters.');
       return;
     }
     setAuthSubmitting(true);
@@ -711,17 +761,88 @@ export default function App() {
     try {
       if (auth) {
         await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
-        await createUserWithEmailAndPassword(auth, email, password);
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
         const name = email.split('@')[0];
         setUserName(name);
         await saveUserDataToFirestore(cart, orders, name);
-        showNotification('Account created successfully!');
-        setProfileModalOpen(false);
-        setEmail('');
-        setPassword('');
+        const code = generateVerifyCode();
+        await saveVerifyCode(email, code, cred.user.uid);
+        await sendVerifyCodeEmail(email, code, name);
+        setPendingVerifyEmail(email.trim().toLowerCase());
+        setVerifyMode(true);
+        setVerifyCode('');
+        showNotification('Account created. Enter the 6-digit code we emailed you.');
       }
     } catch (err) {
       setAuthError(err.message.replace('Firebase: ', ''));
+    } finally {
+      setAuthSubmitting(false);
+    }
+  };
+
+  const handleVerifyCodeSubmit = async (e) => {
+    e.preventDefault();
+    const em = (pendingVerifyEmail || email || user?.email || '').trim().toLowerCase();
+    const entered = (verifyCode || '').trim();
+    if (!em || entered.length < 6) {
+      setAuthError('Enter the 6-digit code from your email.');
+      return;
+    }
+    setAuthSubmitting(true);
+    setAuthError('');
+    try {
+      if (!db) throw new Error('Database not ready');
+      const snap = await new Promise((resolve, reject) => {
+        const unsub = onSnapshot(doc(db, 'artifacts', appId, 'emailCodes', em), (s) => {
+          unsub();
+          resolve(s);
+        }, reject);
+      });
+      if (!snap.exists()) {
+        setAuthError('No code found. Use Resend code.');
+        return;
+      }
+      const data = snap.data();
+      if (data.expiresAt && new Date(data.expiresAt) < new Date()) {
+        setAuthError('Code expired. Resend a new one.');
+        return;
+      }
+      if (String(data.code) !== entered) {
+        setAuthError('Incorrect code. Check the email and try again.');
+        return;
+      }
+      const uid = user?.uid || data.uid;
+      await markEmailVerified(em, uid);
+      await deleteDoc(doc(db, 'artifacts', appId, 'emailCodes', em)).catch(() => {});
+      setVerifyMode(false);
+      setVerifyCode('');
+      setPendingVerifyEmail('');
+      setProfileModalOpen(false);
+      setEmail('');
+      setPassword('');
+      showNotification('Email verified. You are signed in.');
+    } catch (err) {
+      setAuthError(err.message || 'Verification failed.');
+    } finally {
+      setAuthSubmitting(false);
+    }
+  };
+
+  const handleResendVerifyCode = async () => {
+    const em = (pendingVerifyEmail || email || user?.email || '').trim().toLowerCase();
+    if (!em) {
+      setAuthError('Enter your email first.');
+      return;
+    }
+    setAuthSubmitting(true);
+    setAuthError('');
+    try {
+      const code = generateVerifyCode();
+      await saveVerifyCode(em, code, user?.uid);
+      await sendVerifyCodeEmail(em, code, em.split('@')[0]);
+      showNotification('New code sent. Check inbox and spam.');
+    } catch (err) {
+      setAuthError(err.message || 'Could not resend code.');
     } finally {
       setAuthSubmitting(false);
     }
@@ -738,11 +859,26 @@ export default function App() {
     try {
       if (auth) {
         await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
-        await signInWithEmailAndPassword(auth, email, password);
-        showNotification('Signed in successfully.');
-        setProfileModalOpen(false);
-        setEmail('');
-        setPassword('');
+        const cred = await signInWithEmailAndPassword(auth, email, password);
+        // Require email code verification for password accounts (Google skips this)
+        let verified = false;
+        try {
+          verified = await isEmailVerifiedUser(cred.user.uid, email);
+        } catch (_) {}
+        if (!verified) {
+          const code = generateVerifyCode();
+          await saveVerifyCode(email, code, cred.user.uid);
+          await sendVerifyCodeEmail(email, code, email.split('@')[0]);
+          setPendingVerifyEmail(email.trim().toLowerCase());
+          setVerifyMode(true);
+          setVerifyCode('');
+          showNotification('Enter the verification code we just emailed you.');
+        } else {
+          showNotification('Signed in successfully.');
+          setProfileModalOpen(false);
+          setEmail('');
+          setPassword('');
+        }
       }
     } catch (err) {
       setAuthError(err.message.replace('Firebase: ', ''));
@@ -775,15 +911,7 @@ export default function App() {
       provider.addScope('email');
       provider.addScope('profile');
 
-      // Mobile / iOS: redirect. Desktop: popup (session sticks more reliably on custom domains)
-      const ua = typeof navigator !== 'undefined' ? navigator.userAgent || '' : '';
-      const isMobile = /iPhone|iPad|iPod|Android|Mobile/i.test(ua);
-
-      if (isMobile) {
-        await signInWithRedirect(auth, provider);
-        return;
-      }
-
+      // Prefer popup everywhere (including phone browsers that support it); redirect fallback
       try {
         const result = await signInWithPopup(auth, provider);
         if (result?.user) {
@@ -793,13 +921,20 @@ export default function App() {
           const em = (result.user.email || '').toLowerCase().trim();
           setIsAdmin(em === ADMIN_EMAIL.toLowerCase() || em === LIMITED_ADMIN_EMAIL.toLowerCase());
           setIsFullAdmin(em === ADMIN_EMAIL.toLowerCase());
+          if (db && result.user.uid) {
+            await setDoc(doc(db, 'artifacts', appId, 'users', result.user.uid), { emailVerified: true, email: em }, { merge: true });
+          }
           setProfileModalOpen(false);
           showNotification('Signed in with Google.');
         }
       } catch (popupErr) {
         const code = popupErr?.code || '';
-        // Popup blocked or unsupported → fall back to redirect
-        if (code === 'auth/popup-blocked' || code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+        if (
+          code === 'auth/popup-blocked' ||
+          code === 'auth/popup-closed-by-user' ||
+          code === 'auth/cancelled-popup-request' ||
+          code === 'auth/operation-not-supported-in-this-environment'
+        ) {
           await signInWithRedirect(auth, provider);
           return;
         }
@@ -3769,6 +3904,38 @@ export default function App() {
               </div>
             ) : (
               <div className="space-y-5">
+                {verifyMode ? (
+                  <>
+                    <div className="text-center">
+                      <h3 className="text-xl font-bold text-white">Enter verification code</h3>
+                      <p className="text-xs text-slate-400 mt-1">We sent a 6-digit code to <span className="text-cyan-300">{pendingVerifyEmail || email}</span></p>
+                    </div>
+                    <form onSubmit={handleVerifyCodeSubmit} className="space-y-3">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={6}
+                        required
+                        value={verifyCode}
+                        onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="000000"
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-center text-2xl tracking-[0.4em] font-mono text-white focus:outline-none focus:border-cyan-500"
+                      />
+                      {authError && <div className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-xl p-3">{authError}</div>}
+                      <button type="submit" disabled={authSubmitting} className="w-full py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-sm disabled:opacity-60">
+                        {authSubmitting ? 'Checking…' : 'Verify email'}
+                      </button>
+                      <button type="button" disabled={authSubmitting} onClick={handleResendVerifyCode} className="w-full text-xs text-cyan-400 hover:text-cyan-300">
+                        Resend code
+                      </button>
+                      <button type="button" onClick={() => { setVerifyMode(false); setAuthError(''); }} className="w-full text-xs text-slate-500 hover:text-white">
+                        ← Back
+                      </button>
+                    </form>
+                  </>
+                ) : (
+                <>
                 <div className="text-center">
                   <h3 className="text-xl font-bold text-white">{authMode === 'login' ? 'Welcome back' : 'Create account'}</h3>
                   <p className="text-xs text-slate-400 mt-1">{authMode === 'login' ? 'Sign in to continue' : 'Join Zortius'}</p>
@@ -3843,6 +4010,8 @@ export default function App() {
                       Still stuck? Contact support
                     </button>
                   </div>
+                )}
+                </>
                 )}
               </div>
             )}
