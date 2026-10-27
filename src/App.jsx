@@ -756,7 +756,7 @@ export default function App() {
       name || toEmail.split('@')[0],
       'VERIFY',
       'CODE',
-      `Your Zortius verification code is: ${code}\n\nEnter this code in the app to verify your email. It expires in 30 minutes.\n\nIf you did not sign up, ignore this email.`
+      `Zortius sign-in verification\n\nYour one-time code: ${code}\n\nEnter this code on zortius.com to finish signing in. Expires in 30 minutes.\n\nIf you did not request this, you can ignore this message.\n\n— Zortius\nhttps://zortius.com`
     );
   };
 
@@ -3078,25 +3078,55 @@ return (
         {activeTab === 'home' && (
           <div className="space-y-16 sm:space-y-24 -mt-2">
             {/* Hero */}
-            <section className="relative overflow-hidden rounded-[2rem] border border-white/5 bg-gradient-to-b from-slate-900 to-slate-950 px-6 py-16 sm:px-12 sm:py-24 text-center">
-              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(34,211,238,0.12),_transparent_55%)]" />
-              <div className="relative max-w-3xl mx-auto">
-                <p className="text-xs sm:text-sm font-semibold tracking-[0.2em] uppercase text-cyan-400/90 mb-4">Zortius Hardware</p>
+            <section className="relative overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] border border-white/[0.07] bg-slate-950 px-6 py-20 sm:px-14 sm:py-28 text-center shadow-[0_0_80px_-20px_rgba(34,211,238,0.25)]">
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,_rgba(34,211,238,0.18),_transparent_55%)]" />
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,_rgba(15,23,42,0.9),_transparent_50%)]" />
+              <div className="relative max-w-4xl mx-auto">
+                <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1 mb-6">
+                  <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                  <span className="text-[11px] font-semibold tracking-wide text-cyan-300">Pre-order interest open · zortius.com</span>
+                </div>
                 <h1 className="text-4xl sm:text-6xl md:text-7xl font-semibold tracking-tight text-white leading-[1.05]">
-                  Engineered for<br className="hidden sm:block" /> what comes next.
+                  Hardware with<br className="hidden sm:block" /> nothing to hide.
                 </h1>
-                <p className="mt-5 sm:mt-6 text-base sm:text-xl text-slate-400 max-w-xl mx-auto leading-relaxed">
-                  Workstations, displays, and precision peripherals — designed with the same clarity you expect from the best in the industry.
+                <p className="mt-6 text-base sm:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
+                  Workstations, displays, and peripherals built for creators and engineers — quiet power, clean design, honest specs.
                 </p>
-                <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
-                  <button type="button" onClick={() => navigateTo('shop', '/shop')} className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold text-sm transition">
-                    Shop collection
+                <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <button type="button" onClick={() => navigateTo('shop', '/shop')} className="w-full sm:w-auto px-9 py-3.5 rounded-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold text-sm transition shadow-lg shadow-cyan-500/25">
+                    Browse collection
                   </button>
-                  <button type="button" onClick={() => navigateTo('applications', '/careers')} className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold text-sm transition">
-                    Explore careers
+                  <button type="button" onClick={() => navigateTo('compare', '/compare')} className="w-full sm:w-auto px-9 py-3.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold text-sm transition">
+                    Compare systems
                   </button>
                 </div>
+                <div className="mt-14 grid grid-cols-3 gap-4 max-w-lg mx-auto text-center">
+                  {[
+                    ['UK-first', 'Support & shipping'],
+                    ['Pre-order', 'Launch waitlist'],
+                    ['Verified', 'Buyer reviews'],
+                  ].map(([t, s]) => (
+                    <div key={t} className="rounded-2xl border border-white/5 bg-white/[0.03] px-2 py-3">
+                      <p className="text-sm font-bold text-white">{t}</p>
+                      <p className="text-[10px] text-slate-500 mt-0.5">{s}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
+            </section>
+
+            {/* Feature strip */}
+            <section className="grid sm:grid-cols-3 gap-4">
+              {[
+                { t: 'Precision systems', d: 'Workstations tuned for simulation, render, and code — not gimmicks.' },
+                { t: 'Official media', d: 'Engineering notes and product updates from the team on Media.' },
+                { t: 'Human support', d: 'In-app assistant plus tickets that reach admin by email.' },
+              ].map((f) => (
+                <div key={f.t} className="rounded-2xl border border-slate-800/80 bg-slate-900/40 p-5 sm:p-6 hover:border-cyan-500/30 transition">
+                  <h3 className="text-sm font-bold text-white">{f.t}</h3>
+                  <p className="text-xs text-slate-400 mt-2 leading-relaxed">{f.d}</p>
+                </div>
+              ))}
             </section>
 
             
@@ -3108,6 +3138,36 @@ return (
               <span>Pre-order interest open</span>
               <span className="hidden sm:inline text-slate-700">·</span>
               <span>UK support</span>
+            </section>
+
+            
+            <section className="space-y-6">
+              <div className="flex items-end justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-cyan-400/90">Collection</p>
+                  <h2 className="text-2xl sm:text-3xl font-semibold text-white tracking-tight mt-1">Featured systems</h2>
+                </div>
+                <button type="button" onClick={() => navigateTo('shop', '/shop')} className="text-xs font-semibold text-cyan-400 hover:text-cyan-300">View all →</button>
+              </div>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {products.slice(0, 4).map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => openProduct(p)}
+                    className="group text-left rounded-2xl border border-slate-800 bg-slate-900/50 overflow-hidden hover:border-cyan-500/40 transition"
+                  >
+                    <div className="aspect-[4/3] bg-slate-950 overflow-hidden">
+                      <img src={p.image} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
+                    </div>
+                    <div className="p-4">
+                      <p className="text-[10px] text-slate-500 uppercase tracking-wide">{p.category}</p>
+                      <h3 className="text-sm font-bold text-white mt-1 group-hover:text-cyan-300 transition">{p.name}</h3>
+                      <p className="text-cyan-400 font-semibold text-sm mt-2">£{Number(p.price).toLocaleString('en-GB')}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
             </section>
 
             {/* Pre-order strip */}
