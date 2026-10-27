@@ -2207,7 +2207,7 @@ export default function App() {
   const sessionUser = authReady ? user : null;
 
 return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-cyan-500 selection:text-slate-950">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans antialiased selection:bg-white selection:text-zinc-950">
       {/* Toast */}
       {notification && (
         <div
@@ -2223,7 +2223,7 @@ return (
       )}
 
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800/80">
+      <header className="sticky top-0 z-40 bg-zinc-950/90 backdrop-blur-md border-b border-zinc-800/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigateTo('home', '/')}>
@@ -2351,7 +2351,7 @@ return (
 
       </header>
       {/* Live system status */}
-      <div className="border-b border-slate-800/80 bg-slate-950/90">
+      <div className="border-b border-zinc-900 bg-zinc-950">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex flex-wrap items-center justify-between gap-2 text-[11px]">
           <div className="flex items-center gap-2 text-slate-400">
             <span className={`h-1.5 w-1.5 rounded-full ${storeSettings.takingOrders ? 'bg-emerald-400' : 'bg-amber-400'} animate-pulse`} />
@@ -3476,7 +3476,7 @@ return (
                   Workstations, displays, and peripherals built for creators and engineers — quiet power, clean design, honest specs.
                 </p>
                 <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
-                  <button type="button" onClick={() => navigateTo('shop', '/shop')} className="w-full sm:w-auto px-9 py-3.5 rounded-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold text-sm transition shadow-lg shadow-cyan-500/25">
+                  <button type="button" onClick={() => navigateTo('shop', '/shop')} className="w-full sm:w-auto px-9 py-3.5 rounded-full bg-white hover:bg-zinc-200 text-zinc-950 font-semibold text-sm transition">
                     Browse collection
                   </button>
                   <button type="button" onClick={() => navigateTo('compare', '/compare')} className="w-full sm:w-auto px-9 py-3.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold text-sm transition">
@@ -3499,17 +3499,22 @@ return (
             </section>
 
             {/* Feature strip */}
-            <section className="grid sm:grid-cols-3 gap-4">
+            <section className="grid sm:grid-cols-3 gap-px bg-zinc-800/50 rounded-2xl overflow-hidden border border-zinc-800">
               {[
-                { t: 'Precision systems', d: 'Workstations tuned for simulation, render, and code — not gimmicks.' },
-                { t: 'Official media', d: 'Engineering notes and product updates from the team on Media.' },
-                { t: 'Human support', d: 'In-app assistant plus tickets that reach admin by email.' },
+                { t: 'Quiet power', d: 'Systems tuned for long renders and compiles — not RGB theater.' },
+                { t: 'Clear specs', d: 'What you read is what ships. No inflated marketing rows.' },
+                { t: 'Real support', d: 'Chat, tickets, and humans — not a dead FAQ wall.' },
               ].map((f) => (
-                <div key={f.t} className="rounded-2xl border border-slate-800/80 bg-slate-900/40 p-5 sm:p-6 hover:border-cyan-500/30 transition">
-                  <h3 className="text-sm font-bold text-white">{f.t}</h3>
-                  <p className="text-xs text-slate-400 mt-2 leading-relaxed">{f.d}</p>
+                <div key={f.t} className="bg-zinc-950 p-6 sm:p-8">
+                  <h3 className="text-sm font-semibold text-white tracking-tight">{f.t}</h3>
+                  <p className="text-xs text-zinc-500 mt-2 leading-relaxed">{f.d}</p>
                 </div>
               ))}
+            </section>
+
+            <section className="text-center py-6">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-zinc-600 mb-3">Designed for</p>
+              <p className="text-sm text-zinc-400 max-w-lg mx-auto">Studios · Research labs · Engineering teams · Independent creators</p>
             </section>
 
             
@@ -3524,14 +3529,38 @@ return (
             </section>
 
             
-                        <section className="relative overflow-hidden rounded-3xl border border-cyan-500/20 bg-gradient-to-br from-cyan-500/10 via-slate-900 to-slate-950 p-8 sm:p-12">
-              <div className="max-w-xl">
-                <p className="text-xs font-semibold uppercase tracking-widest text-cyan-400/90">Newsletter</p>
-                <h2 className="text-2xl sm:text-3xl font-semibold text-white tracking-tight mt-2">Launch notes & early access</h2>
-                <p className="text-sm text-slate-400 mt-3 leading-relaxed">Product drops, pre-order windows, and engineering notes. Check junk the first time so you do not miss us.</p>
-                <form onSubmit={handleNewsletterSignup} className="mt-6 flex flex-col sm:flex-row gap-2">
-                  <input type="email" required value={newsletterEmail} onChange={(e) => setNewsletterEmail(e.target.value)} placeholder="you@email.com" className="flex-1 bg-slate-950 border border-slate-700 rounded-full px-5 py-3 text-sm text-white outline-none focus:border-cyan-500" />
-                  <button type="submit" disabled={newsletterBusy} className="px-6 py-3 rounded-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-sm disabled:opacity-60">{newsletterBusy ? 'Joining…' : 'Join the list'}</button>
+                        <section className="rounded-3xl border border-zinc-800 bg-zinc-900/50 p-8 sm:p-12">
+              <div className="grid md:grid-cols-2 gap-10 items-center">
+                <div>
+                  <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500">Stay in the loop</p>
+                  <h2 className="text-3xl sm:text-4xl font-semibold text-white tracking-tight mt-3 leading-tight">Be first when orders open.</h2>
+                  <p className="text-sm text-zinc-400 mt-4 leading-relaxed max-w-md">
+                    Launch windows, hardware notes, and careers — occasional emails, no noise. If nothing arrives, check junk once and mark us as safe.
+                  </p>
+                  <ul className="mt-6 space-y-2 text-xs text-zinc-500">
+                    <li className="flex gap-2"><span className="text-white">✓</span> Pre-order open alerts</li>
+                    <li className="flex gap-2"><span className="text-white">✓</span> New system announcements</li>
+                    <li className="flex gap-2"><span className="text-white">✓</span> Unsubscribe any time</li>
+                  </ul>
+                </div>
+                <form onSubmit={handleNewsletterSignup} className="rounded-2xl border border-zinc-800 bg-zinc-950 p-6 space-y-4">
+                  <label className="block text-xs font-medium text-zinc-400">Email address</label>
+                  <input
+                    type="email"
+                    required
+                    value={newsletterEmail}
+                    onChange={(e) => setNewsletterEmail(e.target.value)}
+                    placeholder="name@company.com"
+                    className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3.5 text-sm text-white placeholder:text-zinc-600 outline-none focus:border-zinc-400 transition"
+                  />
+                  <button
+                    type="submit"
+                    disabled={newsletterBusy}
+                    className="w-full py-3.5 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 font-semibold text-sm transition disabled:opacity-50"
+                  >
+                    {newsletterBusy ? 'Submitting…' : 'Subscribe'}
+                  </button>
+                  <p className="text-[10px] text-zinc-600 leading-relaxed">By subscribing you agree to receive product updates from Zortius. We never sell your address.</p>
                 </form>
               </div>
             </section>
@@ -4305,41 +4334,47 @@ return (
           </div>
         )}
 
-        <footer className="mt-16 border-t border-slate-800 py-8">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-            <span>© {new Date().getFullYear()} Zortius. Built for what comes next.</span>
-            <nav className="flex flex-wrap justify-center gap-4">
-              <button onClick={() => navigateTo('home', '/')} className="hover:text-cyan-300">
-                Home
-              </button>
-              <button onClick={() => navigateTo('shop', '/shop')} className="hover:text-cyan-300">
-                Shop
-              </button>
-              <button onClick={() => navigateTo('blog', '/blog')} className="hover:text-cyan-300">
-                Media
-              </button>
-              <button onClick={() => navigateTo('forum', '/forum')} className="hover:text-cyan-300">
-                Forum
-              </button>
-              <button onClick={() => navigateTo('applications', '/careers')} className="hover:text-cyan-300">
-                Careers
-              </button>
-              <button onClick={() => navigateTo('about', '/about')} className="hover:text-cyan-300">
-                About
-              </button>
-              <button onClick={() => navigateTo('contact', '/contact')} className="hover:text-cyan-300">
-                Contact
-              </button>
-              <button onClick={() => navigateTo('faq', '/faq')} className="hover:text-cyan-300">
-                FAQ
-              </button>
-              <button onClick={() => navigateTo('privacy', '/privacy')} className="hover:text-cyan-300">
-                Privacy
-              </button>
-              <button onClick={() => navigateTo('terms', '/terms')} className="hover:text-cyan-300">
-                Terms
-              </button>
-            </nav>
+        <footer className="mt-20 border-t border-zinc-800/80 bg-zinc-950">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-10 mb-12">
+              <div className="col-span-2 md:col-span-1 space-y-4">
+                <p className="text-sm font-semibold text-white tracking-tight">Zortius</p>
+                <p className="text-xs text-zinc-500 leading-relaxed">Hardware for people who measure twice. Workstations, displays, and tools with honest specs.</p>
+              </div>
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-500 mb-3">Explore</p>
+                <div className="flex flex-col gap-2 text-xs text-zinc-400">
+                  <button type="button" onClick={() => navigateTo('shop', '/shop')} className="text-left hover:text-white transition">Shop</button>
+                  <button type="button" onClick={() => navigateTo('compare', '/compare')} className="text-left hover:text-white transition">Compare</button>
+                  <button type="button" onClick={() => navigateTo('blog', '/blog')} className="text-left hover:text-white transition">Media</button>
+                  <button type="button" onClick={() => navigateTo('forum', '/forum')} className="text-left hover:text-white transition">Forum</button>
+                </div>
+              </div>
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-500 mb-3">Company</p>
+                <div className="flex flex-col gap-2 text-xs text-zinc-400">
+                  <button type="button" onClick={() => navigateTo('about', '/about')} className="text-left hover:text-white transition">About</button>
+                  <button type="button" onClick={() => navigateTo('applications', '/careers')} className="text-left hover:text-white transition">Careers</button>
+                  <button type="button" onClick={() => navigateTo('faq', '/faq')} className="text-left hover:text-white transition">FAQ</button>
+                  <button type="button" onClick={() => navigateTo('contact', '/contact')} className="text-left hover:text-white transition">Contact</button>
+                </div>
+              </div>
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-500 mb-3">Newsletter</p>
+                <form onSubmit={handleNewsletterSignup} className="space-y-2">
+                  <input type="email" required value={newsletterEmail} onChange={(e) => setNewsletterEmail(e.target.value)} placeholder="Email" className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-zinc-500" />
+                  <button type="submit" disabled={newsletterBusy} className="w-full py-2 rounded-lg bg-white text-zinc-950 text-xs font-semibold hover:bg-zinc-200 disabled:opacity-50">{newsletterBusy ? '…' : 'Subscribe'}</button>
+                </form>
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-8 border-t border-zinc-900 text-[11px] text-zinc-600">
+              <span>© {new Date().getFullYear()} Zortius. All rights reserved.</span>
+              <div className="flex gap-4">
+                <button type="button" onClick={() => navigateTo('privacy', '/privacy')} className="hover:text-zinc-400">Privacy</button>
+                <button type="button" onClick={() => navigateTo('terms', '/terms')} className="hover:text-zinc-400">Terms</button>
+                <button type="button" onClick={() => setCmdOpen(true)} className="hover:text-zinc-400">Menu</button>
+              </div>
+            </div>
           </div>
         </footer>
       </main>
