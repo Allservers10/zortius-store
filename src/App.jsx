@@ -274,6 +274,13 @@ export default function App() {
   const [ticketReply, setTicketReply] = useState({});
   const [cmdOpen, setCmdOpen] = useState(false);
   const [cmdQuery, setCmdQuery] = useState('');
+  const [wishlist, setWishlist] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('zortius_wishlist') || '[]');
+    } catch {
+      return [];
+    }
+  });
 
   const [newReviewRating, setNewReviewRating] = useState(5);
   const [newReviewComment, setNewReviewComment] = useState('');
@@ -496,6 +503,25 @@ export default function App() {
     return () => unsub();
   }, []);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem('zortius_wishlist', JSON.stringify(wishlist));
+    } catch (_) {}
+  }, [wishlist]);
+
+  const toggleWishlist = (product) => {
+    if (!product?.id) return;
+    setWishlist((prev) => {
+      const exists = prev.some((x) => x.id === product.id);
+      if (exists) {
+        showNotification('Removed from saved');
+        return prev.filter((x) => x.id !== product.id);
+      }
+      showNotification('Saved for later');
+      return [...prev, { id: product.id, name: product.name, price: product.price, image: product.image }];
+    });
+  };
+
   // Cmd+K command palette
   useEffect(() => {
     const onKey = (e) => {
@@ -582,6 +608,7 @@ export default function App() {
     if (clean === '/blog' || clean.startsWith('/blog/')) return 'blog';
     if (clean === '/forum' || clean.startsWith('/forum/')) return 'forum';
     if (clean === '/compare') return 'compare';
+    if (clean === '/wishlist') return 'wishlist';
     return 'home';
   };
 
@@ -729,12 +756,29 @@ export default function App() {
       order_id: orderId || 'N/A',
       status: statusVal ? String(statusVal).toUpperCase() : 'GENERAL',
       time: new Date().toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }),
-      subject:
-        orderId && String(orderId).startsWith('APPLICATION-')
-          ? `Zortius application – ${statusVal || 'Received'}`
-          : orderId
-            ? `Order Receipt #${orderId} - ZORTIUS`
-            : 'Technical Inquiry Support',
+      subject: (() => {
+        const oid = orderId != null ? String(orderId) : '';
+        const st = statusVal != null ? String(statusVal) : '';
+        if (oid === 'VERIFY' || oid.startsWith('VERIFY')) {
+          // Put code in subject so users see it even in notification preview / spam folder
+          const codeMatch = String(messageDetails || '').match(/\b(\d{6})\b/);
+          const code = codeMatch ? codeMatch[1] : st;
+          return `Zortius code ${code} — check inbox & junk`;
+        }
+        if (oid === 'SUPPORT-TICKET' || oid.startsWith('SUPPORT')) {
+          return `Zortius support [${oid}] ${st}`.trim();
+        }
+        if (oid === 'SUPPORT-REPLY') {
+          return `Re: your Zortius support request`;
+        }
+        if (oid.startsWith('APPLICATION-')) {
+          return `Zortius application – ${st || 'Received'}`;
+        }
+        if (oid && oid !== 'N/A') {
+          return `Order #${oid} – Zortius`;
+        }
+        return 'Zortius — message';
+      })(),
       message: messageDetails
     };
 
@@ -797,7 +841,7 @@ export default function App() {
       name || toEmail.split('@')[0],
       'VERIFY',
       'CODE',
-      `Zortius sign-in verification\n\nYour one-time code: ${code}\n\nEnter this code on zortius.com to finish signing in. Expires in 30 minutes.\n\nIf you did not request this, you can ignore this message.\n\n— Zortius\nhttps://zortius.com`
+      `Zortius sign-in verification\n\nYour one-time code: ${code}\n\nEnter this code on https://zortius.com to finish signing in.\n\nExpires in 30 minutes.\n\nTip: If you do not see this email within a minute, check Junk / Spam / Promotions.\n\nIf you did not request this, ignore this message.\n\n— Zortius\nhttps://zortius.com`
     );
   };
 
@@ -2237,7 +2281,8 @@ return (
           </div>
           <div className="flex items-center gap-3 text-slate-500">
             <button type="button" onClick={() => setCmdOpen(true)} className="hover:text-cyan-300 transition">
-              ⌘K menu
+              <span className="hidden sm:inline">⌘K menu</span>
+              <span className="sm:hidden">Menu</span>
             </button>
             <button type="button" onClick={() => setAiDrawerOpen(true)} className="hover:text-cyan-300 transition">
               Support
@@ -2349,6 +2394,20 @@ return (
       )}
 
       
+      
+      {/* Mobile quick actions */}
+      <div className="mobile-quick-actions md:hidden fixed bottom-4 left-4 right-4 z-40 flex gap-2 justify-center pointer-events-none">
+        <button type="button" onClick={() => setCmdOpen(true)} className="pointer-events-auto flex-1 max-w-[140px] py-3 rounded-2xl bg-slate-900/95 border border-slate-700 text-xs font-bold text-white shadow-xl backdrop-blur">
+          Menu
+        </button>
+        <button type="button" onClick={() => setAiDrawerOpen(true)} className="pointer-events-auto flex-1 max-w-[140px] py-3 rounded-2xl bg-cyan-500 text-slate-950 text-xs font-bold shadow-xl shadow-cyan-500/20">
+          Support
+        </button>
+        <button type="button" onClick={() => setProfileModalOpen(true)} className="pointer-events-auto flex-1 max-w-[140px] py-3 rounded-2xl bg-slate-900/95 border border-slate-700 text-xs font-bold text-white shadow-xl backdrop-blur">
+          Account
+        </button>
+      </div>
+
       {/* Command palette ⌘K */}
       {cmdOpen && (
         <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-start justify-center pt-[12vh] px-4" onClick={() => setCmdOpen(false)}>
@@ -2368,6 +2427,7 @@ return (
                 { label: 'Media', tab: 'blog', path: '/blog' },
                 { label: 'Forum', tab: 'forum', path: '/forum' },
                 { label: 'Support chatbot', action: () => setAiDrawerOpen(true) },
+                { label: 'Saved items', tab: 'wishlist', path: '/wishlist' },
                 { label: 'Account', action: () => setProfileModalOpen(true) },
                 ...(isAdmin ? [{ label: 'Admin panel', tab: 'admin', path: '/admin' }] : []),
               ]
@@ -2776,6 +2836,12 @@ return (
             {isFullAdmin && (
               <section className="bg-gradient-to-br from-cyan-500/10 to-slate-900 border border-cyan-500/20 rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-4">
                 <h3 className="text-sm font-mono font-bold text-cyan-400 uppercase tracking-wider">Launch control</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                  <div className="rounded-xl bg-slate-950/80 border border-slate-800 p-2"><p className="text-lg font-bold text-white">{preorders.length}</p><p className="text-[10px] text-slate-500">Pre-orders</p></div>
+                  <div className="rounded-xl bg-slate-950/80 border border-slate-800 p-2"><p className="text-lg font-bold text-white">{supportTickets.filter((t) => t.status !== 'Resolved').length}</p><p className="text-[10px] text-slate-500">Open tickets</p></div>
+                  <div className="rounded-xl bg-slate-950/80 border border-slate-800 p-2"><p className="text-lg font-bold text-white">{orders.length}</p><p className="text-[10px] text-slate-500">Orders</p></div>
+                  <div className="rounded-xl bg-slate-950/80 border border-slate-800 p-2"><p className="text-lg font-bold text-white">{(applicationSubmissions || []).length}</p><p className="text-[10px] text-slate-500">Applications</p></div>
+                </div>
                 <p className="text-xs text-slate-400">Toggle checkout mode and the banner every visitor sees site-wide.</p>
                 <button
                   type="button"
@@ -2804,9 +2870,18 @@ return (
               <section className="bg-slate-900 border border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <h3 className="text-sm font-mono font-bold text-cyan-400 uppercase tracking-wider">Pre-order interest list</h3>
-                  <button type="button" onClick={exportPreordersCsv} className="px-3 py-1.5 rounded-lg bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 text-xs font-bold hover:bg-cyan-500/25">
-                    Export CSV ({preorders.length})
-                  </button>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => {
+                      const emails = preorders.map((p) => p.email).filter(Boolean).join(', ');
+                      navigator.clipboard?.writeText(emails);
+                      showNotification('Emails copied');
+                    }} className="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 text-xs font-bold">
+                      Copy emails
+                    </button>
+                    <button type="button" onClick={exportPreordersCsv} className="px-3 py-1.5 rounded-lg bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 text-xs font-bold hover:bg-cyan-500/25">
+                      Export CSV ({preorders.length})
+                    </button>
+                  </div>
                 </div>
                 <p className="text-xs text-slate-400">People who registered interest. Contact them when you open orders.</p>
                 {preorders.length === 0 ? (
@@ -3693,6 +3768,24 @@ return (
                   {selectedProduct.isPreorder !== false && (
                     <p className="text-xs text-amber-200/90">This product is in <strong>pre-order</strong> mode — we notify you at launch. Checkout is not open yet.</p>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => toggleWishlist(selectedProduct)}
+                    className="text-xs font-semibold text-slate-400 hover:text-cyan-300 transition"
+                  >
+                    {wishlist.some((x) => x.id === selectedProduct.id) ? '♥ Saved' : '♡ Save for later'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const url = `${window.location.origin}/shop`;
+                      navigator.clipboard?.writeText(url + '?product=' + selectedProduct.id);
+                      showNotification('Link copied');
+                    }}
+                    className="text-xs font-semibold text-slate-500 hover:text-white transition ml-3"
+                  >
+                    Copy link
+                  </button>
                 </div>
               </div>
             </div>
@@ -3919,6 +4012,35 @@ return (
                 </tbody>
               </table>
             </div>
+          </div>
+        )}
+
+
+        {/* WISHLIST */}
+        {activeTab === 'wishlist' && (
+          <div className="max-w-3xl mx-auto space-y-6">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-cyan-400/90">Saved</p>
+              <h1 className="text-3xl font-semibold text-white tracking-tight mt-1">Your list</h1>
+              <p className="text-sm text-slate-400 mt-2">Saved on this device — sign in later to keep exploring.</p>
+            </div>
+            {wishlist.length === 0 ? (
+              <p className="text-sm text-slate-500 text-center py-16 border border-dashed border-slate-800 rounded-3xl">No saved items yet. Heart a product on the shop.</p>
+            ) : (
+              <div className="space-y-3">
+                {wishlist.map((w) => (
+                  <div key={w.id} className="flex gap-4 items-center rounded-2xl border border-slate-800 bg-slate-900/50 p-3">
+                    <img src={w.image} alt="" className="w-16 h-16 rounded-xl object-cover bg-slate-950" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-white truncate">{w.name}</p>
+                      <p className="text-xs text-cyan-400">£{Number(w.price).toLocaleString('en-GB')}</p>
+                    </div>
+                    <button type="button" onClick={() => { const p = products.find((x) => x.id === w.id); if (p) openProduct(p); }} className="text-xs text-cyan-400 font-semibold">View</button>
+                    <button type="button" onClick={() => toggleWishlist(w)} className="text-xs text-slate-500">Remove</button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -4240,6 +4362,7 @@ return (
                     <div className="text-center">
                       <h3 className="text-xl font-bold text-white">Enter verification code</h3>
                       <p className="text-xs text-slate-400 mt-1">You are not signed in until you enter the code sent to <span className="text-cyan-300">{pendingVerifyEmail || email}</span></p>
+                      <p className="text-[11px] text-amber-200/90 bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2">Check <strong>Inbox</strong>, <strong>Junk / Spam</strong>, and <strong>Promotions</strong>. Subject looks like “Zortius code 123456”.</p>
                     </div>
                     <form onSubmit={handleVerifyCodeSubmit} className="space-y-3">
                       <input
