@@ -264,6 +264,17 @@ export default function App() {
   const [otpGateActive, setOtpGateActive] = useState(false);
   const [otpSending, setOtpSending] = useState(false);
 
+  // Store control (admin)
+  const [storeSettings, setStoreSettings] = useState({
+    takingOrders: false,
+    announcement: 'Pre-order interest is open. Full checkout launches soon.',
+    statusLabel: 'Pre-order mode'
+  });
+  const [announcementDraft, setAnnouncementDraft] = useState('');
+  const [ticketReply, setTicketReply] = useState({});
+  const [cmdOpen, setCmdOpen] = useState(false);
+  const [cmdQuery, setCmdQuery] = useState('');
+
   const [newReviewRating, setNewReviewRating] = useState(5);
   const [newReviewComment, setNewReviewComment] = useState('');
   const [profilePhone, setProfilePhone] = useState('');
@@ -466,6 +477,36 @@ export default function App() {
       if (snap.exists() && snap.data()?.map) setReviews(snap.data().map);
     });
     return () => unsub();
+  }, []);
+
+  // Public store settings
+  useEffect(() => {
+    if (!db) return;
+    const unsub = onSnapshot(doc(db, 'artifacts', appId, 'public_data', 'settings'), (snap) => {
+      if (snap.exists()) {
+        const d = snap.data();
+        setStoreSettings({
+          takingOrders: !!d.takingOrders,
+          announcement: d.announcement || 'Pre-order interest is open. Full checkout launches soon.',
+          statusLabel: d.statusLabel || (d.takingOrders ? 'Orders open' : 'Pre-order mode')
+        });
+        setAnnouncementDraft(d.announcement || '');
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  // Cmd+K command palette
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setCmdOpen((v) => !v);
+      }
+      if (e.key === 'Escape') setCmdOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, []);
 
   // Pre-orders list (admin)
@@ -822,6 +863,66 @@ export default function App() {
       setAuthError('Could not send code. Tap Resend or use Contact support.');
     } finally {
       setOtpSending(false);
+    }
+  };
+
+
+  const saveStoreSettings = async (patch) => {
+    if (!db || !isFullAdmin) return;
+    const next = { ...storeSettings, ...patch, updatedAt: new Date().toISOString() };
+    await setDoc(doc(db, 'artifacts', appId, 'public_data', 'settings'), next, { merge: true });
+    setStoreSettings(next);
+    showNotification('Store settings saved.');
+  };
+
+  const exportPreordersCsv = () => {
+    const rows = [['Email', 'Product', 'Colour', 'Date']];
+    preorders.forEach((r) => {
+      rows.push([
+        r.email || '',
+        r.productName || 'General',
+        r.color || '',
+        r.createdAt ? new Date(r.createdAt).toISOString() : ''
+      ]);
+    });
+    const csv = rows.map((row) => row.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `zortius-preorders-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showNotification(`Exported ${preorders.length} pre-order rows.`);
+  };
+
+  const sendTicketReply = async (ticket) => {
+    const body = (ticketReply[ticket.id] || '').trim();
+    if (!body) {
+      showNotification('Write a reply first.', 'error');
+      return;
+    }
+    try {
+      await sendActualEmail(
+        EMAILJS_CONTACT_TEMPLATE_ID,
+        ticket.email,
+        ticket.name || 'Customer',
+        'SUPPORT-REPLY',
+        ticket.id?.slice(0, 8) || 'TICKET',
+        `Hi ${ticket.name || 'there'},\n\n${body}\n\n— Zortius Support\nhttps://zortius.com`
+      );
+      if (db) {
+        await updateDoc(doc(db, 'artifacts', appId, 'supportTickets', ticket.id), {
+          status: 'Replied',
+          lastReply: body,
+          repliedAt: new Date().toISOString()
+        });
+      }
+      setTicketReply((m) => ({ ...m, [ticket.id]: '' }));
+      showNotification('Reply emailed to customer.');
+    } catch (err) {
+      console.error(err);
+      showNotification('Failed to send reply.', 'error');
     }
   };
 
@@ -2125,6 +2226,25 @@ return (
         )}
 
       </header>
+      {/* Live system status */}
+      <div className="border-b border-slate-800/80 bg-slate-950/90">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+          <div className="flex items-center gap-2 text-slate-400">
+            <span className={`h-1.5 w-1.5 rounded-full ${storeSettings.takingOrders ? 'bg-emerald-400' : 'bg-amber-400'} animate-pulse`} />
+            <span className="font-semibold text-slate-300">{storeSettings.statusLabel}</span>
+            <span className="text-slate-600">·</span>
+            <span className="truncate max-w-[min(100%,28rem)]">{storeSettings.announcement}</span>
+          </div>
+          <div className="flex items-center gap-3 text-slate-500">
+            <button type="button" onClick={() => setCmdOpen(true)} className="hover:text-cyan-300 transition">
+              ⌘K menu
+            </button>
+            <button type="button" onClick={() => setAiDrawerOpen(true)} className="hover:text-cyan-300 transition">
+              Support
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* CONTACT MODAL */}
       {contactModalOpen && (
@@ -2224,6 +2344,51 @@ return (
               </div>
               <p className="text-[10px] text-slate-500">Say “human” to open a ticket · EmailJS notifies admin</p>
             </form>
+          </div>
+        </div>
+      )}
+
+      
+      {/* Command palette ⌘K */}
+      {cmdOpen && (
+        <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-start justify-center pt-[12vh] px-4" onClick={() => setCmdOpen(false)}>
+          <div className="w-full max-w-lg rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <input
+              autoFocus
+              value={cmdQuery}
+              onChange={(e) => setCmdQuery(e.target.value)}
+              placeholder="Jump to… shop, careers, support, admin"
+              className="w-full bg-transparent px-4 py-3.5 text-sm text-white outline-none border-b border-slate-800"
+            />
+            <div className="max-h-72 overflow-y-auto py-2">
+              {[
+                { label: 'Shop', tab: 'shop', path: '/shop' },
+                { label: 'Compare systems', tab: 'compare', path: '/compare' },
+                { label: 'Careers', tab: 'applications', path: '/careers' },
+                { label: 'Media', tab: 'blog', path: '/blog' },
+                { label: 'Forum', tab: 'forum', path: '/forum' },
+                { label: 'Support chatbot', action: () => setAiDrawerOpen(true) },
+                { label: 'Account', action: () => setProfileModalOpen(true) },
+                ...(isAdmin ? [{ label: 'Admin panel', tab: 'admin', path: '/admin' }] : []),
+              ]
+                .filter((i) => !cmdQuery || i.label.toLowerCase().includes(cmdQuery.toLowerCase()))
+                .map((i) => (
+                  <button
+                    key={i.label}
+                    type="button"
+                    className="w-full text-left px-4 py-2.5 text-sm text-slate-200 hover:bg-cyan-500/10 hover:text-cyan-300"
+                    onClick={() => {
+                      if (i.action) i.action();
+                      else navigateTo(i.tab, i.path);
+                      setCmdOpen(false);
+                      setCmdQuery('');
+                    }}
+                  >
+                    {i.label}
+                  </button>
+                ))}
+            </div>
+            <p className="px-4 py-2 text-[10px] text-slate-600 border-t border-slate-800">Press Esc to close</p>
           </div>
         </div>
       )}
@@ -2609,8 +2774,40 @@ return (
 
             
             {isFullAdmin && (
+              <section className="bg-gradient-to-br from-cyan-500/10 to-slate-900 border border-cyan-500/20 rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-4">
+                <h3 className="text-sm font-mono font-bold text-cyan-400 uppercase tracking-wider">Launch control</h3>
+                <p className="text-xs text-slate-400">Toggle checkout mode and the banner every visitor sees site-wide.</p>
+                <button
+                  type="button"
+                  onClick={() => saveStoreSettings({
+                    takingOrders: !storeSettings.takingOrders,
+                    statusLabel: !storeSettings.takingOrders ? 'Orders open' : 'Pre-order mode'
+                  })}
+                  className={`px-4 py-2.5 rounded-xl text-xs font-bold border ${storeSettings.takingOrders ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300' : 'bg-amber-500/20 border-amber-500/40 text-amber-200'}`}
+                >
+                  {storeSettings.takingOrders ? 'Orders OPEN — click to switch to pre-order' : 'Pre-order only — click to open orders'}
+                </button>
+                <textarea
+                  rows={2}
+                  value={announcementDraft}
+                  onChange={(e) => setAnnouncementDraft(e.target.value)}
+                  placeholder="Announcement under the header…"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
+                />
+                <button type="button" onClick={() => saveStoreSettings({ announcement: announcementDraft || storeSettings.announcement })} className="px-4 py-2 rounded-xl bg-cyan-500 text-slate-950 text-xs font-bold">
+                  Save announcement
+                </button>
+              </section>
+            )}
+
+            {isFullAdmin && (
               <section className="bg-slate-900 border border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-4">
-                <h3 className="text-sm font-mono font-bold text-cyan-400 uppercase tracking-wider">Pre-order interest list</h3>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h3 className="text-sm font-mono font-bold text-cyan-400 uppercase tracking-wider">Pre-order interest list</h3>
+                  <button type="button" onClick={exportPreordersCsv} className="px-3 py-1.5 rounded-lg bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 text-xs font-bold hover:bg-cyan-500/25">
+                    Export CSV ({preorders.length})
+                  </button>
+                </div>
                 <p className="text-xs text-slate-400">People who registered interest. Contact them when you open orders.</p>
                 {preorders.length === 0 ? (
                   <p className="text-xs text-slate-500">No pre-order signups yet.</p>
@@ -2657,7 +2854,15 @@ return (
                       </div>
                       <p className="text-slate-300">{t.message}</p>
                       <p className="text-slate-500">{t.createdAt ? new Date(t.createdAt).toLocaleString('en-GB') : ''} · {t.page || ''}</p>
-                      <div className="flex gap-2">
+                      <textarea
+                        rows={2}
+                        value={ticketReply[t.id] || ''}
+                        onChange={(e) => setTicketReply((m) => ({ ...m, [t.id]: e.target.value }))}
+                        placeholder="Type a reply to email the customer…"
+                        className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-white"
+                      />
+                      <div className="flex flex-wrap gap-2">
+                        <button type="button" onClick={() => sendTicketReply(t)} className="px-2 py-1 rounded-lg bg-cyan-500 text-slate-950 font-bold">Email reply</button>
                         <button type="button" onClick={() => handleTicketStatus(t.id, 'Open')} className="px-2 py-1 rounded-lg bg-slate-800 text-slate-200">Open</button>
                         <button type="button" onClick={() => handleTicketStatus(t.id, 'Resolved')} className="px-2 py-1 rounded-lg bg-emerald-500/20 text-emerald-300">Resolved</button>
                       </div>
@@ -3236,9 +3441,10 @@ return (
           <div className="space-y-8">
             <div className="relative rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900 to-cyan-950/40 p-8 sm:p-12 border border-slate-800 overflow-hidden shadow-2xl">
               <div className="relative z-10 max-w-2xl">
-                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-semibold mb-4">
-                  <Zap className="w-3.5 h-3.5" /> Next-Gen Hardware Systems
+                <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-semibold mb-4 ${storeSettings.takingOrders ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-amber-500/10 border-amber-500/30 text-amber-200'}`}>
+                  <Zap className="w-3.5 h-3.5" /> {storeSettings.statusLabel}
                 </span>
+                <p className="text-xs text-slate-400 mb-4 max-w-md">{storeSettings.announcement}</p>
                 <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight leading-tight">Precision Engineering for High Performance</h1>
                 <p className="mt-4 text-sm sm:text-base text-slate-300 leading-relaxed max-w-xl">
                   Discover workstation class compute systems, acoustically engineered chassis, reference displays, and ultra-low noise peripherals.
