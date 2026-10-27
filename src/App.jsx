@@ -261,6 +261,8 @@ export default function App() {
   const [verifyCode, setVerifyCode] = useState('');
   const [pendingVerifyEmail, setPendingVerifyEmail] = useState('');
   const [emailVerifiedMap, setEmailVerifiedMap] = useState({});
+  const [otpGateActive, setOtpGateActive] = useState(false);
+  const [otpSending, setOtpSending] = useState(false);
 
   const [newReviewRating, setNewReviewRating] = useState(5);
   const [newReviewComment, setNewReviewComment] = useState('');
@@ -284,16 +286,32 @@ export default function App() {
         setUserId(currentUser.uid);
         setUserName(currentUser.displayName || currentUser.email?.split('@')[0] || 'Engineer');
         const em = (currentUser.email || '').toLowerCase().trim();
-        setIsAdmin(em === ADMIN_EMAIL.toLowerCase() || em === LIMITED_ADMIN_EMAIL.toLowerCase());
-        setIsFullAdmin(em === ADMIN_EMAIL.toLowerCase());
         setContactEmail(currentUser.email || '');
         setContactName(currentUser.displayName || currentUser.email?.split('@')[0] || '');
         setShipFullName(currentUser.displayName || currentUser.email?.split('@')[0] || '');
+        if (isOtpUnlocked(currentUser.uid)) {
+          setIsAdmin(em === ADMIN_EMAIL.toLowerCase() || em === LIMITED_ADMIN_EMAIL.toLowerCase());
+          setIsFullAdmin(em === ADMIN_EMAIL.toLowerCase());
+          setOtpGateActive(false);
+          setVerifyMode(false);
+        } else {
+          // Not fully logged in until email code
+          setIsAdmin(false);
+          setIsFullAdmin(false);
+          setOtpGateActive(true);
+          setVerifyMode(true);
+          setPendingVerifyEmail(em);
+          setProfileModalOpen(true);
+          startLoginOtpGate(currentUser);
+        }
       } else {
         setUserId(null);
         setUserName('');
         setIsAdmin(false);
         setIsFullAdmin(false);
+        setOtpGateActive(false);
+        setVerifyMode(false);
+        clearOtpUnlocked();
       }
       setAuthLoading(false);
     };
@@ -707,6 +725,30 @@ export default function App() {
 
   const generateVerifyCode = () => String(Math.floor(100000 + Math.random() * 900000));
 
+  const otpSessionKey = (uid) => `zortius_otp_ok_${uid || 'x'}`;
+  const isOtpUnlocked = (uid) => {
+    try {
+      return sessionStorage.getItem(otpSessionKey(uid)) === '1';
+    } catch {
+      return false;
+    }
+  };
+  const setOtpUnlocked = (uid) => {
+    try {
+      sessionStorage.setItem(otpSessionKey(uid), '1');
+    } catch (_) {}
+  };
+  const clearOtpUnlocked = (uid) => {
+    try {
+      if (uid) sessionStorage.removeItem(otpSessionKey(uid));
+      else {
+        Object.keys(sessionStorage).forEach((k) => {
+          if (k.startsWith('zortius_otp_ok_')) sessionStorage.removeItem(k);
+        });
+      }
+    } catch (_) {}
+  };
+
   const sendVerifyCodeEmail = async (toEmail, code, name) => {
     await sendActualEmail(
       EMAILJS_CONTACT_TEMPLATE_ID,
@@ -746,6 +788,43 @@ export default function App() {
     });
   };
 
+
+  const startLoginOtpGate = async (currentUser) => {
+    if (!currentUser?.email) return;
+    const em = currentUser.email.toLowerCase().trim();
+    if (isOtpUnlocked(currentUser.uid)) {
+      setOtpGateActive(false);
+      setVerifyMode(false);
+      return;
+    }
+    setPendingVerifyEmail(em);
+    setVerifyMode(true);
+    setOtpGateActive(true);
+    setVerifyCode('');
+    setProfileModalOpen(true);
+    setAuthError('');
+    // Prevent duplicate sends for same user in a short window
+    const sendKey = `zortius_otp_sent_${currentUser.uid}`;
+    try {
+      const last = sessionStorage.getItem(sendKey);
+      if (last && Date.now() - Number(last) < 45000) return;
+      sessionStorage.setItem(sendKey, String(Date.now()));
+    } catch (_) {}
+    if (otpSending) return;
+    setOtpSending(true);
+    try {
+      const code = generateVerifyCode();
+      await saveVerifyCode(em, code, currentUser.uid);
+      await sendVerifyCodeEmail(em, code, currentUser.displayName || em.split('@')[0]);
+      showNotification('Enter the 6-digit code we emailed you to finish signing in.');
+    } catch (err) {
+      console.error(err);
+      setAuthError('Could not send code. Tap Resend or use Contact support.');
+    } finally {
+      setOtpSending(false);
+    }
+  };
+
   const handleEmailSignUp = async (e) => {
     e.preventDefault();
     if (!email || !password) {
@@ -765,13 +844,8 @@ export default function App() {
         const name = email.split('@')[0];
         setUserName(name);
         await saveUserDataToFirestore(cart, orders, name);
-        const code = generateVerifyCode();
-        await saveVerifyCode(email, code, cred.user.uid);
-        await sendVerifyCodeEmail(email, code, name);
-        setPendingVerifyEmail(email.trim().toLowerCase());
-        setVerifyMode(true);
-        setVerifyCode('');
-        showNotification('Account created. Enter the 6-digit code we emailed you.');
+        // OTP gate via onAuthStateChanged / applyUser — must enter code before access
+        showNotification('Account created. Enter the code we email you to finish.');
       }
     } catch (err) {
       setAuthError(err.message.replace('Firebase: ', ''));
@@ -814,13 +888,22 @@ export default function App() {
       const uid = user?.uid || data.uid;
       await markEmailVerified(em, uid);
       await deleteDoc(doc(db, 'artifacts', appId, 'emailCodes', em)).catch(() => {});
+      setOtpUnlocked(uid);
+      setOtpGateActive(false);
       setVerifyMode(false);
       setVerifyCode('');
       setPendingVerifyEmail('');
       setProfileModalOpen(false);
       setEmail('');
       setPassword('');
-      showNotification('Email verified. You are signed in.');
+      // Unlock admin roles now
+      if (user || uid) {
+        const u = user;
+        const emailAddr = (em || u?.email || '').toLowerCase().trim();
+        setIsAdmin(emailAddr === ADMIN_EMAIL.toLowerCase() || emailAddr === LIMITED_ADMIN_EMAIL.toLowerCase());
+        setIsFullAdmin(emailAddr === ADMIN_EMAIL.toLowerCase());
+      }
+      showNotification('Verified. You are signed in.');
     } catch (err) {
       setAuthError(err.message || 'Verification failed.');
     } finally {
@@ -859,26 +942,9 @@ export default function App() {
     try {
       if (auth) {
         await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
-        const cred = await signInWithEmailAndPassword(auth, email, password);
-        // Require email code verification for password accounts (Google skips this)
-        let verified = false;
-        try {
-          verified = await isEmailVerifiedUser(cred.user.uid, email);
-        } catch (_) {}
-        if (!verified) {
-          const code = generateVerifyCode();
-          await saveVerifyCode(email, code, cred.user.uid);
-          await sendVerifyCodeEmail(email, code, email.split('@')[0]);
-          setPendingVerifyEmail(email.trim().toLowerCase());
-          setVerifyMode(true);
-          setVerifyCode('');
-          showNotification('Enter the verification code we just emailed you.');
-        } else {
-          showNotification('Signed in successfully.');
-          setProfileModalOpen(false);
-          setEmail('');
-          setPassword('');
-        }
+        await signInWithEmailAndPassword(auth, email, password);
+        // applyUser forces email code before access
+        showNotification('Check your email for the verification code.');
       }
     } catch (err) {
       setAuthError(err.message.replace('Firebase: ', ''));
@@ -915,17 +981,8 @@ export default function App() {
       try {
         const result = await signInWithPopup(auth, provider);
         if (result?.user) {
-          setUser(result.user);
-          setUserId(result.user.uid);
-          setUserName(result.user.displayName || result.user.email?.split('@')[0] || 'Engineer');
-          const em = (result.user.email || '').toLowerCase().trim();
-          setIsAdmin(em === ADMIN_EMAIL.toLowerCase() || em === LIMITED_ADMIN_EMAIL.toLowerCase());
-          setIsFullAdmin(em === ADMIN_EMAIL.toLowerCase());
-          if (db && result.user.uid) {
-            await setDoc(doc(db, 'artifacts', appId, 'users', result.user.uid), { emailVerified: true, email: em }, { merge: true });
-          }
-          setProfileModalOpen(false);
-          showNotification('Signed in with Google.');
+          // onAuthStateChanged → applyUser → OTP required before full access
+          showNotification('Google OK. Enter the email code to finish signing in.');
         }
       } catch (popupErr) {
         const code = popupErr?.code || '';
@@ -979,7 +1036,7 @@ export default function App() {
   const handleSignOut = async () => {
     try {
       if (auth) {
-        await signOut(auth);
+        clearOtpUnlocked(user?.uid); setOtpGateActive(false); setVerifyMode(false); await signOut(auth);
         setCart([]);
         setOrders([]);
         setActiveTab('shop');
@@ -1921,7 +1978,10 @@ export default function App() {
   const cartItemCount = cart.reduce((acc, item) => acc + (item.qty || 1), 0);
 
   // -------------------- RENDER --------------------
-  return (
+    const authReady = !!(user && !otpGateActive);
+  const sessionUser = authReady ? user : null;
+
+return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-cyan-500 selection:text-slate-950">
       {/* Toast */}
       {notification && (
@@ -2011,8 +2071,8 @@ export default function App() {
                 </div>
                 <div className="hidden sm:block text-left">
                   <span className="block text-xs font-bold text-slate-200 line-clamp-1">{renderSafe(userName, 'Sign In')}</span>
-                  <span className={`block text-[10px] font-medium ${user ? 'text-emerald-400' : 'text-slate-400'}`}>
-                    {user ? '● Signed In' : '○ Click to Login'}
+                  <span className={`block text-[10px] font-medium ${sessionUser ? 'text-emerald-400' : 'text-slate-400'}`}>
+                    {sessionUser ? '● Signed In' : '○ Click to Login'}
                   </span>
                 </div>
               </button>
@@ -2059,7 +2119,7 @@ export default function App() {
               ))}
               <button type="button" onClick={() => { setContactModalOpen(true); setMobileMenuOpen(false); }} className="text-left px-4 py-3.5 rounded-xl text-sm font-medium text-slate-300">Contact Support</button>
               {isAdmin && <button type="button" onClick={() => navigateTo('admin', '/admin')} className={`text-left px-4 py-3.5 rounded-xl text-sm font-bold ${activeTab === 'admin' ? 'text-cyan-400' : 'text-cyan-500'}`}>Admin</button>}
-              <button type="button" onClick={() => { setProfileModalOpen(true); setMobileMenuOpen(false); }} className="text-left px-4 py-3.5 rounded-xl text-sm font-medium text-slate-300">{user ? 'Account' : 'Sign In'}</button>
+              <button type="button" onClick={() => { setProfileModalOpen(true); setMobileMenuOpen(false); }} className="text-left px-4 py-3.5 rounded-xl text-sm font-medium text-slate-300">{sessionUser ? 'Account' : 'Sign In'}</button>
             </nav>
           </div>
         )}
@@ -2989,9 +3049,9 @@ export default function App() {
               )}
               {activeTab === 'account' && (
                 <div className="mt-5 space-y-3">
-                  <p className="text-slate-300">{user ? `Signed in as ${user.email}` : 'Sign in to manage your account and applications.'}</p>
+                  <p className="text-slate-300">{sessionUser ? `Signed in as ${user.email}` : 'Sign in to manage your account and applications.'}</p>
                   <button onClick={() => setProfileModalOpen(true)} className="rounded-xl bg-cyan-500 px-5 py-3 text-sm font-black text-slate-950">
-                    {user ? 'Account settings' : 'Sign in / create account'}
+                    {sessionUser ? 'Account settings' : 'Sign in / create account'}
                   </button>
                 </div>
               )}
@@ -3438,7 +3498,7 @@ export default function App() {
                 <div className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{post.body}</div>
                 {post.allowLikes !== false && (
                   <button type="button" onClick={() => handleLikeBlog(post)} className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-slate-700 text-xs text-slate-200 hover:border-cyan-500/50">
-                    <ThumbsUp className="w-3.5 h-3.5 text-cyan-400" /> {(post.likes || []).length} likes {user ? '' : '(sign in)'}
+                    <ThumbsUp className="w-3.5 h-3.5 text-cyan-400" /> {(post.likes || []).length} likes {sessionUser ? '' : '(sign in)'}
                   </button>
                 )}
                 {post.allowComments !== false && (
@@ -3450,7 +3510,7 @@ export default function App() {
                         <p className="text-slate-300 mt-1">{cm.text}</p>
                       </div>
                     ))}
-                    {user ? (
+                    {sessionUser ? (
                       <form onSubmit={(e) => { e.preventDefault(); handleBlogComment(post); }} className="flex gap-2">
                         <input value={blogComment} onChange={(e) => setBlogComment(e.target.value)} placeholder="Write a comment…" className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white" />
                         <button type="submit" className="px-4 py-2 rounded-xl bg-cyan-500 text-slate-950 font-bold text-xs">Post</button>
@@ -3508,7 +3568,7 @@ export default function App() {
                       <p className="text-slate-300 mt-1 whitespace-pre-wrap">{r.text}</p>
                     </div>
                   ))}
-                  {user ? (
+                  {sessionUser ? (
                     <form onSubmit={(e) => { e.preventDefault(); handleForumReply(thread); }} className="space-y-2">
                       <textarea rows={3} value={forumReply} onChange={(e) => setForumReply(e.target.value)} placeholder="Write a reply…" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white" />
                       <button type="submit" className="px-4 py-2 rounded-xl bg-cyan-500 text-slate-950 font-bold text-xs">Reply</button>
@@ -3811,19 +3871,24 @@ export default function App() {
           <div className="bg-slate-900 border border-slate-800 rounded-t-3xl sm:rounded-3xl p-5 sm:p-7 max-w-md w-full shadow-2xl relative max-h-[92vh] overflow-y-auto">
             <button
               onClick={() => {
+                if (otpGateActive) {
+                  // Must verify or sign out — cannot dismiss gate
+                  return;
+                }
                 setProfileModalOpen(false);
                 setAuthError('');
                 setEmail('');
                 setPassword('');
                 setForgotMode(false);
                 setForgotSent(false);
+                setVerifyMode(false);
               }}
               className="absolute top-5 right-5 p-2 rounded-xl bg-slate-950 text-slate-400 hover:text-white"
             >
               <X className="w-5 h-5" />
             </button>
 
-            {user ? (
+            {sessionUser ? (
               <div className="space-y-6">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center">
@@ -3908,7 +3973,7 @@ export default function App() {
                   <>
                     <div className="text-center">
                       <h3 className="text-xl font-bold text-white">Enter verification code</h3>
-                      <p className="text-xs text-slate-400 mt-1">We sent a 6-digit code to <span className="text-cyan-300">{pendingVerifyEmail || email}</span></p>
+                      <p className="text-xs text-slate-400 mt-1">You are not signed in until you enter the code sent to <span className="text-cyan-300">{pendingVerifyEmail || email}</span></p>
                     </div>
                     <form onSubmit={handleVerifyCodeSubmit} className="space-y-3">
                       <input
@@ -3929,8 +3994,20 @@ export default function App() {
                       <button type="button" disabled={authSubmitting} onClick={handleResendVerifyCode} className="w-full text-xs text-cyan-400 hover:text-cyan-300">
                         Resend code
                       </button>
-                      <button type="button" onClick={() => { setVerifyMode(false); setAuthError(''); }} className="w-full text-xs text-slate-500 hover:text-white">
-                        ← Back
+                      <button type="button" onClick={handleResendVerifyCode} className="w-full text-xs text-cyan-400 hover:text-cyan-300" disabled={authSubmitting}>
+                        Resend code
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          clearOtpUnlocked(user?.uid);
+                          setOtpGateActive(false);
+                          setVerifyMode(false);
+                          if (auth) await signOut(auth);
+                        }}
+                        className="w-full text-xs text-slate-500 hover:text-white"
+                      >
+                        Cancel and sign out
                       </button>
                     </form>
                   </>
