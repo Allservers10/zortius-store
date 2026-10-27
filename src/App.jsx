@@ -625,6 +625,7 @@ export default function App() {
     if (clean === '/forum' || clean.startsWith('/forum/')) return 'forum';
     if (clean === '/compare') return 'compare';
     if (clean === '/wishlist') return 'wishlist';
+    if (clean === '/shipping' || clean === '/returns') return 'shipping';
     return 'home';
   };
 
@@ -2214,10 +2215,10 @@ return (
           className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-5 py-3 rounded-xl shadow-2xl border backdrop-blur-md animate-bounce ${
             notification.type === 'error'
               ? 'bg-rose-950/90 border-rose-500/50 text-rose-200'
-              : 'bg-slate-900/90 border-cyan-500/50 text-cyan-200'
+              : 'bg-zinc-900/90 border-cyan-500/50 text-cyan-200'
           }`}
         >
-          {notification.type === 'error' ? <AlertCircle className="w-5 h-5 text-rose-400" /> : <CheckCircle className="w-5 h-5 text-cyan-400" />}
+          {notification.type === 'error' ? <AlertCircle className="w-5 h-5 text-rose-400" /> : <CheckCircle className="w-5 h-5 text-zinc-100" />}
           <span className="text-sm font-medium">{renderSafe(notification.message)}</span>
         </div>
       )}
@@ -2256,7 +2257,7 @@ return (
                     navigateTo(item.tab, item.path);
                   }}
                   className={`relative text-[13px] font-medium tracking-wide transition-colors hover:text-white pb-1 ${
-                    activeTab === item.tab ? 'text-white' : 'text-slate-400'
+                    activeTab === item.tab ? 'text-white' : 'text-zinc-400'
                   }`}
                 >
                   {item.label}
@@ -2269,8 +2270,8 @@ return (
                 <button
                   type="button"
                   onClick={() => navigateTo('admin', '/admin')}
-                  className={`relative text-[13px] font-semibold tracking-wide transition-colors hover:text-cyan-300 pb-1 ${
-                    activeTab === 'admin' ? 'text-cyan-400' : 'text-cyan-600'
+                  className={`relative text-[13px] font-semibold tracking-wide transition-colors hover:text-zinc-200 pb-1 ${
+                    activeTab === 'admin' ? 'text-zinc-100' : 'text-cyan-600'
                   }`}
                 >
                   Admin
@@ -2282,21 +2283,21 @@ return (
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setAiDrawerOpen(true)}
-                className="px-3 py-2 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 rounded-xl text-cyan-400 text-xs font-bold flex items-center gap-2 transition cursor-pointer"
+                className="px-3 py-2 bg-zinc-800 hover:bg-zinc-800 border border-zinc-600 rounded-xl text-zinc-100 text-xs font-bold flex items-center gap-2 transition cursor-pointer"
               >
                 <Bot className="w-4 h-4" /> <span className="hidden sm:inline">Support</span>
               </button>
 
               <button
                 onClick={() => setProfileModalOpen(true)}
-                className="flex items-center gap-2.5 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-slate-300 hover:text-cyan-400 transition-all cursor-pointer"
+                className="flex items-center gap-2.5 px-3.5 py-2 bg-zinc-900 hover:bg-slate-800 border border-zinc-800 rounded-xl text-zinc-300 hover:text-zinc-100 transition-all cursor-pointer"
               >
-                <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+                <div className="w-7 h-7 rounded-lg bg-zinc-800 border border-zinc-600 flex items-center justify-center text-zinc-100">
                   <User className="w-4 h-4" />
                 </div>
                 <div className="hidden sm:block text-left">
-                  <span className="block text-xs font-bold text-slate-200 line-clamp-1">{renderSafe(userName, 'Sign In')}</span>
-                  <span className={`block text-[10px] font-medium ${sessionUser ? 'text-emerald-400' : 'text-slate-400'}`}>
+                  <span className="block text-xs font-bold text-zinc-200 line-clamp-1">{renderSafe(userName, 'Sign In')}</span>
+                  <span className={`block text-[10px] font-medium ${sessionUser ? 'text-emerald-400' : 'text-zinc-400'}`}>
                     {sessionUser ? '● Signed In' : '○ Click to Login'}
                   </span>
                 </div>
@@ -2304,12 +2305,12 @@ return (
 
               <button
                 onClick={() => navigateTo('cart', '/cart')}
-                className="relative p-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-slate-300 hover:text-cyan-400 transition-all flex items-center gap-2 cursor-pointer"
+                className="relative p-2.5 bg-zinc-900 hover:bg-slate-800 border border-zinc-800 rounded-xl text-zinc-300 hover:text-zinc-100 transition-all flex items-center gap-2 cursor-pointer"
               >
                 <ShoppingCart className="w-5 h-5" />
                 <span className="text-xs font-bold hidden sm:inline">Basket</span>
                 {cartItemCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 bg-cyan-500 text-slate-950 font-black text-xs w-5 h-5 rounded-full flex items-center justify-center shadow-lg">
+                  <span className="absolute -top-1.5 -right-1.5 bg-white text-zinc-950 font-black text-xs w-5 h-5 rounded-full flex items-center justify-center shadow-lg">
                     {cartItemCount}
                   </span>
                 )}
@@ -2317,7 +2318,7 @@ return (
 
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="md:hidden p-2.5 bg-slate-900 border border-slate-800 rounded-xl text-slate-300 hover:text-white"
+                className="md:hidden p-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-zinc-300 hover:text-white"
               >
                 {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
@@ -2327,7 +2328,7 @@ return (
       
         {/* MOBILE NAV */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-slate-800 bg-slate-950/98 backdrop-blur-xl">
+          <div className="md:hidden border-t border-zinc-800 bg-zinc-950/98 backdrop-blur-xl">
             <nav className="px-4 py-3 flex flex-col gap-0.5">
               {[
                 { tab: 'home', path: '/', label: 'Home' },
@@ -2340,11 +2341,11 @@ return (
                 { tab: 'about', path: '/about', label: 'About' },
                 { tab: 'faq', path: '/faq', label: 'FAQ' },
               ].map((item) => (
-                <button key={item.tab} type="button" onClick={() => navigateTo(item.tab, item.path)} className={`text-left px-4 py-3.5 rounded-xl text-sm font-medium ${activeTab === item.tab ? 'bg-white/5 text-white' : 'text-slate-300'}`}>{item.label}</button>
+                <button key={item.tab} type="button" onClick={() => navigateTo(item.tab, item.path)} className={`text-left px-4 py-3.5 rounded-xl text-sm font-medium ${activeTab === item.tab ? 'bg-white/5 text-white' : 'text-zinc-300'}`}>{item.label}</button>
               ))}
-              <button type="button" onClick={() => { setContactModalOpen(true); setMobileMenuOpen(false); }} className="text-left px-4 py-3.5 rounded-xl text-sm font-medium text-slate-300">Contact Support</button>
-              {isAdmin && <button type="button" onClick={() => navigateTo('admin', '/admin')} className={`text-left px-4 py-3.5 rounded-xl text-sm font-bold ${activeTab === 'admin' ? 'text-cyan-400' : 'text-cyan-500'}`}>Admin</button>}
-              <button type="button" onClick={() => { setProfileModalOpen(true); setMobileMenuOpen(false); }} className="text-left px-4 py-3.5 rounded-xl text-sm font-medium text-slate-300">{sessionUser ? 'Account' : 'Sign In'}</button>
+              <button type="button" onClick={() => { setContactModalOpen(true); setMobileMenuOpen(false); }} className="text-left px-4 py-3.5 rounded-xl text-sm font-medium text-zinc-300">Contact Support</button>
+              {isAdmin && <button type="button" onClick={() => navigateTo('admin', '/admin')} className={`text-left px-4 py-3.5 rounded-xl text-sm font-bold ${activeTab === 'admin' ? 'text-zinc-100' : 'text-cyan-500'}`}>Admin</button>}
+              <button type="button" onClick={() => { setProfileModalOpen(true); setMobileMenuOpen(false); }} className="text-left px-4 py-3.5 rounded-xl text-sm font-medium text-zinc-300">{sessionUser ? 'Account' : 'Sign In'}</button>
             </nav>
           </div>
         )}
@@ -2353,18 +2354,18 @@ return (
       {/* Live system status */}
       <div className="border-b border-zinc-900 bg-zinc-950">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex flex-wrap items-center justify-between gap-2 text-[11px]">
-          <div className="flex items-center gap-2 text-slate-400">
+          <div className="flex items-center gap-2 text-zinc-400">
             <span className={`h-1.5 w-1.5 rounded-full ${storeSettings.takingOrders ? 'bg-emerald-400' : 'bg-amber-400'} animate-pulse`} />
-            <span className="font-semibold text-slate-300">{storeSettings.statusLabel}</span>
-            <span className="text-slate-600">·</span>
+            <span className="font-semibold text-zinc-300">{storeSettings.statusLabel}</span>
+            <span className="text-zinc-600">·</span>
             <span className="truncate max-w-[min(100%,28rem)]">{storeSettings.announcement}</span>
           </div>
-          <div className="flex items-center gap-3 text-slate-500">
-            <button type="button" onClick={() => setCmdOpen(true)} className="hover:text-cyan-300 transition">
+          <div className="flex items-center gap-3 text-zinc-500">
+            <button type="button" onClick={() => setCmdOpen(true)} className="hover:text-zinc-200 transition">
               <span className="hidden sm:inline">⌘K menu</span>
               <span className="sm:hidden">Menu</span>
             </button>
-            <button type="button" onClick={() => setAiDrawerOpen(true)} className="hover:text-cyan-300 transition">
+            <button type="button" onClick={() => setAiDrawerOpen(true)} className="hover:text-zinc-200 transition">
               Support
             </button>
           </div>
@@ -2373,55 +2374,55 @@ return (
 
       {/* CONTACT MODAL */}
       {contactModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl space-y-6 relative">
-            <button onClick={() => setContactModalOpen(false)} className="absolute top-6 right-6 p-2 rounded-xl bg-slate-950 text-slate-400 hover:text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/85 backdrop-blur-md">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl space-y-6 relative">
+            <button onClick={() => setContactModalOpen(false)} className="absolute top-6 right-6 p-2 rounded-xl bg-zinc-950 text-zinc-400 hover:text-white">
               <X className="w-5 h-5" />
             </button>
             <div>
-              <div className="flex items-center gap-2 text-cyan-400 mb-1">
+              <div className="flex items-center gap-2 text-zinc-100 mb-1">
                 <Headphones className="w-5 h-5" />
                 <h3 className="text-lg font-extrabold text-white">Contact ZORTIUS Support</h3>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-zinc-400">
                 Support Desk: <strong>{SUPPORT_EMAIL}</strong>
               </p>
             </div>
             <form onSubmit={handleSendContactInquiry} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Name</label>
+                <label className="block text-xs font-semibold text-zinc-400 mb-1">Name</label>
                 <input
                   type="text"
                   required
                   value={contactName}
                   onChange={(e) => setContactName(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500"
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Email</label>
+                <label className="block text-xs font-semibold text-zinc-400 mb-1">Email</label>
                 <input
                   type="email"
                   required
                   value={contactEmail}
                   onChange={(e) => setContactEmail(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500"
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Inquiry</label>
+                <label className="block text-xs font-semibold text-zinc-400 mb-1">Inquiry</label>
                 <textarea
                   rows="4"
                   required
                   value={contactInquiry}
                   onChange={(e) => setContactInquiry(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-cyan-500"
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-cyan-500"
                 />
               </div>
               <button
                 type="submit"
                 disabled={isSendingContact}
-                className="w-full py-3.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-extrabold text-xs transition flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-3.5 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 font-extrabold text-xs transition flex items-center justify-center gap-2 cursor-pointer"
               >
                 {isSendingContact ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 {isSendingContact ? 'Sending Inquiry...' : 'Send Inquiry to Support'}
@@ -2434,40 +2435,40 @@ return (
       {/* AI DRAWER */}
       {aiDrawerOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex justify-end">
-          <div className="bg-slate-900 border-l border-slate-800 w-full max-w-md h-full max-h-[100dvh] p-4 sm:p-6 flex flex-col">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3 shrink-0">
-              <div className="flex items-center gap-2 text-cyan-400">
+          <div className="bg-zinc-900 border-l border-zinc-800 w-full max-w-md h-full max-h-[100dvh] p-4 sm:p-6 flex flex-col">
+            <div className="flex items-center justify-between border-b border-zinc-800 pb-3 shrink-0">
+              <div className="flex items-center gap-2 text-zinc-100">
                 <Bot className="w-5 h-5" />
                 <div>
                   <h3 className="text-sm font-bold text-white">Zortius Support</h3>
-                  <p className="text-[10px] text-slate-500">Free assistant · escalates to admin</p>
+                  <p className="text-[10px] text-zinc-500">Free assistant · escalates to admin</p>
                 </div>
               </div>
-              <button type="button" onClick={() => setAiDrawerOpen(false)} className="text-slate-400 hover:text-white p-2">
+              <button type="button" onClick={() => setAiDrawerOpen(false)} className="text-zinc-400 hover:text-white p-2">
                 <X className="w-5 h-5" />
               </button>
             </div>
             <div className="flex-1 overflow-y-auto space-y-3 py-4 min-h-0">
               {chatMessages.map((m, i) => (
-                <div key={i} className={`text-xs leading-relaxed max-w-[90%] rounded-2xl px-3 py-2 ${m.role === 'user' ? 'ml-auto bg-cyan-500 text-slate-950' : 'bg-slate-950 border border-slate-800 text-slate-200'}`}>
+                <div key={i} className={`text-xs leading-relaxed max-w-[90%] rounded-2xl px-3 py-2 ${m.role === 'user' ? 'ml-auto bg-white text-zinc-950' : 'bg-zinc-950 border border-zinc-800 text-zinc-200'}`}>
                   {m.text}
                   {m.escalate && (
-                    <div className="mt-3 space-y-2 border-t border-slate-800 pt-2">
-                      <input type="text" placeholder="Your name" value={escalateName} onChange={(e) => setEscalateName(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white" />
-                      <input type="email" placeholder="Your email" value={escalateEmail || user?.email || ''} onChange={(e) => setEscalateEmail(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white" />
-                      <button type="button" onClick={handleEscalateTicket} className="w-full py-2 rounded-lg bg-cyan-500 text-slate-950 font-bold text-xs">Send to admin</button>
+                    <div className="mt-3 space-y-2 border-t border-zinc-800 pt-2">
+                      <input type="text" placeholder="Your name" value={escalateName} onChange={(e) => setEscalateName(e.target.value)} className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-white" />
+                      <input type="email" placeholder="Your email" value={escalateEmail || user?.email || ''} onChange={(e) => setEscalateEmail(e.target.value)} className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-white" />
+                      <button type="button" onClick={handleEscalateTicket} className="w-full py-2 rounded-lg bg-white text-zinc-950 font-bold text-xs">Send to admin</button>
                     </div>
                   )}
                 </div>
               ))}
-              {chatSending && <p className="text-[10px] text-slate-500">Thinking…</p>}
+              {chatSending && <p className="text-[10px] text-zinc-500">Thinking…</p>}
             </div>
-            <form onSubmit={handleChatSend} className="shrink-0 border-t border-slate-800 pt-3 space-y-2">
+            <form onSubmit={handleChatSend} className="shrink-0 border-t border-zinc-800 pt-3 space-y-2">
               <div className="flex gap-2">
-                <input value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Ask about pre-orders, products, careers…" className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-500" />
-                <button type="submit" disabled={chatSending} className="px-4 py-2 rounded-xl bg-cyan-500 text-slate-950 font-bold text-xs disabled:opacity-50">Send</button>
+                <input value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Ask about pre-orders, products, careers…" className="flex-1 bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-500" />
+                <button type="submit" disabled={chatSending} className="px-4 py-2 rounded-xl bg-white text-zinc-950 font-bold text-xs disabled:opacity-50">Send</button>
               </div>
-              <p className="text-[10px] text-slate-500">Say “human” to open a ticket · EmailJS notifies admin</p>
+              <p className="text-[10px] text-zinc-500">Say “human” to open a ticket · EmailJS notifies admin</p>
             </form>
           </div>
         </div>
@@ -2477,13 +2478,13 @@ return (
       
       {/* Mobile quick actions */}
       <div className="mobile-quick-actions md:hidden fixed bottom-4 left-4 right-4 z-40 flex gap-2 justify-center pointer-events-none">
-        <button type="button" onClick={() => setCmdOpen(true)} className="pointer-events-auto flex-1 max-w-[140px] py-3 rounded-2xl bg-slate-900/95 border border-slate-700 text-xs font-bold text-white shadow-xl backdrop-blur">
+        <button type="button" onClick={() => setCmdOpen(true)} className="pointer-events-auto flex-1 max-w-[140px] py-3 rounded-2xl bg-zinc-900/95 border border-zinc-700 text-xs font-bold text-white shadow-xl backdrop-blur">
           Menu
         </button>
-        <button type="button" onClick={() => setAiDrawerOpen(true)} className="pointer-events-auto flex-1 max-w-[140px] py-3 rounded-2xl bg-cyan-500 text-slate-950 text-xs font-bold shadow-xl shadow-cyan-500/20">
+        <button type="button" onClick={() => setAiDrawerOpen(true)} className="pointer-events-auto flex-1 max-w-[140px] py-3 rounded-2xl bg-white text-zinc-950 text-xs font-bold shadow-xl shadow-cyan-500/20">
           Support
         </button>
-        <button type="button" onClick={() => setProfileModalOpen(true)} className="pointer-events-auto flex-1 max-w-[140px] py-3 rounded-2xl bg-slate-900/95 border border-slate-700 text-xs font-bold text-white shadow-xl backdrop-blur">
+        <button type="button" onClick={() => setProfileModalOpen(true)} className="pointer-events-auto flex-1 max-w-[140px] py-3 rounded-2xl bg-zinc-900/95 border border-zinc-700 text-xs font-bold text-white shadow-xl backdrop-blur">
           Account
         </button>
       </div>
@@ -2491,13 +2492,13 @@ return (
       {/* Command palette ⌘K */}
       {cmdOpen && (
         <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-start justify-center pt-[12vh] px-4" onClick={() => setCmdOpen(false)}>
-          <div className="w-full max-w-lg rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-lg rounded-2xl border border-zinc-700 bg-zinc-900 shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
             <input
               autoFocus
               value={cmdQuery}
               onChange={(e) => setCmdQuery(e.target.value)}
               placeholder="Jump to… shop, careers, support, admin"
-              className="w-full bg-transparent px-4 py-3.5 text-sm text-white outline-none border-b border-slate-800"
+              className="w-full bg-transparent px-4 py-3.5 text-sm text-white outline-none border-b border-zinc-800"
             />
             <div className="max-h-72 overflow-y-auto py-2">
               {[
@@ -2508,6 +2509,7 @@ return (
                 { label: 'Forum', tab: 'forum', path: '/forum' },
                 { label: 'Support chatbot', action: () => setAiDrawerOpen(true) },
                 { label: 'Saved items', tab: 'wishlist', path: '/wishlist' },
+                { label: 'Shipping & returns', tab: 'shipping', path: '/shipping' },
                 { label: 'Join newsletter', action: () => { navigateTo('home', '/'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); } },
                 { label: 'Account', action: () => setProfileModalOpen(true) },
                 ...(isAdmin ? [{ label: 'Admin panel', tab: 'admin', path: '/admin' }] : []),
@@ -2517,7 +2519,7 @@ return (
                   <button
                     key={i.label}
                     type="button"
-                    className="w-full text-left px-4 py-2.5 text-sm text-slate-200 hover:bg-cyan-500/10 hover:text-cyan-300"
+                    className="w-full text-left px-4 py-2.5 text-sm text-zinc-200 hover:bg-zinc-800 hover:text-zinc-200"
                     onClick={() => {
                       if (i.action) i.action();
                       else navigateTo(i.tab, i.path);
@@ -2529,7 +2531,7 @@ return (
                   </button>
                 ))}
             </div>
-            <p className="px-4 py-2 text-[10px] text-slate-600 border-t border-slate-800">Press Esc to close</p>
+            <p className="px-4 py-2 text-[10px] text-zinc-600 border-t border-zinc-800">Press Esc to close</p>
           </div>
         </div>
       )}
@@ -2539,11 +2541,11 @@ return (
         {/* ADMIN */}
         {isAdmin && activeTab === 'admin' && (
           <div className="space-y-10">
-            <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-3xl p-6 flex items-center justify-between">
+            <div className="bg-zinc-800 border border-zinc-600 rounded-3xl p-6 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Lock className="w-6 h-6 text-cyan-400" />
+                <Lock className="w-6 h-6 text-zinc-100" />
                 <div>
-                  <h2 className="text-base font-bold text-cyan-300">ADMIN CONTROL CENTER</h2>
+                  <h2 className="text-base font-bold text-zinc-200">ADMIN CONTROL CENTER</h2>
                   <p className="text-xs text-zinc-400 font-mono">
                     {isFullAdmin ? `Full Admin · ${ADMIN_EMAIL}` : `Limited Admin · ${LIMITED_ADMIN_EMAIL} (no order management)`}
                   </p>
@@ -2552,13 +2554,13 @@ return (
             </div>
 
             {/* Applications Studio */}
-            <section className="bg-slate-900 border border-cyan-500/20 rounded-3xl p-6 sm:p-8 space-y-7">
+            <section className="bg-zinc-900 border border-zinc-700 rounded-3xl p-6 sm:p-8 space-y-7">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <div>
                   <h3 className="text-lg font-black text-white flex items-center gap-2">
-                    <ClipboardCheck className="w-5 h-5 text-cyan-400" /> Applications Studio
+                    <ClipboardCheck className="w-5 h-5 text-zinc-100" /> Applications Studio
                   </h3>
-                  <p className="text-sm text-slate-400 mt-1">Create role sections, build forms, review scores and make the final decision.</p>
+                  <p className="text-sm text-zinc-400 mt-1">Create role sections, build forms, review scores and make the final decision.</p>
                 </div>
                 <div className="grid grid-cols-3 gap-2 text-center">
                   {[
@@ -2566,21 +2568,21 @@ return (
                     { label: 'Pending', value: applicationSubmissions.filter((x) => !['Accepted', 'Denied'].includes(x.status)).length },
                     { label: 'Reviewed', value: applicationSubmissions.filter((x) => ['Accepted', 'Denied'].includes(x.status)).length }
                   ].map((stat) => (
-                    <div key={stat.label} className="rounded-xl bg-slate-950 border border-slate-800 px-4 py-3">
-                      <div className="text-xl font-black text-cyan-300">{stat.value}</div>
-                      <div className="text-[10px] text-slate-500 uppercase tracking-wider">{stat.label}</div>
+                    <div key={stat.label} className="rounded-xl bg-zinc-950 border border-zinc-800 px-4 py-3">
+                      <div className="text-xl font-black text-zinc-200">{stat.value}</div>
+                      <div className="text-[10px] text-zinc-500 uppercase tracking-wider">{stat.label}</div>
                     </div>
                   ))}
                 </div>
               </div>
 
               <div className="grid lg:grid-cols-2 gap-6">
-                <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-5 space-y-4">
+                <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-5 space-y-4">
                   <div>
                     <h4 className="font-bold text-white flex items-center gap-2">
-                      <Layers className="w-4 h-4 text-cyan-400" /> 1. Manage sections
+                      <Layers className="w-4 h-4 text-zinc-100" /> 1. Manage sections
                     </h4>
-                    <p className="text-xs text-slate-400 mt-1">Examples: Leadership, Marketing, Product Development, General Staff.</p>
+                    <p className="text-xs text-zinc-400 mt-1">Examples: Leadership, Marketing, Product Development, General Staff.</p>
                   </div>
                   <form onSubmit={handleCreateSection} className="flex gap-2">
                     <input
@@ -2588,29 +2590,29 @@ return (
                       onChange={(e) => setNewSectionName(e.target.value)}
                       required
                       placeholder="New section name"
-                      className="min-w-0 flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500"
+                      className="min-w-0 flex-1 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500"
                     />
-                    <button className="px-4 py-2.5 rounded-xl bg-cyan-500 text-slate-950 font-bold text-sm">Add</button>
+                    <button className="px-4 py-2.5 rounded-xl bg-white text-zinc-950 font-bold text-sm">Add</button>
                   </form>
                   <div className="flex flex-wrap gap-2">
                     {applicationSections.map((section) => (
-                      <span key={section.id} className="inline-flex items-center gap-1.5 rounded-full border border-slate-700 bg-slate-900 pl-3 pr-1.5 py-1.5 text-xs text-slate-200">
+                      <span key={section.id} className="inline-flex items-center gap-1.5 rounded-full border border-zinc-700 bg-zinc-900 pl-3 pr-1.5 py-1.5 text-xs text-zinc-200">
                         {section.name}
-                        <button type="button" title="Delete section" onClick={() => handleDeleteSection(section.id, section.name)} className="p-1 rounded-full text-slate-500 hover:text-rose-400 hover:bg-rose-500/10">
+                        <button type="button" title="Delete section" onClick={() => handleDeleteSection(section.id, section.name)} className="p-1 rounded-full text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10">
                           <Trash2 className="w-3 h-3" />
                         </button>
                       </span>
                     ))}
-                    {!applicationSections.length && <p className="text-xs text-slate-500">No sections yet — create your first one above.</p>}
+                    {!applicationSections.length && <p className="text-xs text-zinc-500">No sections yet — create your first one above.</p>}
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-5 space-y-4">
+                <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-5 space-y-4">
                   <div>
                     <h4 className="font-bold text-white flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-cyan-400" /> 2. Build an application
+                      <FileText className="w-4 h-4 text-zinc-100" /> 2. Build an application
                     </h4>
-                    <p className="text-xs text-slate-400 mt-1">Add questions, assign marks and publish the form.</p>
+                    <p className="text-xs text-zinc-400 mt-1">Add questions, assign marks and publish the form.</p>
                   </div>
                   <form onSubmit={handleSaveApplication} className="space-y-3">
                     <input
@@ -2618,13 +2620,13 @@ return (
                       onChange={(e) => setAppTitle(e.target.value)}
                       required
                       placeholder="Application title (e.g. Head of Marketing)"
-                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500"
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500"
                     />
                     <select
                       value={appSection}
                       onChange={(e) => setAppSection(e.target.value)}
                       required
-                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500"
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500"
                     >
                       <option value="">Choose a section…</option>
                       {applicationSections.map((section) => (
@@ -2638,24 +2640,24 @@ return (
                       onChange={(e) => setAppDescription(e.target.value)}
                       rows="2"
                       placeholder="Role description and what you are looking for…"
-                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500"
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500"
                     />
-                    <div className="rounded-xl border border-slate-800 p-3 space-y-3">
+                    <div className="rounded-xl border border-zinc-800 p-3 space-y-3">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-bold text-slate-300">Questions ({appQuestions.length})</span>
-                        <span className="text-xs text-cyan-300">Total marks: {appQuestions.reduce((sum, q) => sum + (Number(q.marks) || 0), 0)}</span>
+                        <span className="text-xs font-bold text-zinc-300">Questions ({appQuestions.length})</span>
+                        <span className="text-xs text-zinc-200">Total marks: {appQuestions.reduce((sum, q) => sum + (Number(q.marks) || 0), 0)}</span>
                       </div>
                       {appQuestions.map((q, i) => (
-                        <div key={q.id} className="flex items-start gap-2 bg-slate-900 rounded-lg p-3">
+                        <div key={q.id} className="flex items-start gap-2 bg-zinc-900 rounded-lg p-3">
                           <div className="flex-1 min-w-0">
                             <p className="text-sm text-white">
                               {i + 1}. {q.question}
                             </p>
-                            <p className="text-[11px] text-slate-500 mt-1">
+                            <p className="text-[11px] text-zinc-500 mt-1">
                               {q.type} · {q.marks} marks · {q.required ? 'Required' : 'Optional'}
                             </p>
                           </div>
-                          <button type="button" onClick={() => setAppQuestions((prev) => prev.filter((item) => item.id !== q.id))} className="text-slate-500 hover:text-rose-400">
+                          <button type="button" onClick={() => setAppQuestions((prev) => prev.filter((item) => item.id !== q.id))} className="text-zinc-500 hover:text-rose-400">
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
@@ -2665,17 +2667,17 @@ return (
                         onChange={(e) => setQuestionDraft(e.target.value)}
                         rows="2"
                         placeholder="Write a question…"
-                        className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500"
+                        className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500"
                       />
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        <select value={questionType} onChange={(e) => setQuestionType(e.target.value)} className="bg-slate-900 border border-slate-800 rounded-lg px-2 py-2 text-xs text-white">
+                        <select value={questionType} onChange={(e) => setQuestionType(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-2 text-xs text-white">
                           <option value="short">Short answer</option>
                           <option value="long">Long answer</option>
                           <option value="email">Email</option>
                           <option value="number">Number</option>
                         </select>
-                        <input type="number" min="0" max="100" value={questionMarks} onChange={(e) => setQuestionMarks(e.target.value)} className="bg-slate-900 border border-slate-800 rounded-lg px-2 py-2 text-xs text-white" />
-                        <label className="flex items-center gap-2 text-xs text-slate-400">
+                        <input type="number" min="0" max="100" value={questionMarks} onChange={(e) => setQuestionMarks(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-2 text-xs text-white" />
+                        <label className="flex items-center gap-2 text-xs text-zinc-400">
                           <input type="checkbox" checked={questionRequired} onChange={(e) => setQuestionRequired(e.target.checked)} /> Required
                         </label>
                         <button type="button" onClick={addApplicationQuestion} className="rounded-lg bg-slate-800 hover:bg-slate-700 px-2 py-2 text-xs font-bold text-white">
@@ -2692,7 +2694,7 @@ return (
                       <Wand2 className="w-4 h-4" />
                       {aiGeneratingQuestions ? 'Generating…' : 'AI question assistant'}
                     </button>
-                    <button type="submit" className="w-full rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-sm py-3">
+                    <button type="submit" className="w-full rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 font-black text-sm py-3">
                       {editingApplicationId ? 'Save changes' : 'Publish application'}
                     </button>
                   </form>
@@ -2702,13 +2704,13 @@ return (
               <div className="space-y-3">
                 <h4 className="font-bold text-white">Published applications</h4>
                 {jobApplications.length === 0 ? (
-                  <p className="text-sm text-slate-500">No applications published yet.</p>
+                  <p className="text-sm text-zinc-500">No applications published yet.</p>
                 ) : (
                   jobApplications.map((application) => (
-                    <div key={application.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl bg-slate-950 border border-slate-800 p-4">
+                    <div key={application.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl bg-zinc-950 border border-zinc-800 p-4">
                       <div>
                         <p className="font-bold text-white">{application.title}</p>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-zinc-500">
                           {application.section} · {(application.questions || []).length} questions · {(application.questions || []).reduce((sum, q) => sum + (Number(q.marks) || 0), 0)} marks
                         </p>
                       </div>
@@ -2722,7 +2724,7 @@ return (
                             setAppQuestions(application.questions || []);
                             window.scrollTo({ top: 0, behavior: 'smooth' });
                           }}
-                          className="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-200 hover:border-cyan-400"
+                          className="rounded-lg border border-zinc-700 px-3 py-2 text-xs text-zinc-200 hover:border-cyan-400"
                         >
                           Edit
                         </button>
@@ -2738,7 +2740,7 @@ return (
                             setSelectedApplication(application);
                             navigateTo('applications', `/careers/${application.slug || application.id}`);
                           }}
-                          className="rounded-lg border border-cyan-500/30 px-3 py-2 text-xs text-cyan-300 hover:bg-cyan-500/10"
+                          className="rounded-lg border border-zinc-600 px-3 py-2 text-xs text-zinc-200 hover:bg-zinc-800"
                         >
                           Preview
                         </button>
@@ -2752,7 +2754,7 @@ return (
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <h4 className="font-bold text-white">Applicant review queue</h4>
                   <div className="flex gap-2">
-                    <select value={applicationFilter} onChange={(e) => setApplicationFilter(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white">
+                    <select value={applicationFilter} onChange={(e) => setApplicationFilter(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white">
                       <option>Pending</option>
                       <option>Accepted</option>
                       <option>Denied</option>
@@ -2762,7 +2764,7 @@ return (
                       value={applicationSearch}
                       onChange={(e) => setApplicationSearch(e.target.value)}
                       placeholder="Search applicants…"
-                      className="w-44 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white"
+                      className="w-44 bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white"
                     />
                   </div>
                 </div>
@@ -2774,32 +2776,32 @@ return (
                       `${item.applicantName} ${item.applicantEmail} ${item.applicationTitle}`.toLowerCase().includes(applicationSearch.toLowerCase())
                   )
                   .map((submission) => (
-                    <div key={submission.id} className="rounded-2xl bg-slate-950 border border-slate-800 p-5 space-y-4">
+                    <div key={submission.id} className="rounded-2xl bg-zinc-950 border border-zinc-800 p-5 space-y-4">
                       <div className="flex flex-col md:flex-row md:items-start justify-between gap-3">
                         <div>
                           <p className="font-bold text-white">
-                            {submission.applicantName} <span className="text-xs font-normal text-slate-500">· {submission.applicantEmail}</span>
+                            {submission.applicantName} <span className="text-xs font-normal text-zinc-500">· {submission.applicantEmail}</span>
                           </p>
-                          <p className="text-sm text-cyan-300 mt-1">
+                          <p className="text-sm text-zinc-200 mt-1">
                             {submission.applicationTitle} · {submission.section}
                           </p>
-                          <p className="text-xs text-slate-400 mt-1">Submitted {new Date(submission.submittedAt).toLocaleString('en-GB')}</p>
+                          <p className="text-xs text-zinc-400 mt-1">Submitted {new Date(submission.submittedAt).toLocaleString('en-GB')}</p>
                         </div>
                         <div className="flex gap-2 items-center">
-                          <span className="rounded-full bg-slate-900 border border-slate-700 px-3 py-1 text-xs">{submission.status || 'Pending'}</span>
+                          <span className="rounded-full bg-zinc-900 border border-zinc-700 px-3 py-1 text-xs">{submission.status || 'Pending'}</span>
                           <span className="text-sm font-bold text-white">
                             {submission.preliminaryMark?.score ?? '—'} / {submission.preliminaryMark?.maxScore ?? '—'}{' '}
-                            <span className="text-xs font-normal text-slate-500">preliminary</span>
+                            <span className="text-xs font-normal text-zinc-500">preliminary</span>
                           </span>
                         </div>
                       </div>
                       <div className="space-y-3">
                         {(submission.questions || []).map((q, i) => (
-                          <div key={q.id} className="rounded-xl bg-slate-900 p-3">
-                            <p className="text-xs font-bold text-slate-300">
-                              {i + 1}. {q.question} <span className="text-cyan-300">({q.marks} marks)</span>
+                          <div key={q.id} className="rounded-xl bg-zinc-900 p-3">
+                            <p className="text-xs font-bold text-zinc-300">
+                              {i + 1}. {q.question} <span className="text-zinc-200">({q.marks} marks)</span>
                             </p>
-                            <p className="text-sm text-slate-200 whitespace-pre-wrap mt-2">{submission.answers?.[q.id] || 'No answer'}</p>
+                            <p className="text-sm text-zinc-200 whitespace-pre-wrap mt-2">{submission.answers?.[q.id] || 'No answer'}</p>
                             <p className="text-[11px] text-amber-300 mt-2">
                               {submission.preliminaryMark?.breakdown?.find((b) => b.questionId === q.id)?.score ?? 0}/{q.marks} preliminary marks — staff review required
                             </p>
@@ -2810,7 +2812,7 @@ return (
                         <div className="flex flex-wrap gap-2">
                           <button
                             onClick={() => handleApplicationDecision(submission, 'Accepted')}
-                            className="rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-4 py-2.5 text-sm font-black flex items-center gap-2"
+                            className="rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 px-4 py-2.5 text-sm font-black flex items-center gap-2"
                           >
                             <ThumbsUp className="w-4 h-4" /> Accept & email
                           </button>
@@ -2824,31 +2826,31 @@ return (
                       )}
                     </div>
                   ))}
-                <p className="text-[11px] text-slate-500">
+                <p className="text-[11px] text-zinc-500">
                   Scoring note: configure VITE_AI_MARKING_ENDPOINT on a secure server for genuine AI-assisted marking. Without it, scores are only basic answer-completeness estimates. All scores require human review.
                 </p>
               </div>
             </section>
 
             {/* Product CRUD */}
-            <section className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6">
-              <h3 className="text-sm font-mono font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-2">
+            <section className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 sm:p-8 space-y-6">
+              <h3 className="text-sm font-mono font-bold text-zinc-100 uppercase tracking-wider flex items-center gap-2">
                 <PlusCircle className="w-4 h-4" /> Add / Edit Global Store Products
               </h3>
               <form onSubmit={handleSaveProduct} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <input type="text" placeholder="Product Name" required value={prodName} onChange={(e) => setProdName(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none" />
-                <input type="number" step="0.01" placeholder="Price (£)" required value={prodPrice} onChange={(e) => setProdPrice(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none font-mono" />
-                <input type="text" placeholder="Category" value={prodCategory} onChange={(e) => setProdCategory(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none" />
-                <input type="url" placeholder="Image URL" value={prodImage} onChange={(e) => setProdImage(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none md:col-span-2" />
-                <textarea placeholder="Extra image URLs (one per line) — Amazon-style gallery" value={prodImages} onChange={(e) => setProdImages(e.target.value)} rows="3" className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-cyan-500 sm:col-span-2 font-mono text-xs" />
-                <input type="url" placeholder="Product video URL (YouTube / MP4)" value={prodVideo} onChange={(e) => setProdVideo(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-cyan-500 sm:col-span-2" />
-                <label className="sm:col-span-2 flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-xs text-slate-300 cursor-pointer">
+                <input type="text" placeholder="Product Name" required value={prodName} onChange={(e) => setProdName(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none" />
+                <input type="number" step="0.01" placeholder="Price (£)" required value={prodPrice} onChange={(e) => setProdPrice(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none font-mono" />
+                <input type="text" placeholder="Category" value={prodCategory} onChange={(e) => setProdCategory(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none" />
+                <input type="url" placeholder="Image URL" value={prodImage} onChange={(e) => setProdImage(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none md:col-span-2" />
+                <textarea placeholder="Extra image URLs (one per line) — Amazon-style gallery" value={prodImages} onChange={(e) => setProdImages(e.target.value)} rows="3" className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-cyan-500 sm:col-span-2 font-mono text-xs" />
+                <input type="url" placeholder="Product video URL (YouTube / MP4)" value={prodVideo} onChange={(e) => setProdVideo(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-cyan-500 sm:col-span-2" />
+                <label className="sm:col-span-2 flex items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-xs text-zinc-300 cursor-pointer">
                   <input type="checkbox" checked={prodIsPreorder} onChange={(e) => setProdIsPreorder(e.target.checked)} className="rounded border-slate-600" />
                   <span><strong className="text-white">Pre-order mode</strong> — customers register interest instead of checkout</span>
                 </label>
-                <input type="text" placeholder="Colors (comma-separated)" value={prodColorOption} onChange={(e) => setProdColorOption(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none" />
-                <textarea placeholder="Description" value={prodDesc} onChange={(e) => setProdDesc(e.target.value)} rows="2" className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none md:col-span-3" />
-                <button type="submit" className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold py-2.5 rounded-xl text-xs md:col-span-3 cursor-pointer">
+                <input type="text" placeholder="Colors (comma-separated)" value={prodColorOption} onChange={(e) => setProdColorOption(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none" />
+                <textarea placeholder="Description" value={prodDesc} onChange={(e) => setProdDesc(e.target.value)} rows="2" className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none md:col-span-3" />
+                <button type="submit" className="bg-white hover:bg-zinc-200 text-zinc-950 font-bold py-2.5 rounded-xl text-xs md:col-span-3 cursor-pointer">
                   {editingProductId ? 'Update Product' : 'Add Product to Live Store'}
                 </button>
               </form>
@@ -2857,8 +2859,8 @@ return (
                   <div key={p.id} className="py-3 flex items-center justify-between text-xs">
                     <div>
                       <span className="font-bold text-white">{p.name}</span>
-                      <span className="text-cyan-400 font-mono ml-3">£{p.price}</span>
-                      {p.options?.colors && <span className="text-slate-500 ml-2">[{p.options.colors.join(', ')}]</span>}
+                      <span className="text-zinc-100 font-mono ml-3">£{p.price}</span>
+                      {p.options?.colors && <span className="text-zinc-500 ml-2">[{p.options.colors.join(', ')}]</span>}
                     </div>
                     <div className="flex gap-2">
                       <button
@@ -2874,11 +2876,11 @@ return (
                           setProdColorOption((p.options?.colors || ['Default']).join(', '));
                           setProdIsPreorder(p.isPreorder !== false);
                         }}
-                        className="text-slate-400 hover:text-cyan-400 cursor-pointer"
+                        className="text-zinc-400 hover:text-zinc-100 cursor-pointer"
                       >
                         <Edit3 className="w-4 h-4" />
                       </button>
-                      <button onClick={() => handleDeleteProduct(p.id)} className="text-slate-400 hover:text-rose-400 cursor-pointer">
+                      <button onClick={() => handleDeleteProduct(p.id)} className="text-zinc-400 hover:text-rose-400 cursor-pointer">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -2888,26 +2890,26 @@ return (
             </section>
 
             {/* Discount Engine */}
-            <section className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6">
-              <h3 className="text-sm font-mono font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-2">
+            <section className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 sm:p-8 space-y-6">
+              <h3 className="text-sm font-mono font-bold text-zinc-100 uppercase tracking-wider flex items-center gap-2">
                 <Tag className="w-4 h-4" /> Global Promo & Discount Codes
               </h3>
               <form onSubmit={handleAddDiscount} className="flex gap-3">
-                <input type="text" placeholder="CODE (e.g. ZORT20)" required value={discCode} onChange={(e) => setDiscCode(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-xs uppercase text-white flex-1 outline-none" />
-                <input type="number" placeholder="Value" required value={discVal} onChange={(e) => setDiscVal(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-xs text-white w-28 outline-none" />
-                <select value={discType} onChange={(e) => setDiscType(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none">
+                <input type="text" placeholder="CODE (e.g. ZORT20)" required value={discCode} onChange={(e) => setDiscCode(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-xs uppercase text-white flex-1 outline-none" />
+                <input type="number" placeholder="Value" required value={discVal} onChange={(e) => setDiscVal(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-xs text-white w-28 outline-none" />
+                <select value={discType} onChange={(e) => setDiscType(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white outline-none">
                   <option value="percent">% Off</option>
                   <option value="fixed">£ Off</option>
                 </select>
-                <button type="submit" className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs cursor-pointer">
+                <button type="submit" className="bg-white hover:bg-zinc-200 text-zinc-950 font-bold px-4 py-2 rounded-xl text-xs cursor-pointer">
                   Create
                 </button>
               </form>
               <div className="flex flex-wrap gap-2 pt-2">
                 {discounts.map((d) => (
-                  <div key={d.id} className="bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-xl text-xs font-mono flex items-center gap-2">
-                    <span className="font-bold text-cyan-400">{d.code}</span>
-                    <span className="text-slate-400">({d.percent ? `${d.percent}% OFF` : `£${d.fixed} OFF`})</span>
+                  <div key={d.id} className="bg-zinc-950 border border-zinc-800 px-3 py-1.5 rounded-xl text-xs font-mono flex items-center gap-2">
+                    <span className="font-bold text-zinc-100">{d.code}</span>
+                    <span className="text-zinc-400">({d.percent ? `${d.percent}% OFF` : `£${d.fixed} OFF`})</span>
                   </div>
                 ))}
               </div>
@@ -2915,15 +2917,15 @@ return (
 
             
             {isFullAdmin && (
-              <section className="bg-gradient-to-br from-cyan-500/10 to-slate-900 border border-cyan-500/20 rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-4">
-                <h3 className="text-sm font-mono font-bold text-cyan-400 uppercase tracking-wider">Launch control</h3>
+              <section className="bg-gradient-to-br from-cyan-500/10 to-slate-900 border border-zinc-700 rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-4">
+                <h3 className="text-sm font-mono font-bold text-zinc-100 uppercase tracking-wider">Launch control</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
-                  <div className="rounded-xl bg-slate-950/80 border border-slate-800 p-2"><p className="text-lg font-bold text-white">{preorders.length}</p><p className="text-[10px] text-slate-500">Pre-orders</p></div>
-                  <div className="rounded-xl bg-slate-950/80 border border-slate-800 p-2"><p className="text-lg font-bold text-white">{supportTickets.filter((t) => t.status !== 'Resolved').length}</p><p className="text-[10px] text-slate-500">Open tickets</p></div>
-                  <div className="rounded-xl bg-slate-950/80 border border-slate-800 p-2"><p className="text-lg font-bold text-white">{orders.length}</p><p className="text-[10px] text-slate-500">Orders</p></div>
-                  <div className="rounded-xl bg-slate-950/80 border border-slate-800 p-2"><p className="text-lg font-bold text-white">{(applicationSubmissions || []).length}</p><p className="text-[10px] text-slate-500">Applications</p></div>
+                  <div className="rounded-xl bg-zinc-950/80 border border-zinc-800 p-2"><p className="text-lg font-bold text-white">{preorders.length}</p><p className="text-[10px] text-zinc-500">Pre-orders</p></div>
+                  <div className="rounded-xl bg-zinc-950/80 border border-zinc-800 p-2"><p className="text-lg font-bold text-white">{supportTickets.filter((t) => t.status !== 'Resolved').length}</p><p className="text-[10px] text-zinc-500">Open tickets</p></div>
+                  <div className="rounded-xl bg-zinc-950/80 border border-zinc-800 p-2"><p className="text-lg font-bold text-white">{orders.length}</p><p className="text-[10px] text-zinc-500">Orders</p></div>
+                  <div className="rounded-xl bg-zinc-950/80 border border-zinc-800 p-2"><p className="text-lg font-bold text-white">{(applicationSubmissions || []).length}</p><p className="text-[10px] text-zinc-500">Applications</p></div>
                 </div>
-                <p className="text-xs text-slate-400">Toggle checkout mode and the banner every visitor sees site-wide.</p>
+                <p className="text-xs text-zinc-400">Toggle checkout mode and the banner every visitor sees site-wide.</p>
                 <button
                   type="button"
                   onClick={() => saveStoreSettings({
@@ -2939,29 +2941,29 @@ return (
                   value={announcementDraft}
                   onChange={(e) => setAnnouncementDraft(e.target.value)}
                   placeholder="Announcement under the header…"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
                 />
-                <button type="button" onClick={() => saveStoreSettings({ announcement: announcementDraft || storeSettings.announcement })} className="px-4 py-2 rounded-xl bg-cyan-500 text-slate-950 text-xs font-bold">
+                <button type="button" onClick={() => saveStoreSettings({ announcement: announcementDraft || storeSettings.announcement })} className="px-4 py-2 rounded-xl bg-white text-zinc-950 text-xs font-bold">
                   Save announcement
                 </button>
               </section>
             )}
 
             {isFullAdmin && (
-              <section className="bg-slate-900 border border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-4">
+              <section className="bg-zinc-900 border border-zinc-800 rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <h3 className="text-sm font-mono font-bold text-cyan-400 uppercase tracking-wider">Newsletter subscribers</h3>
-                  <button type="button" onClick={exportNewsletterCsv} className="px-3 py-1.5 rounded-lg bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 text-xs font-bold">Export CSV ({newsletters.length})</button>
+                  <h3 className="text-sm font-mono font-bold text-zinc-100 uppercase tracking-wider">Newsletter subscribers</h3>
+                  <button type="button" onClick={exportNewsletterCsv} className="px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-200 text-xs font-bold">Export CSV ({newsletters.length})</button>
                 </div>
-                <p className="text-xs text-slate-400">People who joined the launch / updates list.</p>
+                <p className="text-xs text-zinc-400">People who joined the launch / updates list.</p>
                 {newsletters.length === 0 ? (
-                  <p className="text-xs text-slate-500">No subscribers yet.</p>
+                  <p className="text-xs text-zinc-500">No subscribers yet.</p>
                 ) : (
                   <div className="max-h-40 overflow-y-auto text-xs space-y-1">
                     {newsletters.slice(0, 50).map((n) => (
-                      <div key={n.id} className="flex justify-between gap-2 text-slate-300 border-b border-slate-800/50 py-1">
+                      <div key={n.id} className="flex justify-between gap-2 text-zinc-300 border-b border-zinc-800/50 py-1">
                         <span className="break-all">{n.email}</span>
-                        <span className="text-slate-600 whitespace-nowrap">{n.createdAt ? new Date(n.createdAt).toLocaleDateString('en-GB') : ''}</span>
+                        <span className="text-zinc-600 whitespace-nowrap">{n.createdAt ? new Date(n.createdAt).toLocaleDateString('en-GB') : ''}</span>
                       </div>
                     ))}
                   </div>
@@ -2970,29 +2972,29 @@ return (
             )}
 
             {isFullAdmin && (
-              <section className="bg-slate-900 border border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-4">
+              <section className="bg-zinc-900 border border-zinc-800 rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <h3 className="text-sm font-mono font-bold text-cyan-400 uppercase tracking-wider">Pre-order interest list</h3>
+                  <h3 className="text-sm font-mono font-bold text-zinc-100 uppercase tracking-wider">Pre-order interest list</h3>
                   <div className="flex gap-2">
                     <button type="button" onClick={() => {
                       const emails = preorders.map((p) => p.email).filter(Boolean).join(', ');
                       navigator.clipboard?.writeText(emails);
                       showNotification('Emails copied');
-                    }} className="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 text-xs font-bold">
+                    }} className="px-3 py-1.5 rounded-lg bg-slate-800 border border-zinc-700 text-zinc-200 text-xs font-bold">
                       Copy emails
                     </button>
-                    <button type="button" onClick={exportPreordersCsv} className="px-3 py-1.5 rounded-lg bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 text-xs font-bold hover:bg-cyan-500/25">
+                    <button type="button" onClick={exportPreordersCsv} className="px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-200 text-xs font-bold hover:bg-cyan-500/25">
                       Export CSV ({preorders.length})
                     </button>
                   </div>
                 </div>
-                <p className="text-xs text-slate-400">People who registered interest. Contact them when you open orders.</p>
+                <p className="text-xs text-zinc-400">People who registered interest. Contact them when you open orders.</p>
                 {preorders.length === 0 ? (
-                  <p className="text-xs text-slate-500">No pre-order signups yet.</p>
+                  <p className="text-xs text-zinc-500">No pre-order signups yet.</p>
                 ) : (
-                  <div className="overflow-x-auto rounded-xl border border-slate-800">
+                  <div className="overflow-x-auto rounded-xl border border-zinc-800">
                     <table className="w-full text-left text-xs">
-                      <thead className="bg-slate-950 text-slate-400">
+                      <thead className="bg-zinc-950 text-zinc-400">
                         <tr>
                           <th className="px-3 py-2 font-semibold">Email</th>
                           <th className="px-3 py-2 font-semibold">Product</th>
@@ -3002,11 +3004,11 @@ return (
                       </thead>
                       <tbody className="divide-y divide-slate-800">
                         {preorders.map((row) => (
-                          <tr key={row.id} className="text-slate-200">
+                          <tr key={row.id} className="text-zinc-200">
                             <td className="px-3 py-2.5 break-all">{row.email}</td>
                             <td className="px-3 py-2.5">{row.productName || 'General'}</td>
-                            <td className="px-3 py-2.5 text-cyan-300">{row.color || '—'}</td>
-                            <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap">{row.createdAt ? new Date(row.createdAt).toLocaleString('en-GB') : '—'}</td>
+                            <td className="px-3 py-2.5 text-zinc-200">{row.color || '—'}</td>
+                            <td className="px-3 py-2.5 text-zinc-500 whitespace-nowrap">{row.createdAt ? new Date(row.createdAt).toLocaleString('en-GB') : '—'}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -3017,31 +3019,31 @@ return (
             )}
 
             {/* SUPPORT TICKETS */}
-            <section className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 space-y-4">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2"><Headphones className="w-4 h-4 text-cyan-400" /> Support tickets ({supportTickets.length})</h3>
-              <p className="text-xs text-slate-400">From the free chatbot when users ask for a human.</p>
+            <section className="bg-zinc-900/60 border border-zinc-800 rounded-3xl p-6 space-y-4">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2"><Headphones className="w-4 h-4 text-zinc-100" /> Support tickets ({supportTickets.length})</h3>
+              <p className="text-xs text-zinc-400">From the free chatbot when users ask for a human.</p>
               {supportTickets.length === 0 ? (
-                <p className="text-xs text-slate-500">No tickets yet.</p>
+                <p className="text-xs text-zinc-500">No tickets yet.</p>
               ) : (
                 <div className="space-y-3 max-h-80 overflow-y-auto">
                   {supportTickets.map((t) => (
-                    <div key={t.id} className="rounded-xl border border-slate-800 bg-slate-950 p-3 text-xs space-y-2">
+                    <div key={t.id} className="rounded-xl border border-zinc-800 bg-zinc-950 p-3 text-xs space-y-2">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <span className="font-bold text-white">{t.name} · {t.email}</span>
                         <span className={`px-2 py-0.5 rounded-full border ${t.status === 'Open' ? 'border-amber-500/40 text-amber-300' : 'border-emerald-500/40 text-emerald-300'}`}>{t.status || 'Open'}</span>
                       </div>
-                      <p className="text-slate-300">{t.message}</p>
-                      <p className="text-slate-500">{t.createdAt ? new Date(t.createdAt).toLocaleString('en-GB') : ''} · {t.page || ''}</p>
+                      <p className="text-zinc-300">{t.message}</p>
+                      <p className="text-zinc-500">{t.createdAt ? new Date(t.createdAt).toLocaleString('en-GB') : ''} · {t.page || ''}</p>
                       <textarea
                         rows={2}
                         value={ticketReply[t.id] || ''}
                         onChange={(e) => setTicketReply((m) => ({ ...m, [t.id]: e.target.value }))}
                         placeholder="Type a reply to email the customer…"
-                        className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-white"
+                        className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1.5 text-xs text-white"
                       />
                       <div className="flex flex-wrap gap-2">
-                        <button type="button" onClick={() => sendTicketReply(t)} className="px-2 py-1 rounded-lg bg-cyan-500 text-slate-950 font-bold">Email reply</button>
-                        <button type="button" onClick={() => handleTicketStatus(t.id, 'Open')} className="px-2 py-1 rounded-lg bg-slate-800 text-slate-200">Open</button>
+                        <button type="button" onClick={() => sendTicketReply(t)} className="px-2 py-1 rounded-lg bg-white text-zinc-950 font-bold">Email reply</button>
+                        <button type="button" onClick={() => handleTicketStatus(t.id, 'Open')} className="px-2 py-1 rounded-lg bg-slate-800 text-zinc-200">Open</button>
                         <button type="button" onClick={() => handleTicketStatus(t.id, 'Resolved')} className="px-2 py-1 rounded-lg bg-emerald-500/20 text-emerald-300">Resolved</button>
                       </div>
                     </div>
@@ -3052,21 +3054,21 @@ return (
 
             {/* MEDIA / BLOG ADMIN */}
             {isFullAdmin && (
-              <section className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 space-y-4">
-                <h3 className="text-sm font-bold text-white flex items-center gap-2"><FileText className="w-4 h-4 text-cyan-400" /> Publish media / blog</h3>
+              <section className="bg-zinc-900/60 border border-zinc-800 rounded-3xl p-6 space-y-4">
+                <h3 className="text-sm font-bold text-white flex items-center gap-2"><FileText className="w-4 h-4 text-zinc-100" /> Publish media / blog</h3>
                 <form onSubmit={handleSaveBlog} className="space-y-3">
-                  <input required value={blogTitle} onChange={(e) => setBlogTitle(e.target.value)} placeholder="Headline" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white" />
-                  <textarea required rows={5} value={blogBody} onChange={(e) => setBlogBody(e.target.value)} placeholder="Article body…" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white" />
-                  <div className="flex flex-wrap gap-4 text-xs text-slate-300">
+                  <input required value={blogTitle} onChange={(e) => setBlogTitle(e.target.value)} placeholder="Headline" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white" />
+                  <textarea required rows={5} value={blogBody} onChange={(e) => setBlogBody(e.target.value)} placeholder="Article body…" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white" />
+                  <div className="flex flex-wrap gap-4 text-xs text-zinc-300">
                     <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={blogAllowComments} onChange={(e) => setBlogAllowComments(e.target.checked)} /> Allow comments</label>
                     <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={blogAllowLikes} onChange={(e) => setBlogAllowLikes(e.target.checked)} /> Allow likes</label>
                   </div>
-                  <button type="submit" className="px-5 py-2.5 rounded-xl bg-cyan-500 text-slate-950 font-bold text-sm">Publish</button>
+                  <button type="submit" className="px-5 py-2.5 rounded-xl bg-white text-zinc-950 font-bold text-sm">Publish</button>
                 </form>
-                <div className="space-y-2 pt-2 border-t border-slate-800">
+                <div className="space-y-2 pt-2 border-t border-zinc-800">
                   {blogPosts.slice(0, 8).map((p) => (
                     <div key={p.id} className="flex items-center justify-between gap-2 text-xs">
-                      <span className="text-slate-200 truncate">{p.title}</span>
+                      <span className="text-zinc-200 truncate">{p.title}</span>
                       <button type="button" onClick={() => handleDeleteBlog(p.id)} className="text-rose-400 hover:text-rose-300">Delete</button>
                     </div>
                   ))}
@@ -3076,34 +3078,34 @@ return (
 
             {/* ORDERS — FULL ADMIN ONLY */}
             {isFullAdmin && (
-              <section className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6">
+              <section className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 sm:p-8 space-y-6">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-mono font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-2">
+                  <h3 className="text-sm font-mono font-bold text-zinc-100 uppercase tracking-wider flex items-center gap-2">
                     <PackageCheck className="w-4 h-4" /> Comprehensive Customer Orders Management
                   </h3>
-                  <span className="px-3 py-1 rounded-full bg-slate-950 border border-slate-800 text-slate-400 font-mono text-xs">
+                  <span className="px-3 py-1 rounded-full bg-zinc-950 border border-zinc-800 text-zinc-400 font-mono text-xs">
                     Total Orders Logged: <strong>{orders.length}</strong>
                   </span>
                 </div>
 
                 {orders.length === 0 ? (
-                  <p className="text-xs text-slate-500 font-mono">No customer orders recorded yet.</p>
+                  <p className="text-xs text-zinc-500 font-mono">No customer orders recorded yet.</p>
                 ) : (
                   <div className="space-y-6">
                     {orders.map((o) => (
-                      <div key={o.id} className="bg-slate-950 border border-slate-800 p-6 rounded-2xl space-y-5 text-xs">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b border-slate-800 pb-4">
+                      <div key={o.id} className="bg-zinc-950 border border-zinc-800 p-6 rounded-2xl space-y-5 text-xs">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b border-zinc-800 pb-4">
                           <div>
-                            <span className="text-[10px] text-slate-500 font-mono uppercase font-bold block mb-1">Order Ref & Client</span>
+                            <span className="text-[10px] text-zinc-500 font-mono uppercase font-bold block mb-1">Order Ref & Client</span>
                             <span className="font-mono font-black text-white text-sm block">{o.id}</span>
-                            <span className="text-slate-300 block font-medium mt-0.5">{o.customerName || 'Customer'}</span>
-                            <span className="text-slate-500 block font-mono text-[11px]">{o.customerEmail}</span>
+                            <span className="text-zinc-300 block font-medium mt-0.5">{o.customerName || 'Customer'}</span>
+                            <span className="text-zinc-500 block font-mono text-[11px]">{o.customerEmail}</span>
                           </div>
                           <div>
-                            <span className="text-[10px] text-slate-500 font-mono uppercase font-bold block mb-1">Shipping & Metadata</span>
-                            <div className="space-y-1 text-slate-300 font-mono">
+                            <span className="text-[10px] text-zinc-500 font-mono uppercase font-bold block mb-1">Shipping & Metadata</span>
+                            <div className="space-y-1 text-zinc-300 font-mono">
                               <span className="flex items-start gap-1.5">
-                                <MapPin className="w-3.5 h-3.5 text-cyan-400 shrink-0 mt-0.5" />
+                                <MapPin className="w-3.5 h-3.5 text-zinc-100 shrink-0 mt-0.5" />
                                 <span>
                                   {o.shipping ? (
                                     <>
@@ -3133,15 +3135,15 @@ return (
                                 </span>
                               </span>
                               <span className="flex items-center gap-1.5">
-                                <Calendar className="w-3.5 h-3.5 text-cyan-400 shrink-0" /> Placed: {o.date || 'Today'}
+                                <Calendar className="w-3.5 h-3.5 text-zinc-100 shrink-0" /> Placed: {o.date || 'Today'}
                               </span>
                               <span className="flex items-center gap-1.5">
-                                <CreditCard className="w-3.5 h-3.5 text-cyan-400 shrink-0" /> Gateway: {o.paymentMethod || 'Stripe'}
+                                <CreditCard className="w-3.5 h-3.5 text-zinc-100 shrink-0" /> Gateway: {o.paymentMethod || 'Stripe'}
                               </span>
                             </div>
                           </div>
                           <div className="flex flex-col justify-between items-start md:items-end">
-                            <span className="text-[10px] text-slate-500 font-mono uppercase font-bold block mb-1">Order Status Control</span>
+                            <span className="text-[10px] text-zinc-500 font-mono uppercase font-bold block mb-1">Order Status Control</span>
                             <select
                               value={o.status || 'Processing'}
                               onChange={(e) => handleUpdateOrderStatus(o, e.target.value)}
@@ -3149,7 +3151,7 @@ return (
                                 o.status === 'Delivered'
                                   ? 'bg-emerald-950/80 border-emerald-500 text-emerald-300'
                                   : o.status === 'Shipped'
-                                    ? 'bg-cyan-950/80 border-cyan-500 text-cyan-300'
+                                    ? 'bg-cyan-950/80 border-cyan-500 text-zinc-200'
                                     : o.status === 'Canceled'
                                       ? 'bg-rose-950/80 border-rose-500 text-rose-300'
                                       : 'bg-amber-950/80 border-amber-500 text-amber-300'
@@ -3164,37 +3166,37 @@ return (
                         </div>
 
                         <div className="space-y-2">
-                          <span className="text-[10px] font-mono text-cyan-400 uppercase font-bold flex items-center gap-1.5">
+                          <span className="text-[10px] font-mono text-zinc-100 uppercase font-bold flex items-center gap-1.5">
                             <Package className="w-3.5 h-3.5" /> Order Manifest ({Array.isArray(o.items) ? o.items.length : 0} items)
                           </span>
-                          <div className="bg-slate-900/80 rounded-xl border border-slate-800 divide-y divide-slate-800/80 overflow-hidden">
+                          <div className="bg-zinc-900/80 rounded-xl border border-zinc-800 divide-y divide-slate-800/80 overflow-hidden">
                             {Array.isArray(o.items) &&
                               o.items.map((item, idx) => (
                                 <div key={idx} className="p-3 flex items-center justify-between gap-4">
                                   <div className="flex items-center gap-3">
-                                    {item.image && <img src={item.image} alt={item.name} className="w-10 h-10 rounded-lg object-cover bg-slate-950 border border-slate-800 shrink-0" />}
+                                    {item.image && <img src={item.image} alt={item.name} className="w-10 h-10 rounded-lg object-cover bg-zinc-950 border border-zinc-800 shrink-0" />}
                                     <div>
-                                      <span className="font-bold text-slate-100 block">{item.name}</span>
-                                      <div className="flex items-center gap-2 text-[10px] text-slate-400 font-mono mt-0.5">
+                                      <span className="font-bold text-zinc-100 block">{item.name}</span>
+                                      <div className="flex items-center gap-2 text-[10px] text-zinc-400 font-mono mt-0.5">
                                         <span>Category: {item.category || 'Hardware'}</span>
                                         <span>•</span>
-                                        <span className="text-cyan-300 font-semibold">Finish: {item.selectedColor || 'Standard'}</span>
+                                        <span className="text-zinc-200 font-semibold">Finish: {item.selectedColor || 'Standard'}</span>
                                       </div>
                                     </div>
                                   </div>
                                   <div className="text-right font-mono">
-                                    <span className="text-xs text-slate-300 font-bold block">
+                                    <span className="text-xs text-zinc-300 font-bold block">
                                       £{(item.price || 0).toFixed(2)} × {item.qty || 1}
                                     </span>
-                                    <span className="text-[10px] text-cyan-400 font-semibold">Subtotal: £{((item.price || 0) * (item.qty || 1)).toFixed(2)}</span>
+                                    <span className="text-[10px] text-zinc-100 font-semibold">Subtotal: £{((item.price || 0) * (item.qty || 1)).toFixed(2)}</span>
                                   </div>
                                 </div>
                               ))}
                           </div>
                         </div>
 
-                        <div className="flex justify-between items-center pt-2 border-t border-slate-800/80 font-mono text-xs">
-                          <div className="text-slate-400 space-x-3">
+                        <div className="flex justify-between items-center pt-2 border-t border-zinc-800/80 font-mono text-xs">
+                          <div className="text-zinc-400 space-x-3">
                             <span>
                               Subtotal: <strong>£{(o.subtotal || o.total || 0).toFixed(2)}</strong>
                             </span>
@@ -3204,8 +3206,8 @@ return (
                               </span>
                             )}
                           </div>
-                          <span className="text-slate-200">
-                            Paid Total: <strong className="text-cyan-400 text-sm font-black">£{Number(o.total || 0).toFixed(2)}</strong>
+                          <span className="text-zinc-200">
+                            Paid Total: <strong className="text-zinc-100 text-sm font-black">£{Number(o.total || 0).toFixed(2)}</strong>
                           </span>
                         </div>
                       </div>
@@ -3220,50 +3222,50 @@ return (
         {/* APPLICATIONS PUBLIC */}
         {activeTab === 'applications' && (
           <div className="max-w-6xl mx-auto space-y-8">
-            <section className="relative overflow-hidden rounded-3xl border border-cyan-500/20 bg-gradient-to-br from-slate-900 via-slate-900 to-cyan-950/50 p-8 sm:p-12">
+            <section className="relative overflow-hidden rounded-3xl border border-zinc-700 bg-gradient-to-br from-slate-900 via-slate-900 to-cyan-950/50 p-8 sm:p-12">
               <div className="absolute -right-12 -top-12 w-64 h-64 rounded-full border border-cyan-400/10" />
               <div className="relative max-w-3xl">
-                <span className="inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs font-bold text-cyan-300">
+                <span className="inline-flex items-center gap-2 rounded-full border border-zinc-600 bg-zinc-800 px-3 py-1.5 text-xs font-bold text-zinc-200">
                   <Users className="w-4 h-4" /> JOIN THE TEAM
                 </span>
                 <h1 className="mt-5 text-4xl sm:text-5xl font-black tracking-tight text-white">
-                  Build what's next at <span className="text-cyan-400">Zortius.</span>
+                  Build what's next at <span className="text-zinc-100">Zortius.</span>
                 </h1>
-                <p className="mt-4 max-w-2xl text-sm sm:text-base leading-relaxed text-slate-300">
+                <p className="mt-4 max-w-2xl text-sm sm:text-base leading-relaxed text-zinc-300">
                   Explore open roles, tell us what you bring to the team, and track the application process. Every application is reviewed by a member of our team.
                 </p>
               </div>
             </section>
 
             {selectedApplication ? (
-              <section className="max-w-3xl mx-auto rounded-3xl border border-slate-800 bg-slate-900/70 p-6 sm:p-9 space-y-6">
+              <section className="max-w-3xl mx-auto rounded-3xl border border-zinc-800 bg-zinc-900/70 p-6 sm:p-9 space-y-6">
                 <button
                   onClick={() => {
                     setSelectedApplication(null);
                     navigateTo('applications', '/careers');
                   }}
-                  className="text-sm text-cyan-300 hover:text-cyan-200"
+                  className="text-sm text-zinc-200 hover:text-cyan-200"
                 >
                   ← All applications
                 </button>
                 <div>
-                  <span className="text-xs font-bold uppercase tracking-widest text-cyan-400">{selectedApplication.section}</span>
+                  <span className="text-xs font-bold uppercase tracking-widest text-zinc-100">{selectedApplication.section}</span>
                   <h2 className="mt-2 text-3xl font-black text-white">{selectedApplication.title}</h2>
-                  <p className="mt-3 text-sm leading-relaxed text-slate-300">
+                  <p className="mt-3 text-sm leading-relaxed text-zinc-300">
                     {selectedApplication.description || 'Complete the questions below to apply for this opportunity at Zortius.'}
                   </p>
                 </div>
-                <div className="flex gap-3 rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4 text-xs text-slate-300">
-                  <Shield className="w-5 h-5 shrink-0 text-cyan-300" />
+                <div className="flex gap-3 rounded-xl border border-zinc-700 bg-cyan-500/5 p-4 text-xs text-zinc-300">
+                  <Shield className="w-5 h-5 shrink-0 text-zinc-200" />
                   <p>Your answers are shared with the Zortius team for application review. You will receive an email confirmation after submitting.</p>
                 </div>
                 <form onSubmit={handleSubmitApplication} className="space-y-5">
                   {(selectedApplication.questions || []).map((q, i) => (
-                    <div key={q.id} className="rounded-2xl border border-slate-800 bg-slate-950/60 p-5 space-y-3">
+                    <div key={q.id} className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-5 space-y-3">
                       <label className="block text-sm font-bold text-white">
                         {i + 1}. {q.question}
                         {q.required && <span className="text-rose-400"> *</span>}
-                        <span className="block mt-1 text-xs font-normal text-slate-500">
+                        <span className="block mt-1 text-xs font-normal text-zinc-500">
                           {q.marks} marks · {q.type === 'long' ? 'Long answer' : q.type === 'short' ? 'Short answer' : q.type}
                         </span>
                       </label>
@@ -3274,7 +3276,7 @@ return (
                           value={applicationAnswers[q.id] || ''}
                           onChange={(e) => setApplicationAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
                           placeholder="Write your answer…"
-                          className="w-full resize-y rounded-xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500"
+                          className="w-full resize-y rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500"
                         />
                       ) : (
                         <input
@@ -3283,14 +3285,14 @@ return (
                           value={applicationAnswers[q.id] || ''}
                           onChange={(e) => setApplicationAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
                           placeholder="Your answer…"
-                          className="w-full rounded-xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500"
+                          className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500"
                         />
                       )}
                     </div>
                   ))}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <p className="text-xs text-slate-500">Signed in as {user?.email || 'not signed in'}. You must sign in to submit.</p>
-                    <button disabled={applicationSubmitting} className="rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-60 px-6 py-3.5 text-sm font-black text-slate-950">
+                    <p className="text-xs text-zinc-500">Signed in as {user?.email || 'not signed in'}. You must sign in to submit.</p>
+                    <button disabled={applicationSubmitting} className="rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-60 px-6 py-3.5 text-sm font-black text-zinc-950">
                       {applicationSubmitting ? 'Submitting…' : 'Submit application →'}
                     </button>
                   </div>
@@ -3305,26 +3307,26 @@ return (
                       <div className="flex items-end justify-between">
                         <div>
                           <h2 className="text-xl font-black text-white">{section.name}</h2>
-                          <p className="text-sm text-slate-400 mt-1">Opportunities in {section.name.toLowerCase()}.</p>
+                          <p className="text-sm text-zinc-400 mt-1">Opportunities in {section.name.toLowerCase()}.</p>
                         </div>
-                        <span className="text-xs text-slate-500">
+                        <span className="text-xs text-zinc-500">
                           {sectionApps.length} open {sectionApps.length === 1 ? 'role' : 'roles'}
                         </span>
                       </div>
                       {sectionApps.length ? (
                         <div className="grid md:grid-cols-2 gap-4">
                           {sectionApps.map((a) => (
-                            <article key={a.id} className="group rounded-2xl border border-slate-800 bg-slate-900/60 p-5 sm:p-6 hover:border-cyan-500/40 transition-colors">
+                            <article key={a.id} className="group rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5 sm:p-6 hover:border-zinc-600 transition-colors">
                               <div className="flex items-start justify-between gap-3">
-                                <div className="rounded-xl bg-cyan-500/10 border border-cyan-500/20 p-3 text-cyan-300">
+                                <div className="rounded-xl bg-zinc-800 border border-zinc-700 p-3 text-zinc-200">
                                   <FileText className="w-5 h-5" />
                                 </div>
                                 <span className="rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 text-[10px] font-bold uppercase text-emerald-300">Open</span>
                               </div>
                               <h3 className="mt-4 text-lg font-black text-white">{a.title}</h3>
-                              <p className="mt-2 text-sm text-slate-400 line-clamp-3">{a.description || 'Apply to join the Zortius team and help us build great things.'}</p>
+                              <p className="mt-2 text-sm text-zinc-400 line-clamp-3">{a.description || 'Apply to join the Zortius team and help us build great things.'}</p>
                               <div className="mt-5 flex items-center justify-between gap-3">
-                                <span className="text-xs text-slate-400">
+                                <span className="text-xs text-zinc-400">
                                   {(a.questions || []).length} questions · ~{Math.max(5, Math.round((a.questions || []).length * 1.5))} mins
                                 </span>
                                 <button
@@ -3333,7 +3335,7 @@ return (
                                     setApplicationAnswers({});
                                     navigateTo('applications', `/careers/${a.slug || a.id}`);
                                   }}
-                                  className="flex items-center gap-2 rounded-xl bg-cyan-500 px-4 py-2.5 text-xs font-black text-slate-950 group-hover:bg-cyan-400"
+                                  className="flex items-center gap-2 rounded-xl bg-cyan-500 px-4 py-2.5 text-xs font-black text-zinc-950 group-hover:bg-cyan-400"
                                 >
                                   View & apply <ArrowRight className="w-4 h-4" />
                                 </button>
@@ -3342,34 +3344,34 @@ return (
                           ))}
                         </div>
                       ) : (
-                        <p className="rounded-xl border border-dashed border-slate-800 p-5 text-sm text-slate-500">No open roles in this section yet.</p>
+                        <p className="rounded-xl border border-dashed border-zinc-800 p-5 text-sm text-zinc-500">No open roles in this section yet.</p>
                       )}
                     </section>
                   );
                 })}
                 {!applicationSections.length && (
-                  <div className="rounded-2xl border border-dashed border-slate-800 p-10 text-center">
-                    <Layers className="w-10 h-10 mx-auto text-slate-600" />
+                  <div className="rounded-2xl border border-dashed border-zinc-800 p-10 text-center">
+                    <Layers className="w-10 h-10 mx-auto text-zinc-600" />
                     <h2 className="mt-4 font-bold text-white">Applications are coming soon</h2>
-                    <p className="mt-2 text-sm text-slate-500">There are no published opportunities at the moment. Please check back later.</p>
+                    <p className="mt-2 text-sm text-zinc-500">There are no published opportunities at the moment. Please check back later.</p>
                   </div>
                 )}
                 {user && (
-                  <section className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
+                  <section className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-5">
                     <h3 className="font-bold text-white">Your application history</h3>
                     {applicationSubmissions.filter((x) => x.applicantUid === user.uid).length === 0 ? (
-                      <p className="mt-2 text-sm text-slate-500">You have not submitted an application yet.</p>
+                      <p className="mt-2 text-sm text-zinc-500">You have not submitted an application yet.</p>
                     ) : (
                       <div className="mt-3 space-y-2">
                         {applicationSubmissions
                           .filter((x) => x.applicantUid === user.uid)
                           .map((x) => (
-                            <div key={x.id} className="flex items-center justify-between gap-3 rounded-xl bg-slate-950 p-3">
+                            <div key={x.id} className="flex items-center justify-between gap-3 rounded-xl bg-zinc-950 p-3">
                               <div>
                                 <p className="text-sm font-bold text-white">{x.applicationTitle}</p>
-                                <p className="text-xs text-slate-500">{new Date(x.submittedAt).toLocaleDateString('en-GB')}</p>
+                                <p className="text-xs text-zinc-500">{new Date(x.submittedAt).toLocaleDateString('en-GB')}</p>
                               </div>
-                              <span className="text-xs font-bold text-cyan-300">{x.status || 'Pending'}</span>
+                              <span className="text-xs font-bold text-zinc-200">{x.status || 'Pending'}</span>
                             </div>
                           ))}
                       </div>
@@ -3384,11 +3386,11 @@ return (
         {/* STATIC PAGES */}
         {['about', 'faq', 'privacy', 'terms', 'account', 'contact'].includes(activeTab) && (
           <div className="max-w-4xl mx-auto py-8 space-y-6">
-            <button onClick={() => navigateTo('shop', '/shop')} className="text-sm text-cyan-300 hover:text-cyan-200">
+            <button onClick={() => navigateTo('shop', '/shop')} className="text-sm text-zinc-200 hover:text-cyan-200">
               ← Back to store
             </button>
-            <section className="rounded-3xl border border-slate-800 bg-slate-900/60 p-8 sm:p-12">
-              <span className="text-xs font-bold uppercase tracking-widest text-cyan-400">ZORTIUS · Innovation without a limit</span>
+            <section className="rounded-3xl border border-zinc-800 bg-zinc-900/60 p-8 sm:p-12">
+              <span className="text-xs font-bold uppercase tracking-widest text-zinc-100">ZORTIUS · Innovation without a limit</span>
               <h1 className="mt-3 text-3xl sm:text-4xl font-black text-white">
                 {
                   {
@@ -3402,12 +3404,12 @@ return (
                 }
               </h1>
               {activeTab === 'about' && (
-                <p className="mt-4 text-slate-300 leading-relaxed">
-                  Zortius is focused on technology, thoughtful product design and engineering-led ideas. Our aim is to make useful technology approachable, reliable and exciting.
+                <p className="mt-4 text-zinc-300 leading-relaxed">
+                  Zortius is a hardware company. We design workstations, displays, and peripherals for people who care about specs, thermals, and long sessions — not marketing noise. Based around a UK-first launch, we sell pre-order interest today and full checkout when manufacturing is ready.
                 </p>
               )}
               {activeTab === 'faq' && (
-                <div className="mt-5 space-y-4 text-sm text-slate-300">
+                <div className="mt-5 space-y-4 text-sm text-zinc-300">
                   <div>
                     <h3 className="font-bold text-white">How do I apply to join the team?</h3>
                     <p className="mt-1">Visit Applications, choose an open role, sign in and complete the form.</p>
@@ -3418,34 +3420,42 @@ return (
                   </div>
                   <div>
                     <h3 className="font-bold text-white">How can I contact support?</h3>
-                    <p className="mt-1">Email {SUPPORT_EMAIL}.</p>
+                    <p className="mt-1">Use Support in the header, or email {SUPPORT_EMAIL}.</p>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white">When can I buy?</h3>
+                    <p className="mt-1">Join pre-order interest or the newsletter. Checkout opens when we switch Launch control to orders open.</p>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white">Shipping?</h3>
+                    <p className="mt-1">See Shipping & returns in the footer. UK-first, tracked.</p>
                   </div>
                 </div>
               )}
               {activeTab === 'privacy' && (
-                <p className="mt-4 text-slate-300 leading-relaxed">
+                <p className="mt-4 text-zinc-300 leading-relaxed">
                   Zortius only collects information needed to operate accounts, process orders and review applications.
                 </p>
               )}
               {activeTab === 'terms' && (
-                <p className="mt-4 text-slate-300 leading-relaxed">Draft terms placeholder. Publish final purchase, delivery and returns terms before accepting real orders.</p>
+                <p className="mt-4 text-zinc-300 leading-relaxed">Draft terms placeholder. Publish final purchase, delivery and returns terms before accepting real orders.</p>
               )}
               {activeTab === 'account' && (
                 <div className="mt-5 space-y-3">
-                  <p className="text-slate-300">{sessionUser ? `Signed in as ${user.email}` : 'Sign in to manage your account and applications.'}</p>
-                  <button onClick={() => setProfileModalOpen(true)} className="rounded-xl bg-cyan-500 px-5 py-3 text-sm font-black text-slate-950">
+                  <p className="text-zinc-300">{sessionUser ? `Signed in as ${user.email}` : 'Sign in to manage your account and applications.'}</p>
+                  <button onClick={() => setProfileModalOpen(true)} className="rounded-xl bg-cyan-500 px-5 py-3 text-sm font-black text-zinc-950">
                     {sessionUser ? 'Account settings' : 'Sign in / create account'}
                   </button>
                 </div>
               )}
               {activeTab === 'contact' && (
                 <div className="mt-5 space-y-3">
-                  <p className="text-slate-300">For help with orders, accounts or applications, contact our support team.</p>
-                  <a className="text-cyan-300 underline" href={`mailto:${SUPPORT_EMAIL}`}>
+                  <p className="text-zinc-300">For help with orders, accounts or applications, contact our support team.</p>
+                  <a className="text-zinc-200 underline" href={`mailto:${SUPPORT_EMAIL}`}>
                     {SUPPORT_EMAIL}
                   </a>
                   <div>
-                    <button onClick={() => setContactModalOpen(true)} className="rounded-xl bg-cyan-500 px-5 py-3 text-sm font-black text-slate-950">
+                    <button onClick={() => setContactModalOpen(true)} className="rounded-xl bg-cyan-500 px-5 py-3 text-sm font-black text-zinc-950">
                       Open contact form
                     </button>
                   </div>
@@ -3461,18 +3471,18 @@ return (
         {activeTab === 'home' && (
           <div className="space-y-16 sm:space-y-24 -mt-2">
             {/* Hero */}
-            <section className="relative overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] border border-white/[0.07] bg-slate-950 px-6 py-20 sm:px-14 sm:py-28 text-center shadow-[0_0_80px_-20px_rgba(34,211,238,0.25)]">
+            <section className="relative overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] border border-white/[0.07] bg-zinc-950 px-6 py-20 sm:px-14 sm:py-28 text-center shadow-[0_0_80px_-20px_rgba(34,211,238,0.25)]">
               <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,_rgba(34,211,238,0.18),_transparent_55%)]" />
               <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,_rgba(15,23,42,0.9),_transparent_50%)]" />
               <div className="relative max-w-4xl mx-auto">
-                <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1 mb-6">
+                <div className="inline-flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-800 px-3 py-1 mb-6">
                   <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse" />
-                  <span className="text-[11px] font-semibold tracking-wide text-cyan-300">Pre-order interest open · zortius.com</span>
+                  <span className="text-[11px] font-semibold tracking-wide text-zinc-200">Pre-order interest open · zortius.com</span>
                 </div>
                 <h1 className="text-4xl sm:text-6xl md:text-7xl font-semibold tracking-tight text-white leading-[1.05]">
                   Hardware with<br className="hidden sm:block" /> nothing to hide.
                 </h1>
-                <p className="mt-6 text-base sm:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
+                <p className="mt-6 text-base sm:text-xl text-zinc-400 max-w-2xl mx-auto leading-relaxed">
                   Workstations, displays, and peripherals built for creators and engineers — quiet power, clean design, honest specs.
                 </p>
                 <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -3491,7 +3501,7 @@ return (
                   ].map(([t, s]) => (
                     <div key={t} className="rounded-2xl border border-white/5 bg-white/[0.03] px-2 py-3">
                       <p className="text-sm font-bold text-white">{t}</p>
-                      <p className="text-[10px] text-slate-500 mt-0.5">{s}</p>
+                      <p className="text-[10px] text-zinc-500 mt-0.5">{s}</p>
                     </div>
                   ))}
                 </div>
@@ -3518,7 +3528,7 @@ return (
             </section>
 
             
-            <section className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-[11px] sm:text-xs text-slate-500 tracking-wide">
+            <section className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-[11px] sm:text-xs text-zinc-500 tracking-wide">
               <span>Secure accounts</span>
               <span className="hidden sm:inline text-slate-700">·</span>
               <span>GBP pricing</span>
@@ -3568,10 +3578,10 @@ return (
 <section className="space-y-6">
               <div className="flex items-end justify-between gap-4">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-cyan-400/90">Collection</p>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-zinc-100/90">Collection</p>
                   <h2 className="text-2xl sm:text-3xl font-semibold text-white tracking-tight mt-1">Featured systems</h2>
                 </div>
-                <button type="button" onClick={() => navigateTo('shop', '/shop')} className="text-xs font-semibold text-cyan-400 hover:text-cyan-300">View all →</button>
+                <button type="button" onClick={() => navigateTo('shop', '/shop')} className="text-xs font-semibold text-zinc-100 hover:text-zinc-200">View all →</button>
               </div>
               <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {products.slice(0, 4).map((p) => (
@@ -3579,15 +3589,15 @@ return (
                     key={p.id}
                     type="button"
                     onClick={() => openProduct(p)}
-                    className="group text-left rounded-2xl border border-slate-800 bg-slate-900/50 overflow-hidden hover:border-cyan-500/40 transition"
+                    className="group text-left rounded-2xl border border-zinc-800 bg-zinc-900/50 overflow-hidden hover:border-zinc-600 transition"
                   >
-                    <div className="aspect-[4/3] bg-slate-950 overflow-hidden">
+                    <div className="aspect-[4/3] bg-zinc-950 overflow-hidden">
                       <img src={p.image} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
                     </div>
                     <div className="p-4">
-                      <p className="text-[10px] text-slate-500 uppercase tracking-wide">{p.category}</p>
-                      <h3 className="text-sm font-bold text-white mt-1 group-hover:text-cyan-300 transition">{p.name}</h3>
-                      <p className="text-cyan-400 font-semibold text-sm mt-2">£{Number(p.price).toLocaleString('en-GB')}</p>
+                      <p className="text-[10px] text-zinc-500 uppercase tracking-wide">{p.category}</p>
+                      <h3 className="text-sm font-bold text-white mt-1 group-hover:text-zinc-200 transition">{p.name}</h3>
+                      <p className="text-zinc-100 font-semibold text-sm mt-2">£{Number(p.price).toLocaleString('en-GB')}</p>
                     </div>
                   </button>
                 ))}
@@ -3595,14 +3605,14 @@ return (
             </section>
 
             {/* Pre-order strip */}
-            <section className="rounded-[1.5rem] border border-cyan-500/20 bg-cyan-500/5 px-6 py-8 sm:px-10 flex flex-col lg:flex-row lg:items-center gap-6">
+            <section className="rounded-[1.5rem] border border-zinc-700 bg-cyan-500/5 px-6 py-8 sm:px-10 flex flex-col lg:flex-row lg:items-center gap-6">
               <div className="flex-1">
                 <h2 className="text-xl sm:text-2xl font-semibold text-white tracking-tight">Pre-order interest</h2>
-                <p className="mt-2 text-sm sm:text-base text-slate-400 leading-relaxed">We are not processing payments yet. Register your interest and we will notify you when pre-orders open.</p>
+                <p className="mt-2 text-sm sm:text-base text-zinc-400 leading-relaxed">We are not processing payments yet. Register your interest and we will notify you when pre-orders open.</p>
               </div>
               <form onSubmit={(e) => { e.preventDefault(); handlePreorder(null); }} className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto lg:min-w-[360px]">
-                <input type="email" required value={waitlistEmail} onChange={(e) => setWaitlistEmail(e.target.value)} placeholder="Email address" className="flex-1 rounded-full bg-slate-950 border border-slate-700 px-5 py-3 text-sm text-white outline-none focus:border-cyan-500" />
-                <button type="submit" disabled={waitlistSubmitting} className="rounded-full bg-white text-slate-950 font-semibold text-sm px-6 py-3 hover:bg-slate-100 disabled:opacity-60 whitespace-nowrap">
+                <input type="email" required value={waitlistEmail} onChange={(e) => setWaitlistEmail(e.target.value)} placeholder="Email address" className="flex-1 rounded-full bg-zinc-950 border border-zinc-700 px-5 py-3 text-sm text-white outline-none focus:border-cyan-500" />
+                <button type="submit" disabled={waitlistSubmitting} className="rounded-full bg-white text-zinc-950 font-semibold text-sm px-6 py-3 hover:bg-slate-100 disabled:opacity-60 whitespace-nowrap">
                   {waitlistSubmitting ? 'Saving…' : 'Notify me'}
                 </button>
               </form>
@@ -3613,9 +3623,9 @@ return (
               <div className="flex items-end justify-between mb-6 sm:mb-8 px-1">
                 <div>
                   <h2 className="text-2xl sm:text-3xl font-semibold text-white tracking-tight">Featured</h2>
-                  <p className="text-sm text-slate-400 mt-1">A closer look at the lineup.</p>
+                  <p className="text-sm text-zinc-400 mt-1">A closer look at the lineup.</p>
                 </div>
-                <button type="button" onClick={() => navigateTo('shop', '/shop')} className="text-sm font-medium text-cyan-400 hover:text-cyan-300">View all →</button>
+                <button type="button" onClick={() => navigateTo('shop', '/shop')} className="text-sm font-medium text-zinc-100 hover:text-zinc-200">View all →</button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
                 {products.slice(0, 4).map((p) => (
@@ -3623,15 +3633,15 @@ return (
                     key={p.id}
                     type="button"
                     onClick={() => openProduct(p)}
-                    className="group text-left rounded-[1.5rem] border border-white/5 bg-slate-900/80 overflow-hidden hover:border-white/15 transition-all"
+                    className="group text-left rounded-[1.5rem] border border-white/5 bg-zinc-900/80 overflow-hidden hover:border-white/15 transition-all"
                   >
-                    <div className="aspect-[16/10] bg-slate-950 overflow-hidden">
+                    <div className="aspect-[16/10] bg-zinc-950 overflow-hidden">
                       <img src={p.image} alt={p.name} className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-700" />
                     </div>
                     <div className="p-5 sm:p-6">
-                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{p.category}</p>
+                      <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">{p.category}</p>
                       <h3 className="mt-1 text-lg sm:text-xl font-semibold text-white tracking-tight">{p.name}</h3>
-                      <p className="mt-2 text-sm text-slate-400 line-clamp-2">{p.description}</p>
+                      <p className="mt-2 text-sm text-zinc-400 line-clamp-2">{p.description}</p>
                       <p className="mt-4 text-base font-medium text-white">From £{Number(p.price).toLocaleString('en-GB', { minimumFractionDigits: 0 })}</p>
                     </div>
                   </button>
@@ -3646,9 +3656,9 @@ return (
                 { t: 'Clear pricing', d: 'Transparent GBP pricing. Pre-order interest now — checkout when we launch.' },
                 { t: 'Human support', d: 'Real engineers on the other side of Support when you need them.' },
               ].map((x) => (
-                <div key={x.t} className="rounded-2xl border border-white/5 bg-slate-900/50 p-6">
+                <div key={x.t} className="rounded-2xl border border-white/5 bg-zinc-900/50 p-6">
                   <h3 className="text-base font-semibold text-white">{x.t}</h3>
-                  <p className="mt-2 text-sm text-slate-400 leading-relaxed">{x.d}</p>
+                  <p className="mt-2 text-sm text-zinc-400 leading-relaxed">{x.d}</p>
                 </div>
               ))}
             </section>
@@ -3658,29 +3668,29 @@ return (
 
         {activeTab === 'shop' && !selectedProduct && (
           <div className="space-y-8">
-            <div className="relative rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900 to-cyan-950/40 p-8 sm:p-12 border border-slate-800 overflow-hidden shadow-2xl">
+            <div className="relative rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900 to-cyan-950/40 p-8 sm:p-12 border border-zinc-800 overflow-hidden shadow-2xl">
               <div className="relative z-10 max-w-2xl">
                 <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-semibold mb-4 ${storeSettings.takingOrders ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-amber-500/10 border-amber-500/30 text-amber-200'}`}>
                   <Zap className="w-3.5 h-3.5" /> {storeSettings.statusLabel}
                 </span>
-                <p className="text-xs text-slate-400 mb-4 max-w-md">{storeSettings.announcement}</p>
+                <p className="text-xs text-zinc-400 mb-4 max-w-md">{storeSettings.announcement}</p>
                 <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight leading-tight">Precision Engineering for High Performance</h1>
-                <p className="mt-4 text-sm sm:text-base text-slate-300 leading-relaxed max-w-xl">
+                <p className="mt-4 text-sm sm:text-base text-zinc-300 leading-relaxed max-w-xl">
                   Discover workstation class compute systems, acoustically engineered chassis, reference displays, and ultra-low noise peripherals.
                 </p>
                 <div className="mt-6 flex flex-wrap gap-3">
-                  <button type="button" onClick={() => { const el = document.getElementById('catalog-grid'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }} className="px-5 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-sm">Browse Catalog</button>
-                  <button type="button" onClick={() => setAiDrawerOpen(true)} className="px-5 py-3 rounded-xl border border-cyan-500/40 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 font-bold text-sm flex items-center gap-2"><Bot className="w-4 h-4" /> Configure Custom System</button>
+                  <button type="button" onClick={() => { const el = document.getElementById('catalog-grid'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }} className="px-5 py-3 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 font-bold text-sm">Browse Catalog</button>
+                  <button type="button" onClick={() => setAiDrawerOpen(true)} className="px-5 py-3 rounded-xl border border-zinc-600 bg-zinc-800 hover:bg-zinc-800 text-zinc-200 font-bold text-sm flex items-center gap-2"><Bot className="w-4 h-4" /> Configure Custom System</button>
                 </div>
               </div>
             </div>
 
             
-            <div className="rounded-2xl border border-cyan-500/30 bg-gradient-to-r from-slate-900 via-slate-900 to-cyan-950/40 px-4 py-4 sm:px-6 sm:py-5">
+            <div className="rounded-2xl border border-zinc-600 bg-gradient-to-r from-slate-900 via-slate-900 to-cyan-950/40 px-4 py-4 sm:px-6 sm:py-5">
               <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-white">Pre-order interest — get notified at launch</p>
-                  <p className="text-xs text-slate-300 mt-1 leading-relaxed">Payments are not open yet. Join the pre-order list and we will email you when you can complete a purchase.</p>
+                  <p className="text-xs text-zinc-300 mt-1 leading-relaxed">Payments are not open yet. Join the pre-order list and we will email you when you can complete a purchase.</p>
                 </div>
                 <form onSubmit={(e) => { e.preventDefault(); handlePreorder(null); }} className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto sm:min-w-[320px]">
                   <input
@@ -3689,12 +3699,12 @@ return (
                     value={waitlistEmail}
                     onChange={(e) => setWaitlistEmail(e.target.value)}
                     placeholder="you@email.com"
-                    className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-cyan-500"
+                    className="flex-1 bg-zinc-950 border border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-cyan-500"
                   />
                   <button
                     type="submit"
                     disabled={waitlistSubmitting}
-                    className="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-60 text-slate-950 font-bold text-sm whitespace-nowrap"
+                    className="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-60 text-zinc-950 font-bold text-sm whitespace-nowrap"
                   >
                     {waitlistSubmitting ? 'Saving…' : 'Join pre-order list'}
                   </button>
@@ -3702,14 +3712,14 @@ return (
               </div>
             </div>
 
-            <div className="space-y-4 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
+            <div className="space-y-4 bg-zinc-900/60 p-4 rounded-2xl border border-zinc-800">
               <div className="flex flex-wrap gap-2">
                 {['All', 'Workstations', 'Desktops', 'Displays', 'Peripherals', 'Accessories', 'Audio'].map((cat) => (
                   <button
                     key={cat}
                     onClick={() => setSelectedCategory(cat)}
                     className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      selectedCategory === cat ? 'bg-cyan-500 text-slate-950 shadow-md' : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                      selectedCategory === cat ? 'bg-white text-zinc-950 shadow-md' : 'bg-zinc-950 text-zinc-400 hover:text-white border border-zinc-800'
                     }`}
                   >
                     {cat}
@@ -3717,13 +3727,13 @@ return (
                 ))}
               </div>
               <div className="relative w-full">
-                <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <Search className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   placeholder="Search catalog items, specs..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500"
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500"
                 />
               </div>
             </div>
@@ -3736,15 +3746,15 @@ return (
                   tabIndex={0}
                   onClick={() => openProduct(product)}
                   onKeyDown={(e) => { if (e.key === 'Enter') openProduct(product); }}
-                  className="group bg-slate-900/70 hover:bg-slate-900 border border-white/5 hover:border-cyan-500/40 rounded-[1.25rem] overflow-hidden transition-all duration-300 shadow-xl flex flex-col justify-between cursor-pointer"
+                  className="group bg-zinc-900/70 hover:bg-zinc-900 border border-white/5 hover:border-zinc-600 rounded-[1.25rem] overflow-hidden transition-all duration-300 shadow-xl flex flex-col justify-between cursor-pointer"
                 >
                   <div>
                     <div
-                      className="relative aspect-video overflow-hidden bg-slate-950 cursor-pointer"
+                      className="relative aspect-video overflow-hidden bg-zinc-950 cursor-pointer"
                       onClick={() => openProduct(product)}
                     >
                       <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90" />
-                      <span className="absolute top-3 right-3 px-2.5 py-1 bg-slate-950/80 backdrop-blur-md rounded-lg text-[10px] font-bold text-cyan-400 border border-slate-800">
+                      <span className="absolute top-3 right-3 px-2.5 py-1 bg-zinc-950/80 backdrop-blur-md rounded-lg text-[10px] font-bold text-zinc-100 border border-zinc-800">
                         {renderSafe(product.category)}
                       </span>
                     </div>
@@ -3752,21 +3762,21 @@ return (
                       <div className="flex items-center gap-1.5 text-amber-400 text-xs">
                         <Star className="w-4 h-4 fill-current" />
                         <span className="font-bold text-white">{renderSafe(product.rating)}</span>
-                        <span className="text-slate-500">({renderSafe(product.reviewsCount)} reviews)</span>
+                        <span className="text-zinc-500">({renderSafe(product.reviewsCount)} reviews)</span>
                       </div>
                       <h3
                         onClick={() => openProduct(product)}
-                        className="text-lg font-bold text-white group-hover:text-cyan-400 transition-colors cursor-pointer line-clamp-1"
+                        className="text-lg font-bold text-white group-hover:text-zinc-100 transition-colors cursor-pointer line-clamp-1"
                       >
                         {renderSafe(product.name)}
                       </h3>
-                      <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">{renderSafe(product.description)}</p>
+                      <p className="text-xs text-zinc-400 line-clamp-2 leading-relaxed">{renderSafe(product.description)}</p>
                     </div>
                   </div>
                   <div className="p-6 pt-0 space-y-4">
-                    <div className="flex items-center justify-between border-t border-slate-800 pt-4">
+                    <div className="flex items-center justify-between border-t border-zinc-800 pt-4">
                       <div>
-                        <span className="text-[10px] text-slate-500 block uppercase tracking-wider font-semibold">Unit Price</span>
+                        <span className="text-[10px] text-zinc-500 block uppercase tracking-wider font-semibold">Unit Price</span>
                         <span className="text-xl font-black text-white">£{Number(product.price).toLocaleString('en-GB', { minimumFractionDigits: 2 })}</span>
                       </div>
                       <button
@@ -3775,7 +3785,7 @@ return (
                         if (product.options?.colors?.length) setSelectedColor(product.options.colors[0]);
                           addToCart(product);
                         }}
-                        className="px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                        className="px-4 py-2.5 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer"
                       >
                         <ShoppingCart className="w-4 h-4" /> Add
                       </button>
@@ -3795,14 +3805,14 @@ return (
                 setSelectedProduct(null);
                 navigateTo('shop', '/shop');
               }}
-              className="inline-flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-cyan-400 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-2 text-xs font-bold text-zinc-400 hover:text-zinc-100 transition-colors cursor-pointer"
             >
               ← Back to Catalog
             </button>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-10 bg-slate-900/60 rounded-2xl sm:rounded-3xl border border-slate-800 p-4 sm:p-10 shadow-2xl">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-10 bg-zinc-900/60 rounded-2xl sm:rounded-3xl border border-zinc-800 p-4 sm:p-10 shadow-2xl">
               <div className="space-y-3">
-                <div className="aspect-square min-h-[280px] sm:min-h-[420px] rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 relative">
+                <div className="aspect-square min-h-[280px] sm:min-h-[420px] rounded-2xl overflow-hidden bg-zinc-950 border border-zinc-800 relative">
                   {(selectedProduct.images && selectedProduct.images.length
                     ? selectedProduct.images
                     : [selectedProduct.image]
@@ -3836,7 +3846,7 @@ return (
                       key={src + i}
                       type="button"
                       onClick={() => setProductGalleryIndex(i)}
-                      className={`shrink-0 w-16 h-16 rounded-lg overflow-hidden border ${productGalleryIndex === i ? 'border-cyan-400 ring-1 ring-cyan-400' : 'border-slate-800'}`}
+                      className={`shrink-0 w-16 h-16 rounded-lg overflow-hidden border ${productGalleryIndex === i ? 'border-cyan-400 ring-1 ring-cyan-400' : 'border-zinc-800'}`}
                     >
                       <img src={src} alt="" className="w-full h-full object-cover" />
                     </button>
@@ -3845,7 +3855,7 @@ return (
                     <button
                       type="button"
                       onClick={() => setProductGalleryIndex(-1)}
-                      className={`shrink-0 w-16 h-16 rounded-lg border flex items-center justify-center text-[10px] font-bold ${productGalleryIndex === -1 ? 'border-cyan-400 text-cyan-300' : 'border-slate-800 text-slate-400'}`}
+                      className={`shrink-0 w-16 h-16 rounded-lg border flex items-center justify-center text-[10px] font-bold ${productGalleryIndex === -1 ? 'border-cyan-400 text-zinc-200' : 'border-zinc-800 text-zinc-400'}`}
                     >
                       VIDEO
                     </button>
@@ -3855,19 +3865,19 @@ return (
 
               <div className="space-y-6 flex flex-col justify-between">
                 <div>
-                  <span className="px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-semibold">{renderSafe(selectedProduct.category)}</span>
+                  <span className="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-600 text-zinc-100 text-xs font-semibold">{renderSafe(selectedProduct.category)}</span>
                   <h1 className="text-2xl sm:text-4xl font-extrabold text-white mt-3 mb-2">{renderSafe(selectedProduct.name)}</h1>
                   <div className="flex items-center gap-2 text-amber-400 text-sm mb-4">
                     <Star className="w-4 h-4 fill-current" />
                     <span className="font-bold text-white">{renderSafe(selectedProduct.rating)}</span>
                   </div>
-                  <p className="text-sm text-slate-300 leading-relaxed mb-6">{renderSafe(selectedProduct.description)}</p>
+                  <p className="text-sm text-zinc-300 leading-relaxed mb-6">{renderSafe(selectedProduct.description)}</p>
 
                   {selectedProduct.specs && (
                     <ul className="mb-4 space-y-1">
                       {selectedProduct.specs.map((s, i) => (
-                        <li key={i} className="text-xs text-slate-400 flex items-center gap-2">
-                          <CheckCircle className="w-3.5 h-3.5 text-cyan-400" /> {s}
+                        <li key={i} className="text-xs text-zinc-400 flex items-center gap-2">
+                          <CheckCircle className="w-3.5 h-3.5 text-zinc-100" /> {s}
                         </li>
                       ))}
                     </ul>
@@ -3875,14 +3885,14 @@ return (
 
                   {selectedProduct.options?.colors && (
                     <div className="mb-4">
-                      <span className="text-sm font-bold text-slate-300 block mb-3">Choose colour / finish</span>
+                      <span className="text-sm font-bold text-zinc-300 block mb-3">Choose colour / finish</span>
                       <div className="flex flex-wrap gap-2">
                         {selectedProduct.options.colors.map((col, idx) => (
                           <button
                             key={idx}
                             onClick={() => setSelectedColor(col)}
                             className={`px-3 py-1.5 rounded-xl text-xs font-mono transition cursor-pointer ${
-                              selectedColor === col ? 'bg-cyan-500 text-slate-950 font-bold' : 'bg-slate-950 text-slate-300 border border-slate-800 hover:border-cyan-500/50'
+                              selectedColor === col ? 'bg-white text-zinc-950 font-bold' : 'bg-zinc-950 text-zinc-300 border border-zinc-800 hover:border-cyan-500/50'
                             }`}
                           >
                             {col}
@@ -3893,18 +3903,18 @@ return (
                   )}
                 </div>
 
-                <div className="pt-6 border-t border-slate-800 flex items-center justify-between">
+                <div className="pt-6 border-t border-zinc-800 flex items-center justify-between">
                   <div>
-                    <span className="text-xs text-slate-500 block">Total Price (GBP)</span>
+                    <span className="text-xs text-zinc-500 block">Total Price (GBP)</span>
                     <span className="text-3xl font-black text-white">£{Number(selectedProduct.price).toLocaleString('en-GB', { minimumFractionDigits: 2 })}</span>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                     {selectedProduct.isPreorder !== false ? (
-                      <button type="button" disabled={waitlistSubmitting} onClick={() => { if (user?.email) setWaitlistEmail(user.email); handlePreorder(selectedProduct); }} className="px-8 py-3.5 rounded-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold text-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60">
+                      <button type="button" disabled={waitlistSubmitting} onClick={() => { if (user?.email) setWaitlistEmail(user.email); handlePreorder(selectedProduct); }} className="px-8 py-3.5 rounded-full bg-white hover:bg-zinc-200 text-zinc-950 font-semibold text-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60">
                         {waitlistSubmitting ? 'Saving…' : 'Register pre-order interest'}
                       </button>
                     ) : (
-                      <button type="button" onClick={() => addToCart(selectedProduct)} className="px-8 py-3.5 rounded-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold text-sm flex items-center justify-center gap-2 cursor-pointer">
+                      <button type="button" onClick={() => addToCart(selectedProduct)} className="px-8 py-3.5 rounded-full bg-white hover:bg-zinc-200 text-zinc-950 font-semibold text-sm flex items-center justify-center gap-2 cursor-pointer">
                         <ShoppingCart className="w-5 h-5" /> Add to Basket
                       </button>
                     )}
@@ -3915,7 +3925,7 @@ return (
                   <button
                     type="button"
                     onClick={() => toggleWishlist(selectedProduct)}
-                    className="text-xs font-semibold text-slate-400 hover:text-cyan-300 transition"
+                    className="text-xs font-semibold text-zinc-400 hover:text-zinc-200 transition"
                   >
                     {wishlist.some((x) => x.id === selectedProduct.id) ? '♥ Saved' : '♡ Save for later'}
                   </button>
@@ -3926,7 +3936,7 @@ return (
                       navigator.clipboard?.writeText(url + '?product=' + selectedProduct.id);
                       showNotification('Link copied');
                     }}
-                    className="text-xs font-semibold text-slate-500 hover:text-white transition ml-3"
+                    className="text-xs font-semibold text-zinc-500 hover:text-white transition ml-3"
                   >
                     Copy link
                   </button>
@@ -3935,36 +3945,36 @@ return (
             </div>
 
             {/* Reviews — only after Delivered */}
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6">
+            <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 sm:p-8 space-y-6">
               <h3 className="text-lg font-bold text-white">Verified Buyer Reviews</h3>
               {hasUserReceivedProduct(selectedProduct.id) ? (
-                <form onSubmit={submitReview} className="bg-slate-950 p-6 rounded-2xl border border-slate-800 space-y-4">
-                  <h4 className="text-xs font-bold text-cyan-400 uppercase">Write a Verified Review</h4>
-                  <select value={newReviewRating} onChange={(e) => setNewReviewRating(Number(e.target.value))} className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+                <form onSubmit={submitReview} className="bg-zinc-950 p-6 rounded-2xl border border-zinc-800 space-y-4">
+                  <h4 className="text-xs font-bold text-zinc-100 uppercase">Write a Verified Review</h4>
+                  <select value={newReviewRating} onChange={(e) => setNewReviewRating(Number(e.target.value))} className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white">
                     <option value="5">5 Stars</option>
                     <option value="4">4 Stars</option>
                     <option value="3">3 Stars</option>
                     <option value="2">2 Stars</option>
                     <option value="1">1 Star</option>
                   </select>
-                  <textarea rows="3" value={newReviewComment} onChange={(e) => setNewReviewComment(e.target.value)} placeholder="Share your experience..." className="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs text-white" />
-                  <button type="submit" className="px-5 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs rounded-xl cursor-pointer">
+                  <textarea rows="3" value={newReviewComment} onChange={(e) => setNewReviewComment(e.target.value)} placeholder="Share your experience..." className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-xs text-white" />
+                  <button type="submit" className="px-5 py-2.5 bg-white hover:bg-zinc-200 text-zinc-950 font-bold text-xs rounded-xl cursor-pointer">
                     Submit Review
                   </button>
                 </form>
               ) : (
-                <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-400 flex items-center gap-2">
-                  <Lock className="w-4 h-4 text-cyan-400" />
+                <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-400 flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-zinc-100" />
                   <span>Only verified buyers whose order status is <strong className="text-emerald-400">Delivered</strong> can submit reviews.</span>
                 </div>
               )}
 
               <div className="space-y-4 pt-2">
                 {!reviews[selectedProduct.id] || reviews[selectedProduct.id].length === 0 ? (
-                  <p className="text-xs text-slate-500 italic">No reviews submitted yet.</p>
+                  <p className="text-xs text-zinc-500 italic">No reviews submitted yet.</p>
                 ) : (
                   reviews[selectedProduct.id].map((rev) => (
-                    <div key={rev.id} className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2">
+                    <div key={rev.id} className="bg-zinc-950 p-4 rounded-2xl border border-zinc-800 space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-white">{rev.userName}</span>
                         <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 font-semibold">✓ Verified Buyer</span>
@@ -3974,7 +3984,7 @@ return (
                           <Star key={i} className="w-3 h-3 fill-current" />
                         ))}
                       </div>
-                      <p className="text-xs text-slate-300">{rev.comment}</p>
+                      <p className="text-xs text-zinc-300">{rev.comment}</p>
                     </div>
                   ))
                 )}
@@ -3987,39 +3997,39 @@ return (
         {activeTab === 'blog' && (
           <div className="max-w-3xl mx-auto space-y-8">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-cyan-400/90">Official media</p>
+              <p className="text-xs font-semibold uppercase tracking-widest text-zinc-100/90">Official media</p>
               <h1 className="text-3xl sm:text-4xl font-semibold text-white tracking-tight mt-1">News & engineering notes</h1>
-              <p className="text-sm text-slate-400 mt-2">Updates from the Zortius team. Admins control comments and likes per post.</p>
+              <p className="text-sm text-zinc-400 mt-2">Updates from the Zortius team. Admins control comments and likes per post.</p>
             </div>
             {selectedBlog ? (
               <article className="space-y-6">
                 {(() => { const post = blogPosts.find((x) => x.id === selectedBlog.id) || selectedBlog; return (
                 <>
-                <button type="button" onClick={() => setSelectedBlog(null)} className="text-xs text-slate-400 hover:text-cyan-300">← All posts</button>
+                <button type="button" onClick={() => setSelectedBlog(null)} className="text-xs text-zinc-400 hover:text-zinc-200">← All posts</button>
                 <h2 className="text-2xl font-bold text-white">{post.title}</h2>
-                <p className="text-xs text-slate-500">{post.authorName} · {post.createdAt ? new Date(post.createdAt).toLocaleDateString('en-GB') : ''}</p>
-                <div className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{post.body}</div>
+                <p className="text-xs text-zinc-500">{post.authorName} · {post.createdAt ? new Date(post.createdAt).toLocaleDateString('en-GB') : ''}</p>
+                <div className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap">{post.body}</div>
                 {post.allowLikes !== false && (
-                  <button type="button" onClick={() => handleLikeBlog(post)} className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-slate-700 text-xs text-slate-200 hover:border-cyan-500/50">
-                    <ThumbsUp className="w-3.5 h-3.5 text-cyan-400" /> {(post.likes || []).length} likes {sessionUser ? '' : '(sign in)'}
+                  <button type="button" onClick={() => handleLikeBlog(post)} className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-zinc-700 text-xs text-zinc-200 hover:border-cyan-500/50">
+                    <ThumbsUp className="w-3.5 h-3.5 text-zinc-100" /> {(post.likes || []).length} likes {sessionUser ? '' : '(sign in)'}
                   </button>
                 )}
                 {post.allowComments !== false && (
-                  <div className="space-y-3 border-t border-slate-800 pt-4">
+                  <div className="space-y-3 border-t border-zinc-800 pt-4">
                     <h3 className="text-sm font-bold text-white">Comments</h3>
                     {(post.comments || []).map((cm) => (
-                      <div key={cm.id} className="rounded-xl bg-slate-950 border border-slate-800 p-3 text-xs">
-                        <span className="font-bold text-cyan-300">{cm.userName}</span>
-                        <p className="text-slate-300 mt-1">{cm.text}</p>
+                      <div key={cm.id} className="rounded-xl bg-zinc-950 border border-zinc-800 p-3 text-xs">
+                        <span className="font-bold text-zinc-200">{cm.userName}</span>
+                        <p className="text-zinc-300 mt-1">{cm.text}</p>
                       </div>
                     ))}
                     {sessionUser ? (
                       <form onSubmit={(e) => { e.preventDefault(); handleBlogComment(post); }} className="flex gap-2">
-                        <input value={blogComment} onChange={(e) => setBlogComment(e.target.value)} placeholder="Write a comment…" className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white" />
-                        <button type="submit" className="px-4 py-2 rounded-xl bg-cyan-500 text-slate-950 font-bold text-xs">Post</button>
+                        <input value={blogComment} onChange={(e) => setBlogComment(e.target.value)} placeholder="Write a comment…" className="flex-1 bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white" />
+                        <button type="submit" className="px-4 py-2 rounded-xl bg-white text-zinc-950 font-bold text-xs">Post</button>
                       </form>
                     ) : (
-                      <p className="text-xs text-slate-500">Sign in to comment.</p>
+                      <p className="text-xs text-zinc-500">Sign in to comment.</p>
                     )}
                   </div>
                 )}
@@ -4027,14 +4037,14 @@ return (
                 ); })()}
               </article>
             ) : blogPosts.length === 0 ? (
-              <p className="text-sm text-slate-500 py-12 text-center border border-dashed border-slate-800 rounded-3xl">No posts yet. Admins can publish from the Admin panel.</p>
+              <p className="text-sm text-zinc-500 py-12 text-center border border-dashed border-zinc-800 rounded-3xl">No posts yet. Admins can publish from the Admin panel.</p>
             ) : (
               <div className="space-y-4">
                 {blogPosts.map((p) => (
-                  <button key={p.id} type="button" onClick={() => setSelectedBlog(p)} className="w-full text-left rounded-2xl border border-slate-800 bg-slate-900/50 hover:border-cyan-500/40 p-5 transition">
+                  <button key={p.id} type="button" onClick={() => setSelectedBlog(p)} className="w-full text-left rounded-2xl border border-zinc-800 bg-zinc-900/50 hover:border-zinc-600 p-5 transition">
                     <h2 className="text-lg font-bold text-white">{p.title}</h2>
-                    <p className="text-xs text-slate-500 mt-1">{p.authorName} · {(p.likes || []).length} likes · {(p.comments || []).length} comments</p>
-                    <p className="text-sm text-slate-400 mt-2 line-clamp-2">{p.body}</p>
+                    <p className="text-xs text-zinc-500 mt-1">{p.authorName} · {(p.likes || []).length} likes · {(p.comments || []).length} comments</p>
+                    <p className="text-sm text-zinc-400 mt-2 line-clamp-2">{p.body}</p>
                   </button>
                 ))}
               </div>
@@ -4046,38 +4056,38 @@ return (
         {activeTab === 'forum' && (
           <div className="max-w-3xl mx-auto space-y-8">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-cyan-400/90">Community</p>
+              <p className="text-xs font-semibold uppercase tracking-widest text-zinc-100/90">Community</p>
               <h1 className="text-3xl font-semibold text-white tracking-tight mt-1">Forum</h1>
-              <p className="text-sm text-slate-400 mt-2">Anyone can read. Posting requires sign-in.</p>
+              <p className="text-sm text-zinc-400 mt-2">Anyone can read. Posting requires sign-in.</p>
             </div>
             {selectedThread ? (
               <div className="space-y-6">
                 {(() => { const thread = forumThreads.find((x) => x.id === selectedThread.id) || selectedThread; return (
                 <>
-                <button type="button" onClick={() => setSelectedThread(null)} className="text-xs text-slate-400 hover:text-cyan-300">← All threads</button>
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5 space-y-3">
+                <button type="button" onClick={() => setSelectedThread(null)} className="text-xs text-zinc-400 hover:text-zinc-200">← All threads</button>
+                <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-5 space-y-3">
                   <div className="flex justify-between gap-2">
                     <h2 className="text-xl font-bold text-white">{thread.title}</h2>
                     {isAdmin && <button type="button" onClick={() => handleDeleteThread(thread.id)} className="text-xs text-rose-400">Delete</button>}
                   </div>
-                  <p className="text-xs text-slate-500">{thread.authorName} · {thread.createdAt ? new Date(thread.createdAt).toLocaleString('en-GB') : ''}</p>
-                  <p className="text-sm text-slate-300 whitespace-pre-wrap">{thread.body}</p>
+                  <p className="text-xs text-zinc-500">{thread.authorName} · {thread.createdAt ? new Date(thread.createdAt).toLocaleString('en-GB') : ''}</p>
+                  <p className="text-sm text-zinc-300 whitespace-pre-wrap">{thread.body}</p>
                 </div>
                 <div className="space-y-3">
                   <h3 className="text-sm font-bold text-white">Replies ({(thread.replies || []).length})</h3>
                   {(thread.replies || []).map((r) => (
-                    <div key={r.id} className="rounded-xl border border-slate-800 bg-slate-950 p-3 text-xs">
-                      <span className="font-bold text-cyan-300">{r.userName}</span>
-                      <p className="text-slate-300 mt-1 whitespace-pre-wrap">{r.text}</p>
+                    <div key={r.id} className="rounded-xl border border-zinc-800 bg-zinc-950 p-3 text-xs">
+                      <span className="font-bold text-zinc-200">{r.userName}</span>
+                      <p className="text-zinc-300 mt-1 whitespace-pre-wrap">{r.text}</p>
                     </div>
                   ))}
                   {sessionUser ? (
                     <form onSubmit={(e) => { e.preventDefault(); handleForumReply(thread); }} className="space-y-2">
-                      <textarea rows={3} value={forumReply} onChange={(e) => setForumReply(e.target.value)} placeholder="Write a reply…" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white" />
-                      <button type="submit" className="px-4 py-2 rounded-xl bg-cyan-500 text-slate-950 font-bold text-xs">Reply</button>
+                      <textarea rows={3} value={forumReply} onChange={(e) => setForumReply(e.target.value)} placeholder="Write a reply…" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white" />
+                      <button type="submit" className="px-4 py-2 rounded-xl bg-white text-zinc-950 font-bold text-xs">Reply</button>
                     </form>
                   ) : (
-                    <button type="button" onClick={() => setProfileModalOpen(true)} className="text-xs text-cyan-400">Sign in to reply</button>
+                    <button type="button" onClick={() => setProfileModalOpen(true)} className="text-xs text-zinc-100">Sign in to reply</button>
                   )}
                 </div>
                 </>
@@ -4085,20 +4095,20 @@ return (
               </div>
             ) : (
               <>
-                <form onSubmit={handleCreateThread} className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5 space-y-3">
+                <form onSubmit={handleCreateThread} className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-5 space-y-3">
                   <h3 className="text-sm font-bold text-white">New thread</h3>
                   {!user && <p className="text-xs text-amber-200">You must be signed in to post.</p>}
-                  <input value={forumTitle} onChange={(e) => setForumTitle(e.target.value)} placeholder="Title" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white" disabled={!user} />
-                  <textarea rows={4} value={forumBody} onChange={(e) => setForumBody(e.target.value)} placeholder="What's on your mind?" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white" disabled={!user} />
-                  <button type="submit" disabled={!user} className="px-5 py-2.5 rounded-xl bg-cyan-500 text-slate-950 font-bold text-sm disabled:opacity-50">Post thread</button>
+                  <input value={forumTitle} onChange={(e) => setForumTitle(e.target.value)} placeholder="Title" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white" disabled={!user} />
+                  <textarea rows={4} value={forumBody} onChange={(e) => setForumBody(e.target.value)} placeholder="What's on your mind?" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white" disabled={!user} />
+                  <button type="submit" disabled={!user} className="px-5 py-2.5 rounded-xl bg-white text-zinc-950 font-bold text-sm disabled:opacity-50">Post thread</button>
                 </form>
                 <div className="space-y-3">
                   {forumThreads.length === 0 ? (
-                    <p className="text-sm text-slate-500 text-center py-10">No threads yet — start the first discussion.</p>
+                    <p className="text-sm text-zinc-500 text-center py-10">No threads yet — start the first discussion.</p>
                   ) : forumThreads.map((t) => (
-                    <button key={t.id} type="button" onClick={() => setSelectedThread(t)} className="w-full text-left rounded-2xl border border-slate-800 hover:border-cyan-500/40 bg-slate-900/40 p-4 transition">
+                    <button key={t.id} type="button" onClick={() => setSelectedThread(t)} className="w-full text-left rounded-2xl border border-zinc-800 hover:border-zinc-600 bg-zinc-900/40 p-4 transition">
                       <h2 className="text-base font-bold text-white">{t.title}</h2>
-                      <p className="text-xs text-slate-500 mt-1">{t.authorName} · {(t.replies || []).length} replies</p>
+                      <p className="text-xs text-zinc-500 mt-1">{t.authorName} · {(t.replies || []).length} replies</p>
                     </button>
                   ))}
                 </div>
@@ -4111,12 +4121,12 @@ return (
         {activeTab === 'compare' && (
           <div className="max-w-6xl mx-auto space-y-8">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-cyan-400/90">Specs</p>
+              <p className="text-xs font-semibold uppercase tracking-widest text-zinc-100/90">Specs</p>
               <h1 className="text-3xl font-semibold text-white tracking-tight mt-1">Compare systems</h1>
             </div>
-            <div className="overflow-x-auto rounded-2xl border border-slate-800">
+            <div className="overflow-x-auto rounded-2xl border border-zinc-800">
               <table className="w-full text-left text-xs min-w-[640px]">
-                <thead className="bg-slate-950 text-slate-400">
+                <thead className="bg-zinc-950 text-zinc-400">
                   <tr>
                     <th className="px-4 py-3">Feature</th>
                     {products.slice(0, 4).map((p) => (
@@ -4124,27 +4134,27 @@ return (
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800 text-slate-300">
+                <tbody className="divide-y divide-slate-800 text-zinc-300">
                   <tr>
-                    <td className="px-4 py-3 text-slate-500">Price</td>
+                    <td className="px-4 py-3 text-zinc-500">Price</td>
                     {products.slice(0, 4).map((p) => (
-                      <td key={p.id} className="px-4 py-3 text-cyan-300 font-bold">£{Number(p.price).toLocaleString('en-GB')}</td>
+                      <td key={p.id} className="px-4 py-3 text-zinc-200 font-bold">£{Number(p.price).toLocaleString('en-GB')}</td>
                     ))}
                   </tr>
                   <tr>
-                    <td className="px-4 py-3 text-slate-500">Category</td>
+                    <td className="px-4 py-3 text-zinc-500">Category</td>
                     {products.slice(0, 4).map((p) => (
                       <td key={p.id} className="px-4 py-3">{p.category}</td>
                     ))}
                   </tr>
                   <tr>
-                    <td className="px-4 py-3 text-slate-500">Mode</td>
+                    <td className="px-4 py-3 text-zinc-500">Mode</td>
                     {products.slice(0, 4).map((p) => (
                       <td key={p.id} className="px-4 py-3">{p.isPreorder !== false ? 'Pre-order' : 'Standard'}</td>
                     ))}
                   </tr>
                   <tr>
-                    <td className="px-4 py-3 text-slate-500 align-top">Specs</td>
+                    <td className="px-4 py-3 text-zinc-500 align-top">Specs</td>
                     {products.slice(0, 4).map((p) => (
                       <td key={p.id} className="px-4 py-3">
                         <ul className="space-y-1 list-disc list-inside">
@@ -4160,27 +4170,60 @@ return (
         )}
 
 
+
+        {/* SHIPPING & RETURNS */}
+        {activeTab === 'shipping' && (
+          <div className="max-w-2xl mx-auto space-y-10">
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500">Policies</p>
+              <h1 className="text-3xl sm:text-4xl font-semibold text-white tracking-tight mt-2">Shipping & returns</h1>
+              <p className="text-sm text-zinc-400 mt-3 leading-relaxed">Clear rules so you know what to expect when orders open.</p>
+            </div>
+            <section className="space-y-3">
+              <h2 className="text-sm font-semibold text-white">Shipping</h2>
+              <ul className="text-sm text-zinc-400 space-y-2 leading-relaxed list-disc list-inside">
+                <li>We plan UK-first fulfilment with tracked delivery.</li>
+                <li>Pre-order items ship after manufacturing batches — dates shown at purchase when live.</li>
+                <li>International shipping may open later; join the newsletter for updates.</li>
+              </ul>
+            </section>
+            <section className="space-y-3">
+              <h2 className="text-sm font-semibold text-white">Returns</h2>
+              <ul className="text-sm text-zinc-400 space-y-2 leading-relaxed list-disc list-inside">
+                <li>Faulty or DOA units: contact support within 14 days of delivery with order ID and photos.</li>
+                <li>Change-of-mind returns will follow the policy published at checkout when orders open.</li>
+                <li>Custom configured systems may have different return terms.</li>
+              </ul>
+            </section>
+            <section className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6 space-y-3">
+              <h2 className="text-sm font-semibold text-white">Need help now?</h2>
+              <p className="text-xs text-zinc-500">Open Support in the header or email the team from Contact.</p>
+              <button type="button" onClick={() => setAiDrawerOpen(true)} className="px-5 py-2.5 rounded-full bg-white text-zinc-950 text-xs font-semibold">Open support</button>
+            </section>
+          </div>
+        )}
+
         {/* WISHLIST */}
         {activeTab === 'wishlist' && (
           <div className="max-w-3xl mx-auto space-y-6">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-cyan-400/90">Saved</p>
+              <p className="text-xs font-semibold uppercase tracking-widest text-zinc-100/90">Saved</p>
               <h1 className="text-3xl font-semibold text-white tracking-tight mt-1">Your list</h1>
-              <p className="text-sm text-slate-400 mt-2">Saved on this device — sign in later to keep exploring.</p>
+              <p className="text-sm text-zinc-400 mt-2">Saved on this device — sign in later to keep exploring.</p>
             </div>
             {wishlist.length === 0 ? (
-              <p className="text-sm text-slate-500 text-center py-16 border border-dashed border-slate-800 rounded-3xl">No saved items yet. Heart a product on the shop.</p>
+              <p className="text-sm text-zinc-500 text-center py-16 border border-dashed border-zinc-800 rounded-3xl">No saved items yet. Heart a product on the shop.</p>
             ) : (
               <div className="space-y-3">
                 {wishlist.map((w) => (
-                  <div key={w.id} className="flex gap-4 items-center rounded-2xl border border-slate-800 bg-slate-900/50 p-3">
-                    <img src={w.image} alt="" className="w-16 h-16 rounded-xl object-cover bg-slate-950" />
+                  <div key={w.id} className="flex gap-4 items-center rounded-2xl border border-zinc-800 bg-zinc-900/50 p-3">
+                    <img src={w.image} alt="" className="w-16 h-16 rounded-xl object-cover bg-zinc-950" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-white truncate">{w.name}</p>
-                      <p className="text-xs text-cyan-400">£{Number(w.price).toLocaleString('en-GB')}</p>
+                      <p className="text-xs text-zinc-100">£{Number(w.price).toLocaleString('en-GB')}</p>
                     </div>
-                    <button type="button" onClick={() => { const p = products.find((x) => x.id === w.id); if (p) openProduct(p); }} className="text-xs text-cyan-400 font-semibold">View</button>
-                    <button type="button" onClick={() => toggleWishlist(w)} className="text-xs text-slate-500">Remove</button>
+                    <button type="button" onClick={() => { const p = products.find((x) => x.id === w.id); if (p) openProduct(p); }} className="text-xs text-zinc-100 font-semibold">View</button>
+                    <button type="button" onClick={() => toggleWishlist(w)} className="text-xs text-zinc-500">Remove</button>
                   </div>
                 ))}
               </div>
@@ -4193,37 +4236,37 @@ return (
           <div className="max-w-4xl mx-auto space-y-6">
             <h1 className="text-3xl font-extrabold text-white mb-2">Shopping Basket</h1>
             {cart.length === 0 ? (
-              <div className="text-center py-20 bg-slate-900/40 rounded-3xl border border-slate-800">
-                <ShoppingCart className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-                <h3 className="text-lg font-bold text-slate-300">Your basket is empty</h3>
-                <button onClick={() => setActiveTab('shop')} className="mt-4 px-6 py-3 rounded-xl bg-cyan-500 text-slate-950 font-bold text-sm cursor-pointer">
+              <div className="text-center py-20 bg-zinc-900/40 rounded-3xl border border-zinc-800">
+                <ShoppingCart className="w-16 h-16 text-zinc-600 mx-auto mb-4" />
+                <h3 className="text-lg font-bold text-zinc-300">Your basket is empty</h3>
+                <button onClick={() => setActiveTab('shop')} className="mt-4 px-6 py-3 rounded-xl bg-white text-zinc-950 font-bold text-sm cursor-pointer">
                   Return to Catalog
                 </button>
               </div>
             ) : (
               <div className="space-y-6">
-                <div className="bg-slate-900/60 rounded-3xl border border-slate-800 divide-y divide-slate-800 overflow-hidden shadow-2xl">
+                <div className="bg-zinc-900/60 rounded-3xl border border-zinc-800 divide-y divide-slate-800 overflow-hidden shadow-2xl">
                   {cart.map((item) => (
                     <div key={`${item.id}-${item.selectedColor}`} className="p-6 flex items-center justify-between gap-4">
                       <div className="flex items-center gap-4">
-                        <img src={item.image} alt={item.name} className="w-20 h-20 rounded-xl object-cover bg-slate-950 border border-slate-800 flex-shrink-0" />
+                        <img src={item.image} alt={item.name} className="w-20 h-20 rounded-xl object-cover bg-zinc-950 border border-zinc-800 flex-shrink-0" />
                         <div>
                           <h3 className="text-base font-bold text-white">{renderSafe(item.name)}</h3>
-                          <span className="text-xs font-mono text-cyan-300 block">{item.selectedColor}</span>
-                          <span className="text-sm font-semibold text-cyan-400">£{Number(item.price).toLocaleString('en-GB', { minimumFractionDigits: 2 })}</span>
+                          <span className="text-xs font-mono text-zinc-200 block">{item.selectedColor}</span>
+                          <span className="text-sm font-semibold text-zinc-100">£{Number(item.price).toLocaleString('en-GB', { minimumFractionDigits: 2 })}</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-6">
-                        <div className="flex items-center gap-3 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800">
-                          <button onClick={() => updateCartQty(item.id, item.selectedColor, -1)} className="text-slate-400 hover:text-white cursor-pointer">
+                        <div className="flex items-center gap-3 bg-zinc-950 px-3 py-1.5 rounded-xl border border-zinc-800">
+                          <button onClick={() => updateCartQty(item.id, item.selectedColor, -1)} className="text-zinc-400 hover:text-white cursor-pointer">
                             <Minus className="w-4 h-4" />
                           </button>
                           <span className="text-sm font-bold text-white w-6 text-center">{renderSafe(item.qty)}</span>
-                          <button onClick={() => updateCartQty(item.id, item.selectedColor, 1)} className="text-slate-400 hover:text-white cursor-pointer">
+                          <button onClick={() => updateCartQty(item.id, item.selectedColor, 1)} className="text-zinc-400 hover:text-white cursor-pointer">
                             <Plus className="w-4 h-4" />
                           </button>
                         </div>
-                        <button onClick={() => removeFromCart(item.id, item.selectedColor)} className="text-slate-500 hover:text-rose-400 cursor-pointer">
+                        <button onClick={() => removeFromCart(item.id, item.selectedColor)} className="text-zinc-500 hover:text-rose-400 cursor-pointer">
                           <Trash2 className="w-5 h-5" />
                         </button>
                       </div>
@@ -4231,19 +4274,19 @@ return (
                   ))}
                 </div>
 
-                <div className="bg-slate-900/80 rounded-3xl border border-slate-800 p-8 space-y-6 shadow-2xl">
+                <div className="bg-zinc-900/80 rounded-3xl border border-zinc-800 p-8 space-y-6 shadow-2xl">
                   <div className="space-y-2">
                     <div className="flex gap-2">
-                      <input type="text" placeholder="PROMO CODE" value={appliedCode} onChange={(e) => setAppliedCode(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-xs uppercase text-white flex-1 outline-none" />
-                      <button onClick={handleApplyDiscount} className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-4 py-2 rounded-xl font-bold cursor-pointer">
+                      <input type="text" placeholder="PROMO CODE" value={appliedCode} onChange={(e) => setAppliedCode(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-xs uppercase text-white flex-1 outline-none" />
+                      <button onClick={handleApplyDiscount} className="bg-slate-800 hover:bg-slate-700 text-zinc-200 text-xs px-4 py-2 rounded-xl font-bold cursor-pointer">
                         Apply
                       </button>
                     </div>
                     {discountError && <p className="text-[11px] text-rose-400">{discountError}</p>}
                     {appliedDiscount && <p className="text-[11px] text-emerald-400 font-bold">✓ Applied {appliedDiscount.code}!</p>}
                   </div>
-                  <div className="space-y-3 text-sm pt-4 border-t border-slate-800">
-                    <div className="flex justify-between text-slate-400">
+                  <div className="space-y-3 text-sm pt-4 border-t border-zinc-800">
+                    <div className="flex justify-between text-zinc-400">
                       <span>Subtotal</span>
                       <span>£{subtotal.toFixed(2)}</span>
                     </div>
@@ -4253,12 +4296,12 @@ return (
                         <span>-£{calculateDiscount().toFixed(2)}</span>
                       </div>
                     )}
-                    <div className="pt-3 border-t border-slate-800 flex justify-between text-lg font-black text-white">
+                    <div className="pt-3 border-t border-zinc-800 flex justify-between text-lg font-black text-white">
                       <span>Total</span>
                       <span>£{grandTotal.toFixed(2)}</span>
                     </div>
                   </div>
-                  <button onClick={handleInitiateCheckout} className="w-full py-4 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-extrabold text-base transition-all flex items-center justify-center gap-2 cursor-pointer">
+                  <button onClick={handleInitiateCheckout} className="w-full py-4 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 font-extrabold text-base transition-all flex items-center justify-center gap-2 cursor-pointer">
                     <Lock className="w-5 h-5" /> Proceed to Secure Checkout
                   </button>
                 </div>
@@ -4272,18 +4315,18 @@ return (
           <div className="max-w-4xl mx-auto space-y-6">
             <h1 className="text-3xl font-extrabold text-white mb-2">Order History</h1>
             {orders.length === 0 ? (
-              <div className="text-center py-20 bg-slate-900/40 rounded-3xl border border-slate-800">
-                <Package className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-                <h3 className="text-lg font-bold text-slate-300">No order history found</h3>
-                <button onClick={() => setActiveTab('shop')} className="mt-4 px-6 py-3 rounded-xl bg-cyan-500 text-slate-950 font-bold text-sm cursor-pointer">
+              <div className="text-center py-20 bg-zinc-900/40 rounded-3xl border border-zinc-800">
+                <Package className="w-16 h-16 text-zinc-600 mx-auto mb-4" />
+                <h3 className="text-lg font-bold text-zinc-300">No order history found</h3>
+                <button onClick={() => setActiveTab('shop')} className="mt-4 px-6 py-3 rounded-xl bg-white text-zinc-950 font-bold text-sm cursor-pointer">
                   Browse Catalog
                 </button>
               </div>
             ) : (
               <div className="space-y-6">
                 {orders.map((order) => (
-                  <div key={order.id} className="bg-slate-900/60 rounded-3xl border border-slate-800 p-6 sm:p-8 space-y-6 shadow-2xl">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+                  <div key={order.id} className="bg-zinc-900/60 rounded-3xl border border-zinc-800 p-6 sm:p-8 space-y-6 shadow-2xl">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-zinc-800">
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="text-base font-black text-white font-mono">{renderSafe(order.id)}</span>
@@ -4292,7 +4335,7 @@ return (
                               order.status === 'Delivered'
                                 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
                                 : order.status === 'Shipped'
-                                  ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400'
+                                  ? 'bg-zinc-800 border-zinc-600 text-zinc-100'
                                   : order.status === 'Canceled'
                                     ? 'bg-rose-500/10 border-rose-500/30 text-rose-400'
                                     : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
@@ -4301,13 +4344,13 @@ return (
                             {renderSafe(order.status || 'Processing')}
                           </span>
                         </div>
-                        <span className="text-xs text-slate-400 mt-1 block">
+                        <span className="text-xs text-zinc-400 mt-1 block">
                           Placed on {renderSafe(order.date)} via {renderSafe(order.paymentMethod)}
                         </span>
-                        {order.shippingAddress && <span className="text-xs text-slate-400 mt-1 block">Ship to: {order.shippingAddress}</span>}
+                        {order.shippingAddress && <span className="text-xs text-zinc-400 mt-1 block">Ship to: {order.shippingAddress}</span>}
                       </div>
                       <div className="text-right">
-                        <span className="text-xs text-slate-500 block">Total</span>
+                        <span className="text-xs text-zinc-500 block">Total</span>
                         <span className="text-xl font-black text-white">£{Number(order.total).toLocaleString('en-GB', { minimumFractionDigits: 2 })}</span>
                       </div>
                     </div>
@@ -4318,8 +4361,8 @@ return (
                             {item.image && <img src={item.image} alt="" className="w-10 h-10 rounded-lg object-cover" />}
                             <div>
                               <span className="font-bold text-white">{item.name}</span>
-                              <span className="text-cyan-300 ml-2">{item.selectedColor}</span>
-                              <span className="text-slate-400 ml-2">
+                              <span className="text-zinc-200 ml-2">{item.selectedColor}</span>
+                              <span className="text-zinc-400 ml-2">
                                 ×{item.qty} · £{(item.price * item.qty).toFixed(2)}
                               </span>
                             </div>
@@ -4356,6 +4399,7 @@ return (
                   <button type="button" onClick={() => navigateTo('about', '/about')} className="text-left hover:text-white transition">About</button>
                   <button type="button" onClick={() => navigateTo('applications', '/careers')} className="text-left hover:text-white transition">Careers</button>
                   <button type="button" onClick={() => navigateTo('faq', '/faq')} className="text-left hover:text-white transition">FAQ</button>
+                  <button type="button" onClick={() => navigateTo('shipping', '/shipping')} className="text-left hover:text-white transition">Shipping</button>
                   <button type="button" onClick={() => navigateTo('contact', '/contact')} className="text-left hover:text-white transition">Contact</button>
                 </div>
               </div>
@@ -4381,9 +4425,9 @@ return (
 
       {/* CHECKOUT MODAL — proper address + Stripe */}
       {checkoutModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/80 backdrop-blur-md">
-          <div className="bg-slate-900 border border-slate-800 rounded-t-3xl sm:rounded-3xl p-5 sm:p-7 max-w-md w-full shadow-2xl space-y-5 relative max-h-[92vh] overflow-y-auto">
-            <button onClick={() => setCheckoutModalOpen(false)} className="absolute top-5 right-5 p-2 rounded-xl bg-slate-950 text-slate-400 hover:text-white">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-zinc-950/80 backdrop-blur-md">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-t-3xl sm:rounded-3xl p-5 sm:p-7 max-w-md w-full shadow-2xl space-y-5 relative max-h-[92vh] overflow-y-auto">
+            <button onClick={() => setCheckoutModalOpen(false)} className="absolute top-5 right-5 p-2 rounded-xl bg-zinc-950 text-zinc-400 hover:text-white">
               <X className="w-5 h-5" />
             </button>
             <div className="flex items-center gap-2 text-amber-400">
@@ -4394,7 +4438,7 @@ return (
               <p className="font-bold text-amber-200 mb-1">Pre-orders are not open yet.</p>
               <p>We are not accepting payments yet. Your basket is saved. Join the pre-order list from the Shop or Home page to be notified at launch.</p>
             </div>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-zinc-400">
               Basket total: <strong className="text-white">£{grandTotal.toFixed(2)}</strong>
             </p>
             <button type="button" onClick={() => setCheckoutModalOpen(false)} className="w-full py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm">
@@ -4405,8 +4449,8 @@ return (
       )}
 
             {profileModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/80 backdrop-blur-md">
-          <div className="bg-slate-900 border border-slate-800 rounded-t-3xl sm:rounded-3xl p-5 sm:p-7 max-w-md w-full shadow-2xl relative max-h-[92vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-zinc-950/80 backdrop-blur-md">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-t-3xl sm:rounded-3xl p-5 sm:p-7 max-w-md w-full shadow-2xl relative max-h-[92vh] overflow-y-auto">
             <button
               onClick={() => {
                 if (otpGateActive) {
@@ -4421,7 +4465,7 @@ return (
                 setForgotSent(false);
                 setVerifyMode(false);
               }}
-              className="absolute top-5 right-5 p-2 rounded-xl bg-slate-950 text-slate-400 hover:text-white"
+              className="absolute top-5 right-5 p-2 rounded-xl bg-zinc-950 text-zinc-400 hover:text-white"
             >
               <X className="w-5 h-5" />
             </button>
@@ -4429,35 +4473,35 @@ return (
             {sessionUser ? (
               <div className="space-y-6">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center">
-                    <User className="w-6 h-6 text-cyan-400" />
+                  <div className="w-12 h-12 rounded-xl bg-zinc-800 border border-zinc-600 flex items-center justify-center">
+                    <User className="w-6 h-6 text-zinc-100" />
                   </div>
                   <div>
                     <h3 className="text-lg font-bold text-white">Your Account</h3>
-                    <p className="text-xs text-slate-400">{user.email}</p>
+                    <p className="text-xs text-zinc-400">{user.email}</p>
                   </div>
                 </div>
                 <div className="space-y-2.5">
-                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Profile details</p>
+                  <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">Profile details</p>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Display name</label>
-                    <input type="text" value={userName} onChange={(e) => setUserName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
+                    <label className="block text-xs font-semibold text-zinc-400 mb-1">Display name</label>
+                    <input type="text" value={userName} onChange={(e) => setUserName(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Phone</label>
-                    <input type="tel" value={profilePhone} onChange={(e) => setProfilePhone(e.target.value)} placeholder="+44…" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
+                    <label className="block text-xs font-semibold text-zinc-400 mb-1">Phone</label>
+                    <input type="tel" value={profilePhone} onChange={(e) => setProfilePhone(e.target.value)} placeholder="+44…" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Company / school</label>
-                    <input type="text" value={profileCompany} onChange={(e) => setProfileCompany(e.target.value)} placeholder="Optional" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
+                    <label className="block text-xs font-semibold text-zinc-400 mb-1">Company / school</label>
+                    <input type="text" value={profileCompany} onChange={(e) => setProfileCompany(e.target.value)} placeholder="Optional" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Location</label>
-                    <input type="text" value={profileLocation} onChange={(e) => setProfileLocation(e.target.value)} placeholder="City, country" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
+                    <label className="block text-xs font-semibold text-zinc-400 mb-1">Location</label>
+                    <input type="text" value={profileLocation} onChange={(e) => setProfileLocation(e.target.value)} placeholder="City, country" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Bio</label>
-                    <textarea rows="2" value={profileBio} onChange={(e) => setProfileBio(e.target.value)} placeholder="Short intro…" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
+                    <label className="block text-xs font-semibold text-zinc-400 mb-1">Bio</label>
+                    <textarea rows="2" value={profileBio} onChange={(e) => setProfileBio(e.target.value)} placeholder="Short intro…" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
                   </div>
                   <button
                     type="button"
@@ -4465,37 +4509,37 @@ return (
                       await saveUserDataToFirestore(cart, orders, userName);
                       showNotification('Profile saved');
                     }}
-                    className="w-full px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-sm"
+                    className="w-full px-4 py-2.5 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 font-bold text-sm"
                   >
                     Save profile
                   </button>
                 </div>
                 {isAdmin && (
-                  <div className="rounded-xl bg-cyan-500/10 border border-cyan-500/30 p-3 text-xs text-cyan-300">
+                  <div className="rounded-xl bg-zinc-800 border border-zinc-600 p-3 text-xs text-zinc-200">
                     You are logged in as <strong>{isFullAdmin ? 'Full Admin' : 'Limited Admin'}</strong>
                   </div>
                 )}
-                <div className="space-y-2 border-t border-slate-800 pt-4">
+                <div className="space-y-2 border-t border-zinc-800 pt-4">
                   <button
                     type="button"
                     onClick={() => { setProfileModalOpen(false); navigateTo('orders', '/account/orders'); }}
-                    className="w-full text-left px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-sm text-slate-200 hover:border-cyan-500/40 flex items-center justify-between"
+                    className="w-full text-left px-4 py-3 rounded-xl bg-zinc-950 border border-zinc-800 text-sm text-zinc-200 hover:border-zinc-600 flex items-center justify-between"
                   >
-                    <span className="flex items-center gap-2"><Package className="w-4 h-4 text-cyan-400" /> Order history</span>
-                    <span className="text-xs text-slate-500">{orders.length}</span>
+                    <span className="flex items-center gap-2"><Package className="w-4 h-4 text-zinc-100" /> Order history</span>
+                    <span className="text-xs text-zinc-500">{orders.length}</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => { setProfileModalOpen(false); setContactModalOpen(true); }}
-                    className="w-full text-left px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-sm text-slate-200 hover:border-cyan-500/40 flex items-center gap-2"
+                    className="w-full text-left px-4 py-3 rounded-xl bg-zinc-950 border border-zinc-800 text-sm text-zinc-200 hover:border-zinc-600 flex items-center gap-2"
                   >
-                    <Headphones className="w-4 h-4 text-cyan-400" /> Contact support
+                    <Headphones className="w-4 h-4 text-zinc-100" /> Contact support
                   </button>
                   {isAdmin && (
                     <button
                       type="button"
                       onClick={() => { setProfileModalOpen(false); navigateTo('admin', '/admin'); }}
-                      className="w-full text-left px-4 py-3 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-sm text-cyan-300 font-bold"
+                      className="w-full text-left px-4 py-3 rounded-xl bg-zinc-800 border border-zinc-600 text-sm text-zinc-200 font-bold"
                     >
                       Admin panel
                     </button>
@@ -4511,7 +4555,7 @@ return (
                   <>
                     <div className="text-center">
                       <h3 className="text-xl font-bold text-white">Enter verification code</h3>
-                      <p className="text-xs text-slate-400 mt-1">You are not signed in until you enter the code sent to <span className="text-cyan-300">{pendingVerifyEmail || email}</span></p>
+                      <p className="text-xs text-zinc-400 mt-1">You are not signed in until you enter the code sent to <span className="text-zinc-200">{pendingVerifyEmail || email}</span></p>
                       <p className="text-[11px] text-amber-200/90 bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2">Check <strong>Inbox</strong>, <strong>Junk / Spam</strong>, and <strong>Promotions</strong>. Subject looks like “Zortius code 123456”.</p>
                     </div>
                     <form onSubmit={handleVerifyCodeSubmit} className="space-y-3">
@@ -4524,16 +4568,16 @@ return (
                         value={verifyCode}
                         onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                         placeholder="000000"
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-center text-2xl tracking-[0.4em] font-mono text-white focus:outline-none focus:border-cyan-500"
+                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-center text-2xl tracking-[0.4em] font-mono text-white focus:outline-none focus:border-cyan-500"
                       />
                       {authError && <div className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-xl p-3">{authError}</div>}
-                      <button type="submit" disabled={authSubmitting} className="w-full py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-sm disabled:opacity-60">
+                      <button type="submit" disabled={authSubmitting} className="w-full py-3 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 font-bold text-sm disabled:opacity-60">
                         {authSubmitting ? 'Checking…' : 'Verify email'}
                       </button>
-                      <button type="button" disabled={authSubmitting} onClick={handleResendVerifyCode} className="w-full text-xs text-cyan-400 hover:text-cyan-300">
+                      <button type="button" disabled={authSubmitting} onClick={handleResendVerifyCode} className="w-full text-xs text-zinc-100 hover:text-zinc-200">
                         Resend code
                       </button>
-                      <button type="button" onClick={handleResendVerifyCode} className="w-full text-xs text-cyan-400 hover:text-cyan-300" disabled={authSubmitting}>
+                      <button type="button" onClick={handleResendVerifyCode} className="w-full text-xs text-zinc-100 hover:text-zinc-200" disabled={authSubmitting}>
                         Resend code
                       </button>
                       <button
@@ -4544,7 +4588,7 @@ return (
                           setVerifyMode(false);
                           if (auth) await signOut(auth);
                         }}
-                        className="w-full text-xs text-slate-500 hover:text-white"
+                        className="w-full text-xs text-zinc-500 hover:text-white"
                       >
                         Cancel and sign out
                       </button>
@@ -4554,56 +4598,56 @@ return (
                 <>
                 <div className="text-center">
                   <h3 className="text-xl font-bold text-white">{authMode === 'login' ? 'Welcome back' : 'Create account'}</h3>
-                  <p className="text-xs text-slate-400 mt-1">{authMode === 'login' ? 'Sign in to continue' : 'Join Zortius'}</p>
+                  <p className="text-xs text-zinc-400 mt-1">{authMode === 'login' ? 'Sign in to continue' : 'Join Zortius'}</p>
                 </div>
-                <div className="flex bg-slate-950 rounded-xl p-1 border border-slate-800">
-                  <button onClick={() => { setAuthMode('login'); setAuthError(''); }} className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${authMode === 'login' ? 'bg-cyan-500 text-slate-950' : 'text-slate-400'}`}>
+                <div className="flex bg-zinc-950 rounded-xl p-1 border border-zinc-800">
+                  <button onClick={() => { setAuthMode('login'); setAuthError(''); }} className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${authMode === 'login' ? 'bg-white text-zinc-950' : 'text-zinc-400'}`}>
                     Login
                   </button>
-                  <button onClick={() => { setAuthMode('signup'); setAuthError(''); }} className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${authMode === 'signup' ? 'bg-cyan-500 text-slate-950' : 'text-slate-400'}`}>
+                  <button onClick={() => { setAuthMode('signup'); setAuthError(''); }} className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${authMode === 'signup' ? 'bg-white text-zinc-950' : 'text-zinc-400'}`}>
                     Sign Up
                   </button>
                 </div>
                 <form onSubmit={authMode === 'login' ? handleEmailSignIn : handleEmailSignUp} className="space-y-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Email</label>
-                    <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
+                    <label className="block text-xs font-semibold text-zinc-400 mb-1">Email</label>
+                    <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Password</label>
+                    <label className="block text-xs font-semibold text-zinc-400 mb-1">Password</label>
                     <div className="relative">
-                      <input type={showPassword ? 'text' : 'password'} required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500 pr-10" />
-                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white">
+                      <input type={showPassword ? 'text' : 'password'} required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500 pr-10" />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white">
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
                   </div>
-                  <label className="flex items-center gap-2 text-xs text-slate-400">
+                  <label className="flex items-center gap-2 text-xs text-zinc-400">
                     <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} />
                     Remember me
                   </label>
                   {authError && <div className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-xl p-3">{authError}</div>}
-                  <button type="submit" disabled={authSubmitting} className="w-full py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-60">
+                  <button type="submit" disabled={authSubmitting} className="w-full py-3 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-60">
                     {authSubmitting ? <RefreshCw className="w-4 h-4 animate-spin" /> : authMode === 'login' ? <LogIn className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
                     {authSubmitting ? 'Please wait...' : authMode === 'login' ? 'Sign In' : 'Create Account'}
                   </button>
                 </form>
                 {!forgotMode ? (
                   <>
-                    <button type="button" onClick={() => { setForgotMode(true); setAuthError(''); setForgotSent(false); }} className="w-full text-center text-xs text-cyan-400 hover:text-cyan-300">
+                    <button type="button" onClick={() => { setForgotMode(true); setAuthError(''); setForgotSent(false); }} className="w-full text-center text-xs text-zinc-100 hover:text-zinc-200">
                       Forgot password?
                     </button>
-                    <button onClick={handleGoogleSignIn} disabled={authSubmitting} className="w-full py-3 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-white font-bold text-sm flex items-center justify-center gap-2">
+                    <button onClick={handleGoogleSignIn} disabled={authSubmitting} className="w-full py-3 rounded-xl bg-zinc-950 hover:bg-slate-800 border border-zinc-800 text-white font-bold text-sm flex items-center justify-center gap-2">
                       Continue with Google
                     </button>
-                    <p className="text-[10px] text-slate-500 text-center leading-relaxed">
+                    <p className="text-[10px] text-zinc-500 text-center leading-relaxed">
                       On phones, Google opens a secure page then returns you here signed in. Use the same browser — not private mode.
                     </p>
                   </>
                 ) : (
-                  <div className="space-y-3 border-t border-slate-800 pt-4">
+                  <div className="space-y-3 border-t border-zinc-800 pt-4">
                     <p className="text-sm font-bold text-white">Reset password</p>
-                    <p className="text-xs text-slate-400 leading-relaxed">
+                    <p className="text-xs text-zinc-400 leading-relaxed">
                       We email a reset link to your address. We cannot see or send your current password — it is encrypted and only you can set a new one.
                     </p>
                     {forgotSent ? (
@@ -4612,17 +4656,17 @@ return (
                       </div>
                     ) : (
                       <form onSubmit={handleForgotPassword} className="space-y-3">
-                        <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Account email" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500" />
+                        <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Account email" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500" />
                         {authError && <div className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-xl p-3">{authError}</div>}
-                        <button type="submit" disabled={authSubmitting} className="w-full py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-sm disabled:opacity-60">
+                        <button type="submit" disabled={authSubmitting} className="w-full py-3 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 font-bold text-sm disabled:opacity-60">
                           {authSubmitting ? 'Sending…' : 'Send reset email'}
                         </button>
                       </form>
                     )}
-                    <button type="button" onClick={() => { setForgotMode(false); setForgotSent(false); setAuthError(''); }} className="w-full text-center text-xs text-slate-400 hover:text-white">
+                    <button type="button" onClick={() => { setForgotMode(false); setForgotSent(false); setAuthError(''); }} className="w-full text-center text-xs text-zinc-400 hover:text-white">
                       ← Back to sign in
                     </button>
-                    <button type="button" onClick={() => { setProfileModalOpen(false); setContactModalOpen(true); setForgotMode(false); }} className="w-full text-center text-xs text-cyan-400 hover:text-cyan-300">
+                    <button type="button" onClick={() => { setProfileModalOpen(false); setContactModalOpen(true); setForgotMode(false); }} className="w-full text-center text-xs text-zinc-100 hover:text-zinc-200">
                       Still stuck? Contact support
                     </button>
                   </div>
