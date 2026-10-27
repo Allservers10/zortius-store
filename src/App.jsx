@@ -274,6 +274,9 @@ export default function App() {
   const [ticketReply, setTicketReply] = useState({});
   const [cmdOpen, setCmdOpen] = useState(false);
   const [cmdQuery, setCmdQuery] = useState('');
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [newsletterBusy, setNewsletterBusy] = useState(false);
+  const [newsletters, setNewsletters] = useState([]);
   const [wishlist, setWishlist] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('zortius_wishlist') || '[]');
@@ -313,7 +316,7 @@ export default function App() {
           setOtpGateActive(false);
           setVerifyMode(false);
         } else {
-          // Not fully logged in until email code
+          // New login only — code once, then remembered until sign-out
           setIsAdmin(false);
           setIsFullAdmin(false);
           setOtpGateActive(true);
@@ -533,6 +536,19 @@ export default function App() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  // Newsletter signups
+  useEffect(() => {
+    if (!db) return;
+    const unsub = onSnapshot(collection(db, 'artifacts', appId, 'newsletter'), (snap) => {
+      setNewsletters(
+        snap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+      );
+    });
+    return () => unsub();
   }, []);
 
   // Pre-orders list (admin)
@@ -771,6 +787,9 @@ export default function App() {
         if (oid === 'SUPPORT-REPLY') {
           return `Re: your Zortius support request`;
         }
+        if (oid === 'NEWSLETTER') {
+          return `Welcome to Zortius updates`;
+        }
         if (oid.startsWith('APPLICATION-')) {
           return `Zortius application – ${st || 'Received'}`;
         }
@@ -811,24 +830,34 @@ export default function App() {
   const generateVerifyCode = () => String(Math.floor(100000 + Math.random() * 900000));
 
   const otpSessionKey = (uid) => `zortius_otp_ok_${uid || 'x'}`;
+  // Persist across refreshes until sign-out (or 30 days)
   const isOtpUnlocked = (uid) => {
+    if (!uid) return false;
     try {
-      return sessionStorage.getItem(otpSessionKey(uid)) === '1';
+      const raw = localStorage.getItem(otpSessionKey(uid));
+      if (!raw) return false;
+      if (raw === '1') return true;
+      const ts = Number(raw);
+      if (!Number.isFinite(ts)) return false;
+      return Date.now() - ts < 30 * 24 * 60 * 60 * 1000;
     } catch {
       return false;
     }
   };
   const setOtpUnlocked = (uid) => {
     try {
-      sessionStorage.setItem(otpSessionKey(uid), '1');
+      localStorage.setItem(otpSessionKey(uid), String(Date.now()));
     } catch (_) {}
   };
   const clearOtpUnlocked = (uid) => {
     try {
-      if (uid) sessionStorage.removeItem(otpSessionKey(uid));
-      else {
-        Object.keys(sessionStorage).forEach((k) => {
-          if (k.startsWith('zortius_otp_ok_')) sessionStorage.removeItem(k);
+      if (uid) {
+        localStorage.removeItem(otpSessionKey(uid));
+        sessionStorage.removeItem(otpSessionKey(uid));
+        sessionStorage.removeItem(`zortius_otp_sent_${uid}`);
+      } else {
+        Object.keys(localStorage).forEach((k) => {
+          if (k.startsWith('zortius_otp_ok_')) localStorage.removeItem(k);
         });
       }
     } catch (_) {}
@@ -917,6 +946,57 @@ export default function App() {
     await setDoc(doc(db, 'artifacts', appId, 'public_data', 'settings'), next, { merge: true });
     setStoreSettings(next);
     showNotification('Store settings saved.');
+  };
+
+  const handleNewsletterSignup = async (e) => {
+    e?.preventDefault?.();
+    const em = (newsletterEmail || user?.email || '').trim().toLowerCase();
+    if (!em || !em.includes('@')) {
+      showNotification('Enter a valid email.', 'error');
+      return;
+    }
+    setNewsletterBusy(true);
+    try {
+      if (db) {
+        await addDoc(collection(db, 'artifacts', appId, 'newsletter'), {
+          email: em,
+          source: 'website',
+          userId: user?.uid || null,
+          createdAt: new Date().toISOString()
+        });
+      }
+      await sendActualEmail(
+        EMAILJS_CONTACT_TEMPLATE_ID,
+        em,
+        em.split('@')[0],
+        'NEWSLETTER',
+        'WELCOME',
+        `Welcome to the Zortius list.\n\nYou will get product launches, pre-order windows, and engineering notes.\n\nUnsubscribe anytime by replying STOP.\n\n— Zortius\nhttps://zortius.com`
+      );
+      setNewsletterEmail('');
+      showNotification('You are on the list. Check inbox & junk for a welcome note.');
+    } catch (err) {
+      console.error(err);
+      showNotification('Could not join list. Try again.', 'error');
+    } finally {
+      setNewsletterBusy(false);
+    }
+  };
+
+  const exportNewsletterCsv = () => {
+    const rows = [['Email', 'Source', 'Date']];
+    newsletters.forEach((r) => {
+      rows.push([r.email || '', r.source || '', r.createdAt ? new Date(r.createdAt).toISOString() : '']);
+    });
+    const csv = rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `zortius-newsletter-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showNotification(`Exported ${newsletters.length} subscribers.`);
   };
 
   const exportPreordersCsv = () => {
@@ -2428,6 +2508,7 @@ return (
                 { label: 'Forum', tab: 'forum', path: '/forum' },
                 { label: 'Support chatbot', action: () => setAiDrawerOpen(true) },
                 { label: 'Saved items', tab: 'wishlist', path: '/wishlist' },
+                { label: 'Join newsletter', action: () => { navigateTo('home', '/'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); } },
                 { label: 'Account', action: () => setProfileModalOpen(true) },
                 ...(isAdmin ? [{ label: 'Admin panel', tab: 'admin', path: '/admin' }] : []),
               ]
@@ -2863,6 +2944,28 @@ return (
                 <button type="button" onClick={() => saveStoreSettings({ announcement: announcementDraft || storeSettings.announcement })} className="px-4 py-2 rounded-xl bg-cyan-500 text-slate-950 text-xs font-bold">
                   Save announcement
                 </button>
+              </section>
+            )}
+
+            {isFullAdmin && (
+              <section className="bg-slate-900 border border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h3 className="text-sm font-mono font-bold text-cyan-400 uppercase tracking-wider">Newsletter subscribers</h3>
+                  <button type="button" onClick={exportNewsletterCsv} className="px-3 py-1.5 rounded-lg bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 text-xs font-bold">Export CSV ({newsletters.length})</button>
+                </div>
+                <p className="text-xs text-slate-400">People who joined the launch / updates list.</p>
+                {newsletters.length === 0 ? (
+                  <p className="text-xs text-slate-500">No subscribers yet.</p>
+                ) : (
+                  <div className="max-h-40 overflow-y-auto text-xs space-y-1">
+                    {newsletters.slice(0, 50).map((n) => (
+                      <div key={n.id} className="flex justify-between gap-2 text-slate-300 border-b border-slate-800/50 py-1">
+                        <span className="break-all">{n.email}</span>
+                        <span className="text-slate-600 whitespace-nowrap">{n.createdAt ? new Date(n.createdAt).toLocaleDateString('en-GB') : ''}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </section>
             )}
 
@@ -3421,7 +3524,19 @@ return (
             </section>
 
             
-            <section className="space-y-6">
+                        <section className="relative overflow-hidden rounded-3xl border border-cyan-500/20 bg-gradient-to-br from-cyan-500/10 via-slate-900 to-slate-950 p-8 sm:p-12">
+              <div className="max-w-xl">
+                <p className="text-xs font-semibold uppercase tracking-widest text-cyan-400/90">Newsletter</p>
+                <h2 className="text-2xl sm:text-3xl font-semibold text-white tracking-tight mt-2">Launch notes & early access</h2>
+                <p className="text-sm text-slate-400 mt-3 leading-relaxed">Product drops, pre-order windows, and engineering notes. Check junk the first time so you do not miss us.</p>
+                <form onSubmit={handleNewsletterSignup} className="mt-6 flex flex-col sm:flex-row gap-2">
+                  <input type="email" required value={newsletterEmail} onChange={(e) => setNewsletterEmail(e.target.value)} placeholder="you@email.com" className="flex-1 bg-slate-950 border border-slate-700 rounded-full px-5 py-3 text-sm text-white outline-none focus:border-cyan-500" />
+                  <button type="submit" disabled={newsletterBusy} className="px-6 py-3 rounded-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-sm disabled:opacity-60">{newsletterBusy ? 'Joining…' : 'Join the list'}</button>
+                </form>
+              </div>
+            </section>
+
+<section className="space-y-6">
               <div className="flex items-end justify-between gap-4">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-widest text-cyan-400/90">Collection</p>
