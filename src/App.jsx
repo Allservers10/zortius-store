@@ -791,6 +791,9 @@ export default function App() {
         if (oid === 'NEWSLETTER') {
           return `Welcome to Zortius updates`;
         }
+        if (oid === 'PREORDER-UPDATE') {
+          return `Zortius pre-order update`;
+        }
         if (oid.startsWith('APPLICATION-')) {
           return `Zortius application – ${st || 'Received'}`;
         }
@@ -998,6 +1001,28 @@ export default function App() {
     a.click();
     URL.revokeObjectURL(url);
     showNotification(`Exported ${newsletters.length} subscribers.`);
+  };
+
+  const emailAllPreorders = async () => {
+    if (!isFullAdmin || preorders.length === 0) return;
+    if (!window.confirm(`Email all ${preorders.length} pre-order contacts?`)) return;
+    let ok = 0;
+    for (const row of preorders) {
+      if (!row.email) continue;
+      try {
+        await sendActualEmail(
+          EMAILJS_CONTACT_TEMPLATE_ID,
+          row.email,
+          row.email.split('@')[0],
+          'PREORDER-UPDATE',
+          'UPDATE',
+          `Hi,\n\nThanks for your interest in ${row.productName || 'Zortius'}.\n\n${storeSettings.takingOrders ? 'Orders are now open at https://zortius.com/shop' : 'We will notify you when checkout opens at https://zortius.com'}\n\n— Zortius`
+        );
+        ok += 1;
+        await new Promise((r) => setTimeout(r, 400));
+      } catch (_) {}
+    }
+    showNotification(`Sent ${ok} pre-order update emails.`);
   };
 
   const exportPreordersCsv = () => {
@@ -1493,7 +1518,7 @@ export default function App() {
     }, 900);
   };
 
-  // Free rule-based support chatbot (no paid API)
+  // Support assistant (AI when configured) (no paid API)
   const getBotReply = (raw) => {
     const q = (raw || '').toLowerCase().trim();
     if (!q) return { text: 'Type a question about products, orders, careers, or accounts.', escalate: false };
@@ -1580,9 +1605,34 @@ export default function App() {
     setChatSending(true);
     setChatMessages((m) => [...m, { role: 'user', text }]);
     setChatInput('');
-    await new Promise((r) => setTimeout(r, 400));
-    const reply = getBotReply(text);
-    setChatMessages((m) => [...m, { role: 'bot', text: reply.text, escalate: reply.escalate }]);
+    let botText = '';
+    let escalate = false;
+    try {
+      const productCtx = products
+        .slice(0, 12)
+        .map((p) => `${p.name} (£${p.price}) ${p.isPreorder !== false ? '[pre-order]' : ''} — ${(p.description || '').slice(0, 80)}`)
+        .join('\n');
+      const context = `Store mode: ${storeSettings.statusLabel}. Announcement: ${storeSettings.announcement}. Taking orders: ${storeSettings.takingOrders}.\nProducts:\n${productCtx}`;
+      const res = await fetch('/api/ai-support', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, context })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (data.text && !data.fallback) {
+        botText = data.text;
+      } else {
+        const reply = getBotReply(text);
+        botText = reply.text + (data.error ? '\n\n(Live AI is offline — using built-in answers. Add GROQ_API_KEY or GEMINI_API_KEY in Vercel.)' : '');
+        escalate = reply.escalate;
+      }
+    } catch (_) {
+      const reply = getBotReply(text);
+      botText = reply.text;
+      escalate = reply.escalate;
+    }
+    if (/\b(human|agent|ticket|complaint|manager)\b/i.test(text)) escalate = true;
+    setChatMessages((m) => [...m, { role: 'bot', text: botText, escalate }]);
     setChatSending(false);
   };
 
@@ -2097,7 +2147,7 @@ export default function App() {
       .map((x) => x.trim())
       .filter(Boolean);
     const imageList = (prodImages || '')
-      .split('\n')
+      .split(/[\n,]+/)
       .map((x) => x.trim())
       .filter(Boolean);
     if (prodImage && !imageList.includes(prodImage)) imageList.unshift(prodImage);
@@ -2510,6 +2560,7 @@ return (
                 { label: 'Support chatbot', action: () => setAiDrawerOpen(true) },
                 { label: 'Saved items', tab: 'wishlist', path: '/wishlist' },
                 { label: 'Shipping & returns', tab: 'shipping', path: '/shipping' },
+                { label: 'Volume / education enquiry', tab: 'contact', path: '/contact' },
                 { label: 'Join newsletter', action: () => { navigateTo('home', '/'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); } },
                 { label: 'Account', action: () => setProfileModalOpen(true) },
                 ...(isAdmin ? [{ label: 'Admin panel', tab: 'admin', path: '/admin' }] : []),
@@ -2983,7 +3034,8 @@ return (
                     }} className="px-3 py-1.5 rounded-lg bg-slate-800 border border-zinc-700 text-zinc-200 text-xs font-bold">
                       Copy emails
                     </button>
-                    <button type="button" onClick={exportPreordersCsv} className="px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-200 text-xs font-bold hover:bg-cyan-500/25">
+                    <button type="button" onClick={emailAllPreorders} className="px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-200 text-xs font-bold">Email all</button>
+                    <button type="button" onClick={exportPreordersCsv} className="px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-200 text-xs font-bold">
                       Export CSV ({preorders.length})
                     </button>
                   </div>
@@ -3922,6 +3974,7 @@ return (
                   {selectedProduct.isPreorder !== false && (
                     <p className="text-xs text-amber-200/90">This product is in <strong>pre-order</strong> mode — we notify you at launch. Checkout is not open yet.</p>
                   )}
+                  <p className="text-[11px] text-zinc-500 leading-relaxed">Warranty details confirmed at purchase. Typical coverage aims for 12 months on systems unless stated otherwise. See Shipping & returns for delivery rules.</p>
                   <button
                     type="button"
                     onClick={() => toggleWishlist(selectedProduct)}
