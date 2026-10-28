@@ -1,4 +1,4 @@
-// api/ai-support.js — set GROQ_API_KEY or GEMINI_API_KEY in Vercel, then redeploy
+// api/ai-support.js — GROQ_API_KEY in Vercel (redeploy after changes)
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS, GET');
@@ -33,13 +33,19 @@ export default async function handler(req, res) {
       return;
     }
 
-    const system = `You are Zortius Support on zortius.com — a UK-first hardware brand (workstations, displays, peripherals). Be concise and accurate. Pre-order/waitlist may be active if orders are not open. Never invent order IDs or fake policies. If the user needs a human, tell them to open a support ticket in the chat. Site context:\n${context || 'Pre-order interest; careers; newsletter.'}`;
+    const system = `You are Zortius Support on zortius.com — UK-first hardware (workstations, displays, peripherals). Be concise and accurate. Pre-order/waitlist may be active. Never invent order IDs. If they need a human, say they can open a support ticket in the chat. Context:\n${context || 'Pre-order interest; careers; newsletter.'}`;
 
     const groqKey = process.env.GROQ_API_KEY;
     const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 
+    // Current Groq production/preview chat models (old llama-3.3 free tier IDs were decommissioned)
     if (groqKey) {
-      const models = ['llama-3.3-70b-versatile', 'llama-3.1-70b-versatile', 'llama-3.1-8b-instant', 'gemma2-9b-it'];
+      const models = [
+        'openai/gpt-oss-20b',
+        'openai/gpt-oss-120b',
+        'qwen/qwen3.8-27b',
+        'llama-3.1-8b-instant'
+      ];
       let lastErr = '';
       for (const model of models) {
         try {
@@ -66,8 +72,10 @@ export default async function handler(req, res) {
               res.status(200).json({ text, provider: 'groq', model });
               return;
             }
+            lastErr = 'Empty model response';
+          } else {
+            lastErr = data.error?.message || data.message || `HTTP ${r.status}`;
           }
-          lastErr = data.error?.message || data.message || `HTTP ${r.status}`;
         } catch (e) {
           lastErr = e.message || 'fetch failed';
         }

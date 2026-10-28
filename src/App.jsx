@@ -1623,7 +1623,7 @@ export default function App() {
         botText = data.text;
       } else {
         const reply = getBotReply(text);
-        botText = reply.text + (data.error ? '\n\n(Live AI is offline — using built-in answers. Add GROQ_API_KEY or GEMINI_API_KEY in Vercel.)' : '');
+        botText = reply.text + (data.error ? `\n\n(AI note: ${data.error})` : '');
         escalate = reply.escalate;
       }
     } catch (_) {
