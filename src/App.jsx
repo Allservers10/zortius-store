@@ -3,7 +3,7 @@ import {
   ShoppingCart, Shield, Zap, Star, CheckCircle,
   Package, User, Search, Menu, X, ArrowRight, Lock, Trash2,
   Plus, Minus, RefreshCw, AlertCircle, LogIn, LogOut, UserCheck, Eye, EyeOff, CreditCard,
-  Tag, PlusCircle, Edit3, PackageCheck, Send, Bot, Sparkles, Headphones, MapPin, Calendar, FileText, Layers, ClipboardCheck, Users, Wand2, ThumbsUp, ThumbsDown
+  Tag, PlusCircle, Edit3, PackageCheck, Send, Bot, Sparkles, Headphones, MapPin, Calendar, FileText, Layers, ClipboardCheck, Users, Wand2, ThumbsUp, ThumbsDown, Heart
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import {
@@ -46,7 +46,7 @@ const renderSafe = (val, fallback = '') => {
   return fallback;
 };
 
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'zortius-store-v2';
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'zortius-v2';
 const firebaseConfig = {
   apiKey: 'AIzaSyBhsCLWDETaqh1zytvnNt33O8Lls63mna0',
   authDomain: 'zortiusweb1.firebaseapp.com',
@@ -2255,6 +2255,26 @@ export default function App() {
 
   // -------------------- RENDER --------------------
     const authReady = !!(user && !otpGateActive);
+  useEffect(() => {
+    const titles = {
+      home: 'Zortius — Premium Hardware & Workstations',
+      shop: 'Shop — Zortius',
+      cart: 'Basket — Zortius',
+      wishlist: 'Wishlist — Zortius',
+      applications: 'Careers — Zortius',
+      blog: 'Media — Zortius',
+      forum: 'Forum — Zortius',
+      compare: 'Compare — Zortius',
+      about: 'About — Zortius',
+      contact: 'Contact — Zortius',
+      faq: 'FAQ — Zortius',
+      shipping: 'Shipping — Zortius',
+      admin: 'Admin — Zortius',
+      privacy: 'Privacy — Zortius',
+      terms: 'Terms — Zortius'
+    };
+    document.title = titles[activeTab] || 'Zortius — Premium Hardware & Workstations';
+  }, [activeTab]);
   const sessionUser = authReady ? user : null;
 
 return (
@@ -2347,8 +2367,25 @@ return (
               </button>
 
               <button
+                type="button"
+                onClick={() => navigateTo('wishlist', '/wishlist')}
+                className="relative p-2.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-xl text-zinc-300 hover:text-rose-400 transition-all cursor-pointer"
+                aria-label="Wishlist"
+                title="Wishlist"
+              >
+                <Heart className={`w-5 h-5 ${wishlist.length ? 'fill-rose-500 text-rose-500' : ''}`} />
+                {wishlist.length > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white font-black text-[10px] w-5 h-5 flex items-center justify-center rounded-full border-2 border-zinc-950">
+                    {wishlist.length}
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
                 onClick={() => navigateTo('cart', '/cart')}
-                className="relative p-2.5 bg-zinc-900 hover:bg-slate-800 border border-zinc-800 rounded-xl text-zinc-300 hover:text-zinc-100 transition-all flex items-center gap-2 cursor-pointer"
+                className="relative p-2.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-xl text-zinc-300 hover:text-zinc-100 transition-all flex items-center gap-2 cursor-pointer"
+                aria-label="Basket"
               >
                 <ShoppingCart className="w-5 h-5" />
                 <span className="sr-only">Basket</span>
