@@ -37,7 +37,7 @@ const EMAILJS_PUBLIC_KEY = 'ce23vL3ytn68UIxsf';
 
 const ADMIN_EMAIL = 'zortiusofficial@gmail.com';
 const LIMITED_ADMIN_EMAIL = 'gto.zortius@outlook.com';
-const SUPPORT_EMAIL = 'help.zortius@outlook.com';
+const SUPPORT_EMAIL = 'help@zortius.com';
 
 const renderSafe = (val, fallback = '') => {
   if (val === null || val === undefined) return fallback;
@@ -49,7 +49,7 @@ const renderSafe = (val, fallback = '') => {
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'zortius-store-v2';
 const firebaseConfig = {
   apiKey: 'AIzaSyBhsCLWDETaqh1zytvnNt33O8Lls63mna0',
-  authDomain: 'zortiusweb1.firebaseapp.com',
+  authDomain: 'auth.zortius.com',
   projectId: 'zortiusweb1',
   storageBucket: 'zortiusweb1.firebasestorage.app',
   messagingSenderId: '345352784478',
