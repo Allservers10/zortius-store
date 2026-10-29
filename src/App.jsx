@@ -1700,7 +1700,7 @@ export default function App() {
       return { text: 'Join the Forum (login required to post). Read threads anytime.', escalate: false };
     }
     if (/blog|media|news|article/.test(q)) {
-      return { text: 'Official updates are on Media. Admins publish posts; likes/comments depend on post settings.', escalate: false };
+      return { text: 'Official updates are on Blog. Admins publish posts; likes/comments depend on post settings.', escalate: false };
     }
     if (/contact|email|help@|support@/.test(q)) {
       return {
@@ -1729,7 +1729,7 @@ export default function App() {
       };
     }
     return {
-      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say 'human'to email the team.",
+      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say 'human' to email the team.",
       escalate: false
     };
   };
@@ -1839,7 +1839,7 @@ export default function App() {
     });
     setBlogTitle('');
     setBlogBody('');
-    showNotification('Media post published.');
+    showNotification('Blog post published.');
   };
 
   const handleLikeBlog = async (post) => {
@@ -2432,7 +2432,7 @@ export default function App() {
       cart: 'Basket — Zortius',
       wishlist: 'Wishlist — Zortius',
       applications: 'Careers — Zortius',
-      blog: 'Media — Zortius',
+      blog: 'Blog — Zortius',
       forum: 'Forum — Zortius',
       compare: 'Compare — Zortius',
       about: 'About — Zortius',
@@ -2481,7 +2481,7 @@ return (
               {[
                 { tab: 'home', path: '/', label: 'Home' },
                 { tab: 'shop', path: '/shop', label: 'Shop' },
-                { tab: 'blog', path: '/blog', label: 'Media' },
+                { tab: 'blog', path: '/blog', label: 'Blog' },
                 { tab: 'forum', path: '/forum', label: 'Forum' },
                 { tab: 'applications', path: '/careers', label: 'Careers' },
                 { tab: 'compare', path: '/compare', label: 'Compare' },
@@ -2583,7 +2583,7 @@ return (
               {[
                 { tab: 'home', path: '/', label: 'Home' },
                 { tab: 'shop', path: '/shop', label: 'Shop' },
-                { tab: 'blog', path: '/blog', label: 'Media' },
+                { tab: 'blog', path: '/blog', label: 'Blog' },
                 { tab: 'forum', path: '/forum', label: 'Forum' },
                 { tab: 'applications', path: '/careers', label: 'Careers' },
                 { tab: 'compare', path: '/compare', label: 'Compare' },
@@ -2762,7 +2762,7 @@ return (
                 { label: 'Shop', tab: 'shop', path: '/shop' },
                 { label: 'Compare systems', tab: 'compare', path: '/compare' },
                 { label: 'Careers', tab: 'applications', path: '/careers' },
-                { label: 'Media', tab: 'blog', path: '/blog' },
+                { label: 'Blog', tab: 'blog', path: '/blog' },
                 { label: 'Forum', tab: 'forum', path: '/forum' },
                 { label: 'Support chatbot', action: () => setAiDrawerOpen(true) },
                 { label: 'Saved items', tab: 'wishlist', path: '/wishlist' },
@@ -3104,33 +3104,48 @@ return (
                 <input type="url" placeholder="Product video URL (YouTube / MP4)" value={prodVideo} onChange={(e) => setProdVideo(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-cyan-500 sm:col-span-2" />
                 <div className="sm:col-span-2 space-y-3 rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3">
                   <label className="flex items-center gap-3 text-xs text-zinc-300 cursor-pointer">
-                    <input type="checkbox" checked={prodIsPreorder} onChange={(e) => setProdIsPreorder(e.target.checked)} className="rounded border-zinc-600" />
+                    <input type="checkbox" checked={prodIsPreorder} onChange={(e) => {
+                      const on = e.target.checked;
+                      setProdIsPreorder(on);
+                      if (on && !prodPreorderStatus) setProdPreorderStatus('open');
+                    }} className="rounded border-zinc-600" />
                     <span><strong className="text-white">Pre-order product</strong> — interest list instead of normal buy</span>
                   </label>
                   {prodIsPreorder && (
-                    <div className="flex flex-wrap gap-3 items-end pl-1">
-                      <div>
-                        <p className="text-[10px] text-zinc-500 mb-1">Pre-order status</p>
-                        <div className="flex gap-1">
-                          {['open', 'closed', 'scheduled'].map((s) => (
-                            <button key={s} type="button" onClick={() => setProdPreorderStatus(s)}
-                              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold capitalize border ${
-                                prodPreorderStatus === s
-                                  ? s === 'open' ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
-                                    : s === 'closed' ? 'bg-zinc-700 border-zinc-600 text-zinc-200'
-                                    : 'bg-sky-500/20 border-sky-500/40 text-sky-300'
-                                  : 'border-zinc-800 text-zinc-500'
-                              }`}>{s}</button>
-                          ))}
-                        </div>
-                      </div>
-                      {prodPreorderStatus === 'scheduled' && (
+                    <div className="space-y-3 pl-1">
+                      <div className="flex flex-wrap gap-4 items-end">
                         <div>
-                          <p className="text-[10px] text-zinc-500 mb-1">Opens at</p>
-                          <input type="datetime-local" value={prodPreorderOpensAt} onChange={(e) => setProdPreorderOpensAt(e.target.value)}
-                            className="bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-white" />
+                          <p className="text-[10px] text-zinc-500 mb-1">Pre-order status (saved to database)</p>
+                          <select
+                            value={prodPreorderStatus}
+                            onChange={(e) => setProdPreorderStatus(e.target.value)}
+                            className="bg-zinc-900 border border-zinc-600 rounded-lg px-3 py-2 text-xs text-white min-w-[12rem]"
+                          >
+                            <option value="open">Open — show in shop now</option>
+                            <option value="closed">Closed — hide from shop</option>
+                            <option value="scheduled">Scheduled — hide until date/time</option>
+                          </select>
                         </div>
-                      )}
+                        {prodPreorderStatus === 'scheduled' && (
+                          <div>
+                            <p className="text-[10px] text-zinc-500 mb-1">Opens at (required)</p>
+                            <input
+                              type="datetime-local"
+                              required
+                              value={prodPreorderOpensAt}
+                              onChange={(e) => setProdPreorderOpensAt(e.target.value)}
+                              className="bg-zinc-900 border border-sky-500/50 rounded-lg px-3 py-2 text-xs text-white"
+                            />
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-sky-300/90">
+                        Selected: <strong>{prodPreorderStatus}</strong>
+                        {prodPreorderStatus === 'scheduled' && prodPreorderOpensAt
+                          ? ` · ${new Date(prodPreorderOpensAt).toLocaleString('en-GB')}`
+                          : ''}
+                        {' '}— only becomes Open when this time passes, or if you choose Open.
+                      </p>
                     </div>
                   )}
                   {!prodIsPreorder && <p className="text-[11px] text-zinc-500">Retail item — buy when Launch control is Orders OPEN.</p>}
@@ -4850,7 +4865,7 @@ return (
                 <div className="flex flex-col gap-2 text-xs text-zinc-400">
                   <button type="button" onClick={() => navigateTo('shop', '/shop')} className="text-left hover:text-white transition">Shop</button>
                   <button type="button" onClick={() => navigateTo('compare', '/compare')} className="text-left hover:text-white transition">Compare</button>
-                  <button type="button" onClick={() => navigateTo('blog', '/blog')} className="text-left hover:text-white transition">Media</button>
+                  <button type="button" onClick={() => navigateTo('blog', '/blog')} className="text-left hover:text-white transition">Blog</button>
                   <button type="button" onClick={() => navigateTo('forum', '/forum')} className="text-left hover:text-white transition">Forum</button>
                 </div>
               </div>
