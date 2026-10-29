@@ -204,6 +204,11 @@ export default function App() {
   const [preorders, setPreorders] = useState([]);
   const [productGalleryIndex, setProductGalleryIndex] = useState(0);
   const [prodIsPreorder, setProdIsPreorder] = useState(true);
+  const [prodPreorderStatus, setProdPreorderStatus] = useState('open');
+  const [prodPreorderOpensAt, setProdPreorderOpensAt] = useState('');
+  const [newDiscountCode, setNewDiscountCode] = useState('');
+  const [newDiscountPercent, setNewDiscountPercent] = useState('10');
+  const [newDiscountFixed, setNewDiscountFixed] = useState('');
 
   // Blog / Media
   const [blogPosts, setBlogPosts] = useState([]);
@@ -1023,6 +1028,47 @@ export default function App() {
       } catch (_) {}
     }
     showNotification(`Sent ${ok} pre-order update emails.`);
+  };
+
+
+  const removeDiscount = (id) => {
+    setDiscounts((d) => d.filter((x) => x.id !== id));
+    if (appliedDiscount?.id === id) {
+      setAppliedDiscount(null);
+      setAppliedCode('');
+    }
+    showNotification('Discount removed');
+  };
+
+  const addDiscountCode = (e) => {
+    e?.preventDefault?.();
+    const code = (newDiscountCode || '').trim().toUpperCase();
+    if (!code) {
+      showNotification('Enter a code', 'error');
+      return;
+    }
+    if (discounts.some((d) => d.code === code)) {
+      showNotification('Code already exists', 'error');
+      return;
+    }
+    const percent = parseFloat(newDiscountPercent);
+    const fixed = parseFloat(newDiscountFixed);
+    const entry = {
+      id: code,
+      code,
+      active: true,
+      ...(Number.isFinite(percent) && percent > 0 ? { percent } : {}),
+      ...(Number.isFinite(fixed) && fixed > 0 ? { fixed } : {})
+    };
+    if (!entry.percent && !entry.fixed) {
+      showNotification('Set percent or fixed amount', 'error');
+      return;
+    }
+    setDiscounts((d) => [...d, entry]);
+    setNewDiscountCode('');
+    setNewDiscountPercent('10');
+    setNewDiscountFixed('');
+    showNotification(`Added ${code}`);
   };
 
   const exportPreordersCsv = () => {
@@ -2932,10 +2978,39 @@ return (
                 <input type="url" placeholder="Image URL" value={prodImage} onChange={(e) => setProdImage(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none md:col-span-2" />
                 <textarea placeholder="Extra image URLs (one per line) — Amazon-style gallery" value={prodImages} onChange={(e) => setProdImages(e.target.value)} rows="3" className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-cyan-500 sm:col-span-2 font-mono text-xs" />
                 <input type="url" placeholder="Product video URL (YouTube / MP4)" value={prodVideo} onChange={(e) => setProdVideo(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-cyan-500 sm:col-span-2" />
-                <label className="sm:col-span-2 flex items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-xs text-zinc-300 cursor-pointer">
-                  <input type="checkbox" checked={prodIsPreorder} onChange={(e) => setProdIsPreorder(e.target.checked)} className="rounded border-slate-600" />
-                  <span><strong className="text-white">Pre-order mode</strong> — customers register interest instead of checkout</span>
-                </label>
+                <div className="sm:col-span-2 space-y-3 rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3">
+                  <label className="flex items-center gap-3 text-xs text-zinc-300 cursor-pointer">
+                    <input type="checkbox" checked={prodIsPreorder} onChange={(e) => setProdIsPreorder(e.target.checked)} className="rounded border-zinc-600" />
+                    <span><strong className="text-white">Pre-order product</strong> — interest list instead of normal buy</span>
+                  </label>
+                  {prodIsPreorder && (
+                    <div className="flex flex-wrap gap-3 items-end pl-1">
+                      <div>
+                        <p className="text-[10px] text-zinc-500 mb-1">Pre-order status</p>
+                        <div className="flex gap-1">
+                          {['open', 'closed', 'scheduled'].map((s) => (
+                            <button key={s} type="button" onClick={() => setProdPreorderStatus(s)}
+                              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold capitalize border ${
+                                prodPreorderStatus === s
+                                  ? s === 'open' ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
+                                    : s === 'closed' ? 'bg-zinc-700 border-zinc-600 text-zinc-200'
+                                    : 'bg-sky-500/20 border-sky-500/40 text-sky-300'
+                                  : 'border-zinc-800 text-zinc-500'
+                              }`}>{s}</button>
+                          ))}
+                        </div>
+                      </div>
+                      {prodPreorderStatus === 'scheduled' && (
+                        <div>
+                          <p className="text-[10px] text-zinc-500 mb-1">Opens at</p>
+                          <input type="datetime-local" value={prodPreorderOpensAt} onChange={(e) => setProdPreorderOpensAt(e.target.value)}
+                            className="bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-white" />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {!prodIsPreorder && <p className="text-[11px] text-zinc-500">Retail item — buy when Launch control is Orders OPEN.</p>}
+                </div>
                 <input type="text" placeholder="Colors (comma-separated)" value={prodColorOption} onChange={(e) => setProdColorOption(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none" />
                 <textarea placeholder="Description" value={prodDesc} onChange={(e) => setProdDesc(e.target.value)} rows="2" className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none md:col-span-3" />
                 <button type="submit" className="bg-white hover:bg-zinc-200 text-zinc-950 font-bold py-2.5 rounded-xl text-xs md:col-span-3 cursor-pointer">
@@ -2963,6 +3038,8 @@ return (
                           setProdDesc(p.description || '');
                           setProdColorOption((p.options?.colors || ['Default']).join(', '));
                           setProdIsPreorder(p.isPreorder !== false);
+                          setProdPreorderStatus(p.preorderStatus || 'open');
+                          setProdPreorderOpensAt(p.preorderOpensAt ? new Date(p.preorderOpensAt).toISOString().slice(0, 16) : '');
                         }}
                         className="text-zinc-400 hover:text-zinc-100 cursor-pointer"
                       >
@@ -3037,7 +3114,32 @@ return (
               </section>
             )}
 
+            
             {isFullAdmin && (
+              <section className="bg-zinc-900 border border-zinc-800 rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-4">
+                <h3 className="text-sm font-mono font-bold text-zinc-100 uppercase tracking-wider">Discount codes</h3>
+                <p className="text-xs text-zinc-500">Remove codes or add new ones for checkout.</p>
+                <div className="space-y-2">
+                  {discounts.map((d) => (
+                    <div key={d.id} className="flex items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-xs">
+                      <div>
+                        <span className="font-bold text-white">{d.code}</span>
+                        <span className="text-zinc-500 ml-2">{d.percent ? `${d.percent}% off` : ''}{d.fixed ? `£${d.fixed} off` : ''}</span>
+                      </div>
+                      <button type="button" onClick={() => removeDiscount(d.id)} className="text-rose-400 font-semibold">Remove</button>
+                    </div>
+                  ))}
+                </div>
+                <form onSubmit={addDiscountCode} className="flex flex-wrap gap-2 items-end">
+                  <input value={newDiscountCode} onChange={(e) => setNewDiscountCode(e.target.value)} placeholder="CODE" className="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white w-28" />
+                  <input value={newDiscountPercent} onChange={(e) => setNewDiscountPercent(e.target.value)} placeholder="% off" className="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white w-16" />
+                  <input value={newDiscountFixed} onChange={(e) => setNewDiscountFixed(e.target.value)} placeholder="£ off" className="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white w-16" />
+                  <button type="submit" className="px-4 py-2 rounded-lg bg-white text-zinc-950 text-xs font-bold">Add</button>
+                </form>
+              </section>
+            )}
+
+{isFullAdmin && (
               <section className="bg-zinc-900 border border-zinc-800 rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <h3 className="text-sm font-mono font-bold text-zinc-100 uppercase tracking-wider">Newsletter subscribers</h3>
@@ -3680,8 +3782,11 @@ return (
                     onClick={() => openProduct(p)}
                     className="group text-left rounded-2xl border border-zinc-800 bg-zinc-900/50 overflow-hidden hover:border-zinc-600 transition"
                   >
-                    <div className="aspect-[4/3] bg-zinc-950 overflow-hidden">
+                    <div className="aspect-[4/3] bg-zinc-950 overflow-hidden relative">
                       <img src={p.image} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
+                      {getProductAvailability(p).badge && (
+                        <span className="absolute top-2 left-2 px-2 py-0.5 rounded-md text-[10px] font-bold bg-black/70 text-white">{getProductAvailability(p).badge}</span>
+                      )}
                     </div>
                     <div className="p-4">
                       <p className="text-[10px] text-zinc-500 uppercase tracking-wide">{p.category}</p>
@@ -3846,6 +3951,21 @@ return (
                       <span className="absolute top-3 right-3 px-2.5 py-1 bg-zinc-950/80 backdrop-blur-md rounded-lg text-[10px] font-bold text-zinc-100 border border-zinc-800">
                         {renderSafe(product.category)}
                       </span>
+                      {(() => {
+                        const av = getProductAvailability(product);
+                        if (!av.badge) return null;
+                        const color =
+                          av.mode === 'preorder_open' ? 'bg-emerald-500/90 text-white' :
+                          av.mode === 'preorder_scheduled' ? 'bg-sky-500/90 text-white' :
+                          av.mode === 'preorder_closed' ? 'bg-zinc-600 text-zinc-200' :
+                          av.mode === 'retail_open' ? 'bg-white text-zinc-950' :
+                          'bg-zinc-800 text-zinc-300';
+                        return (
+                          <span className={`absolute top-3 left-3 px-2.5 py-1 rounded-lg text-[10px] font-bold ${color}`}>
+                            {av.badge}
+                          </span>
+                        );
+                      })()}
                     </div>
                     <div className="p-6 space-y-3">
                       <div className="flex items-center gap-1.5 text-amber-400 text-xs">
@@ -3998,19 +4118,33 @@ return (
                     <span className="text-3xl font-black text-white">£{Number(selectedProduct.price).toLocaleString('en-GB', { minimumFractionDigits: 2 })}</span>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                    {selectedProduct.isPreorder !== false ? (
-                      <button type="button" disabled={waitlistSubmitting} onClick={() => { if (user?.email) setWaitlistEmail(user.email); handlePreorder(selectedProduct); }} className="px-8 py-3.5 rounded-full bg-white hover:bg-zinc-200 text-zinc-950 font-semibold text-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60">
-                        {waitlistSubmitting ? 'Saving…' : 'Register pre-order interest'}
-                      </button>
-                    ) : (
-                      <button type="button" onClick={() => addToCart(selectedProduct)} className="px-8 py-3.5 rounded-full bg-white hover:bg-zinc-200 text-zinc-950 font-semibold text-sm flex items-center justify-center gap-2 cursor-pointer">
-                        <ShoppingCart className="w-5 h-5" /> Add to Basket
-                      </button>
-                    )}
+                    {(() => {
+                      const av = getProductAvailability(selectedProduct);
+                      if (av.canPreorder) {
+                        return (
+                          <button type="button" disabled={waitlistSubmitting} onClick={() => { if (user?.email) setWaitlistEmail(user.email); handlePreorder(selectedProduct); }} className="px-8 py-3.5 rounded-full bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-semibold text-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60">
+                            {waitlistSubmitting ? 'Saving…' : 'Pre-order open — register interest'}
+                          </button>
+                        );
+                      }
+                      if (av.canBuy) {
+                        return (
+                          <button type="button" onClick={() => addToCart(selectedProduct)} className="px-8 py-3.5 rounded-full bg-sky-400 hover:bg-sky-300 text-zinc-950 font-semibold text-sm flex items-center justify-center gap-2 cursor-pointer">
+                            <ShoppingCart className="w-5 h-5" /> Add to Basket
+                          </button>
+                        );
+                      }
+                      return (
+                        <button type="button" disabled className="px-8 py-3.5 rounded-full bg-zinc-800 text-zinc-400 font-semibold text-sm cursor-not-allowed">
+                          {av.label || 'Unavailable'}
+                        </button>
+                      );
+                    })()}
                   </div>
-                  {selectedProduct.isPreorder !== false && (
-                    <p className="text-xs text-amber-200/90">This product is in <strong>pre-order</strong> mode — we notify you at launch. Checkout is not open yet.</p>
-                  )}
+                  <p className={`text-xs ${getProductAvailability(selectedProduct).mode === 'preorder_open' ? 'text-emerald-300' : 'text-zinc-500'}`}>
+                    {getProductAvailability(selectedProduct).label}
+                    {selectedProduct.name ? ` · ${selectedProduct.name}` : ''}
+                  </p>
                   <p className="text-[11px] text-zinc-500 leading-relaxed">Warranty details confirmed at purchase. Typical coverage aims for 12 months on systems unless stated otherwise. See Shipping & returns for delivery rules.</p>
                   <button
                     type="button"
