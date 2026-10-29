@@ -1072,12 +1072,14 @@ export default function App() {
   };
 
   const removeDiscount = (id) => {
+    const row = discounts.find((x) => x.id === id);
+    if (!window.confirm(`Remove discount code ${row?.code || id}?`)) return;
     setDiscounts((d) => d.filter((x) => x.id !== id));
     if (appliedDiscount?.id === id) {
       setAppliedDiscount(null);
       setAppliedCode('');
     }
-    showNotification('Discount removed');
+    showNotification('Discount code removed');
   };
 
   const addDiscountCode = (e) => {
@@ -1679,7 +1681,7 @@ export default function App() {
       };
     }
     return {
-      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say 'human'to email the team.",
+      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say 'human' to email the team.",
       escalate: false
     };
   };
@@ -3155,26 +3157,45 @@ return (
             )}
 
             
-            {isFullAdmin && (
-              <section className="bg-zinc-900 border border-zinc-800 rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-4">
-                <h3 className="text-sm font-mono font-bold text-zinc-100 uppercase tracking-wider">Discount codes</h3>
-                <p className="text-xs text-zinc-500">Remove codes or add new ones for checkout.</p>
+            {isAdmin && (
+              <section className="bg-zinc-900 border border-rose-500/20 rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-4">
+                <h3 className="text-sm font-mono font-bold text-zinc-100 uppercase tracking-wider">Promo / discount codes</h3>
+                <p className="text-xs text-zinc-500">Delete codes you no longer want. Customers cannot use removed codes at checkout.</p>
                 <div className="space-y-2">
+                  {discounts.length === 0 && <p className="text-xs text-zinc-600">No active codes.</p>}
                   {discounts.map((d) => (
-                    <div key={d.id} className="flex items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-xs">
+                    <div key={d.id} className="flex items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2.5 text-xs">
                       <div>
-                        <span className="font-bold text-white">{d.code}</span>
-                        <span className="text-zinc-500 ml-2">{d.percent ? `${d.percent}% off` : ''}{d.fixed ? `£${d.fixed} off` : ''}</span>
+                        <span className="font-bold text-white tracking-wide">{d.code}</span>
+                        <span className="text-zinc-500 ml-2">
+                          {d.percent ? `${d.percent}% off` : ''}
+                          {d.fixed ? `£${d.fixed} off` : ''}
+                        </span>
                       </div>
-                      <button type="button" onClick={() => removeDiscount(d.id)} className="text-rose-400 font-semibold">Remove</button>
+                      <button
+                        type="button"
+                        onClick={() => removeDiscount(d.id)}
+                        className="px-3 py-1.5 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-300 font-semibold hover:bg-rose-500/25"
+                      >
+                        Delete
+                      </button>
                     </div>
                   ))}
                 </div>
-                <form onSubmit={addDiscountCode} className="flex flex-wrap gap-2 items-end">
-                  <input value={newDiscountCode} onChange={(e) => setNewDiscountCode(e.target.value)} placeholder="CODE" className="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white w-28" />
-                  <input value={newDiscountPercent} onChange={(e) => setNewDiscountPercent(e.target.value)} placeholder="% off" className="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white w-16" />
-                  <input value={newDiscountFixed} onChange={(e) => setNewDiscountFixed(e.target.value)} placeholder="£ off" className="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white w-16" />
-                  <button type="submit" className="px-4 py-2 rounded-lg bg-white text-zinc-950 text-xs font-bold">Add</button>
+                <form onSubmit={addDiscountCode} className="flex flex-wrap gap-2 items-end pt-2 border-t border-zinc-800">
+                  <div>
+                    <p className="text-[10px] text-zinc-500 mb-1">New code</p>
+                    <input value={newDiscountCode} onChange={(e) => setNewDiscountCode(e.target.value)} placeholder="SAVE10" className="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white w-28" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-zinc-500 mb-1">% off</p>
+                    <input value={newDiscountPercent} onChange={(e) => setNewDiscountPercent(e.target.value)} placeholder="10" className="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white w-16" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-zinc-500 mb-1">or £ off</p>
+                    <input value={newDiscountFixed} onChange={(e) => setNewDiscountFixed(e.target.value)} placeholder="50" className="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white w-16" />
+                  </div>
+                  <button type="submit" className="px-4 py-2 rounded-lg bg-white text-zinc-950 text-xs font-bold">Add code</button>
                 </form>
               </section>
             )}
