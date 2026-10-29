@@ -209,6 +209,11 @@ export default function App() {
   const [newDiscountCode, setNewDiscountCode] = useState('');
   const [newDiscountPercent, setNewDiscountPercent] = useState('10');
   const [newDiscountFixed, setNewDiscountFixed] = useState('');
+  const [scheduleTick, setScheduleTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setScheduleTick((n) => n + 1), 30000);
+    return () => clearInterval(t);
+  }, []);
 
   // Blog / Media
   const [blogPosts, setBlogPosts] = useState([]);
@@ -433,7 +438,7 @@ export default function App() {
   useEffect(() => {
     if (!db) return;
     const unsub = onSnapshot(collection(db, 'artifacts', appId, 'discounts'), (snapshot) => {
-      if (!snapshot.empty) setDiscounts(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
+      setDiscounts(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
     return () => unsub();
   }, []);
@@ -1033,7 +1038,8 @@ export default function App() {
 
 
   const getProductAvailability = (p) => {
-    if (!p) return { mode: 'unknown', label: '', canBuy: false, canPreorder: false, badge: null };
+    void scheduleTick; // re-check open times every 30s
+    if (!p) return { mode: 'unknown', label: '', canBuy: false, canPreorder: false, badge: null, showInShop: false };
     if (!p.isPreorder) {
       const open = !!(storeSettings && storeSettings.takingOrders);
       return {
@@ -1041,45 +1047,67 @@ export default function App() {
         label: open ? 'Available' : 'Not for sale yet',
         canBuy: open,
         canPreorder: false,
-        badge: open ? 'Available' : 'Soon'
+        badge: open ? 'Available' : 'Soon',
+        showInShop: true
       };
     }
     let status = p.preorderStatus || 'open';
     const opensAt = p.preorderOpensAt ? new Date(p.preorderOpensAt) : null;
     if (status === 'scheduled' && opensAt && !Number.isNaN(opensAt.getTime())) {
-      if (opensAt.getTime() <= Date.now()) status = 'open';
-      else {
+      if (opensAt.getTime() <= Date.now()) {
+        status = 'open';
+      } else {
+        const now = new Date();
+        const sameDay =
+          opensAt.getFullYear() === now.getFullYear() &&
+          opensAt.getMonth() === now.getMonth() &&
+          opensAt.getDate() === now.getDate();
+        const dateStr = opensAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+        const timeStr = opensAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+        const label = sameDay
+          ? `Pre-orders open today at ${timeStr}`
+          : `Pre-orders open ${dateStr}`;
         return {
           mode: 'preorder_scheduled',
-          label: `Pre-order opens ${opensAt.toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}`,
+          label,
           canBuy: false,
           canPreorder: false,
-          badge: 'Scheduled',
-          opensAt
+          badge: sameDay ? `Opens ${timeStr}` : `Opens ${dateStr}`,
+          opensAt,
+          showInShop: false
         };
       }
     }
     if (status === 'closed') {
-      return { mode: 'preorder_closed', label: 'Pre-order closed', canBuy: false, canPreorder: false, badge: 'Closed' };
+      return { mode: 'preorder_closed', label: 'Pre-order closed', canBuy: false, canPreorder: false, badge: 'Closed', showInShop: false };
     }
     return {
       mode: 'preorder_open',
       label: 'Pre-order open',
       canBuy: false,
       canPreorder: true,
-      badge: 'Pre-order open'
+      badge: 'Pre-order open',
+      showInShop: true
     };
   };
 
-  const removeDiscount = (id) => {
+  const removeDiscount = async (id) => {
     const row = discounts.find((x) => x.id === id);
-    if (!window.confirm(`Remove discount code ${row?.code || id}?`)) return;
-    setDiscounts((d) => d.filter((x) => x.id !== id));
-    if (appliedDiscount?.id === id) {
-      setAppliedDiscount(null);
-      setAppliedCode('');
+    if (!window.confirm(`Delete discount code ${row?.code || id}?`)) return;
+    try {
+      if (db) {
+        await deleteDoc(doc(db, 'artifacts', appId, 'discounts', id));
+      }
+      setDiscounts((d) => d.filter((x) => x.id !== id));
+      if (appliedDiscount?.id === id || appliedCode === (row?.code || id)) {
+        setAppliedDiscount(null);
+        setAppliedCode('');
+      }
+      showNotification('Discount code deleted');
+    } catch (err) {
+      console.error(err);
+      showNotification('Could not delete code', 'error');
     }
-    showNotification('Discount code removed');
   };
 
   const addDiscountCode = (e) => {
@@ -1681,7 +1709,7 @@ export default function App() {
       };
     }
     return {
-      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say 'human' to email the team.",
+      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say 'human to email the team.",
       escalate: false
     };
   };
@@ -2329,12 +2357,15 @@ export default function App() {
   };
 
   const filteredProducts = products.filter((product) => {
+    const av = getProductAvailability(product);
+    // Scheduled / closed pre-orders stay off the shop grid until open time
+    if (product.isPreorder && av.showInShop === false) return false;
     const matchesCategory = selectedCategory === 'All' || product.category === selectedCategory;
     const searchLower = searchQuery.toLowerCase();
     const matchesSearch =
       product.name.toLowerCase().includes(searchLower) ||
-      product.description.toLowerCase().includes(searchLower) ||
-      product.category.toLowerCase().includes(searchLower) ||
+      (product.description || '').toLowerCase().includes(searchLower) ||
+      (product.category || '').toLowerCase().includes(searchLower) ||
       (product.specs && product.specs.some((s) => s.toLowerCase().includes(searchLower)));
     return matchesCategory && matchesSearch;
   });
@@ -3117,6 +3148,14 @@ return (
                   <div key={d.id} className="bg-zinc-950 border border-zinc-800 px-3 py-1.5 rounded-xl text-xs font-mono flex items-center gap-2">
                     <span className="font-bold text-zinc-100">{d.code}</span>
                     <span className="text-zinc-400">({d.percent ? `${d.percent}% OFF` : `£${d.fixed} OFF`})</span>
+                    <button
+                      type="button"
+                      onClick={() => removeDiscount(d.id)}
+                      className="ml-1 text-rose-400 hover:text-rose-300 font-bold text-[11px] px-1.5 py-0.5 rounded border border-rose-500/30 hover:bg-rose-500/10"
+                      title="Delete code"
+                    >
+                      Delete
+                    </button>
                   </div>
                 ))}
               </div>
