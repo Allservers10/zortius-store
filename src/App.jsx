@@ -1679,7 +1679,7 @@ export default function App() {
       };
     }
     return {
-      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say 'human' to email the team.",
+      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say 'human'to email the team.",
       escalate: false
     };
   };
@@ -3701,42 +3701,117 @@ return (
         {/* ========== HOME (Apple-style) ========== */}
         {activeTab === 'home' && (
           <div className="space-y-16 sm:space-y-24 -mt-2">
-            {/* Hero */}
-            <section className="relative overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] border border-white/[0.07] bg-zinc-950 px-6 py-20 sm:px-14 sm:py-28 text-center shadow-[0_0_80px_-20px_rgba(34,211,238,0.25)]">
-              <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,_rgba(34,211,238,0.18),_transparent_55%)]" />
-              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,_rgba(15,23,42,0.9),_transparent_50%)]" />
-              <div className="relative max-w-4xl mx-auto">
-                <div className="inline-flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-800 px-3 py-1 mb-6">
-                  <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse" />
-                  <span className="text-[11px] font-semibold tracking-wide text-zinc-200">Pre-order interest open · zortius.com</span>
-                </div>
-                <h1 className="text-4xl sm:text-6xl md:text-7xl font-semibold tracking-tight text-white leading-[1.05]">
-                  Hardware with<br className="hidden sm:block" /> nothing to hide.
-                </h1>
-                <p className="mt-6 text-base sm:text-xl text-zinc-400 max-w-2xl mx-auto leading-relaxed">
-                  Workstations, displays, and peripherals built for creators and engineers — quiet power, clean design, honest specs.
-                </p>
-                <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
-                  <button type="button" onClick={() => navigateTo('shop', '/shop')} className="w-full sm:w-auto px-9 py-3.5 rounded-full bg-sky-400 hover:bg-sky-300 text-zinc-950 font-semibold text-sm transition shadow-lg shadow-sky-500/20">
-                    Browse collection
-                  </button>
-                  <button type="button" onClick={() => navigateTo('compare', '/compare')} className="w-full sm:w-auto px-9 py-3.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold text-sm transition">
-                    Compare systems
-                  </button>
-                </div>
-                <div className="mt-14 grid grid-cols-3 gap-4 max-w-lg mx-auto text-center">
-                  {[
-                    ['UK-first', 'Support & shipping'],
-                    ['Pre-order', 'Launch waitlist'],
-                    ['Verified', 'Buyer reviews'],
-                  ].map(([t, s]) => (
-                    <div key={t} className="rounded-2xl border border-white/5 bg-white/[0.03] px-2 py-3">
-                      <p className="text-sm font-bold text-white">{t}</p>
-                      <p className="text-[10px] text-zinc-500 mt-0.5">{s}</p>
+            {/* Hero — Apple-style featured pre-orders */}
+            <section className="space-y-6">
+              {(() => {
+                const featuredOpen = products.filter((p) => {
+                  const av = getProductAvailability(p);
+                  return av.mode === 'preorder_open' || av.mode === 'preorder_scheduled';
+                });
+                const spotlight = featuredOpen[0];
+                if (spotlight) {
+                  const av = getProductAvailability(spotlight);
+                  return (
+                    <div className="relative overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] border border-zinc-800 bg-zinc-950">
+                      <div className="grid lg:grid-cols-2 gap-0 items-center min-h-[420px] sm:min-h-[480px]">
+                        <div className="relative order-2 lg:order-1 p-8 sm:p-12 lg:p-16 text-left">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500 mb-3">
+                            {av.mode === 'preorder_open' ? 'Pre-order open' : 'Coming soon'}
+                          </p>
+                          <h1 className="text-3xl sm:text-5xl font-semibold tracking-tight text-white leading-tight">
+                            {spotlight.name}
+                          </h1>
+                          <p className="mt-4 text-sm sm:text-base text-zinc-400 max-w-md leading-relaxed">
+                            {av.label}
+                            {spotlight.description ? ` — ${String(spotlight.description).slice(0, 120)}${String(spotlight.description).length > 120 ? '…' : ''}` : ''}
+                          </p>
+                          <p className="mt-3 text-lg font-semibold text-white">
+                            From £{Number(spotlight.price).toLocaleString('en-GB')}
+                          </p>
+                          <div className="mt-8 flex flex-wrap gap-3">
+                            <button
+                              type="button"
+                              onClick={() => openProduct(spotlight)}
+                              className="px-8 py-3.5 rounded-full bg-sky-400 hover:bg-sky-300 text-zinc-950 font-semibold text-sm transition"
+                            >
+                              {av.mode === 'preorder_open' ? 'Pre-order' : 'View details'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => navigateTo('shop', '/shop')}
+                              className="px-8 py-3.5 rounded-full border border-zinc-700 text-white text-sm font-semibold hover:bg-zinc-900 transition"
+                            >
+                              Browse all
+                            </button>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => openProduct(spotlight)}
+                          className="order-1 lg:order-2 relative aspect-[4/3] lg:aspect-auto lg:h-full min-h-[240px] bg-zinc-900 overflow-hidden cursor-pointer group"
+                        >
+                          <img
+                            src={spotlight.image}
+                            alt={spotlight.name}
+                            className="w-full h-full object-cover group-hover:scale-[1.03] transition duration-700"
+                          />
+                          <span className={`absolute top-4 left-4 px-3 py-1 rounded-full text-[11px] font-bold ${
+                            av.mode === 'preorder_open' ? 'bg-emerald-500 text-white' : 'bg-sky-500 text-white'
+                          }`}>
+                            {av.badge}
+                          </span>
+                        </button>
+                      </div>
+                      {featuredOpen.length > 1 && (
+                        <div className="border-t border-zinc-800 px-4 sm:px-8 py-4 flex gap-3 overflow-x-auto">
+                          {featuredOpen.slice(0, 6).map((p) => {
+                            const a = getProductAvailability(p);
+                            return (
+                              <button
+                                key={p.id}
+                                type="button"
+                                onClick={() => openProduct(p)}
+                                className={`flex-shrink-0 flex items-center gap-3 rounded-2xl border px-3 py-2 text-left transition ${
+                                  p.id === spotlight.id ? 'border-sky-500/50 bg-zinc-900' : 'border-zinc-800 hover:border-zinc-600 bg-zinc-950'
+                                }`}
+                              >
+                                <img src={p.image} alt="" className="w-12 h-12 rounded-xl object-cover bg-zinc-900" />
+                                <div className="min-w-0">
+                                  <p className="text-xs font-semibold text-white truncate max-w-[8rem]">{p.name}</p>
+                                  <p className="text-[10px] text-zinc-500">{a.badge}</p>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
-                  ))}
-                </div>
-              </div>
+                  );
+                }
+                // Default brand hero when no pre-order is open/scheduled
+                return (
+                  <div className="relative overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] border border-zinc-800 bg-zinc-950 px-6 py-20 sm:px-14 sm:py-28 text-center">
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_50%_at_50%_0%,_rgba(56,189,248,0.12),_transparent_55%)]" />
+                    <div className="relative max-w-3xl mx-auto">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500 mb-4">Zortius</p>
+                      <h1 className="text-4xl sm:text-6xl font-semibold tracking-tight text-white leading-[1.05]">
+                        Hardware with nothing to hide.
+                      </h1>
+                      <p className="mt-6 text-base sm:text-lg text-zinc-400 max-w-xl mx-auto leading-relaxed">
+                        Workstations, displays, and peripherals — quiet power, clean design, honest specs.
+                      </p>
+                      <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
+                        <button type="button" onClick={() => navigateTo('shop', '/shop')} className="w-full sm:w-auto px-9 py-3.5 rounded-full bg-sky-400 hover:bg-sky-300 text-zinc-950 font-semibold text-sm transition">
+                          Browse collection
+                        </button>
+                        <button type="button" onClick={() => navigateTo('compare', '/compare')} className="w-full sm:w-auto px-9 py-3.5 rounded-full border border-zinc-700 text-white font-semibold text-sm hover:bg-zinc-900 transition">
+                          Compare systems
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </section>
 
             {/* Feature strip */}
