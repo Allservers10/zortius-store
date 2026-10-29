@@ -1031,6 +1031,46 @@ export default function App() {
   };
 
 
+
+  const getProductAvailability = (p) => {
+    if (!p) return { mode: 'unknown', label: '', canBuy: false, canPreorder: false, badge: null };
+    if (!p.isPreorder) {
+      const open = !!(storeSettings && storeSettings.takingOrders);
+      return {
+        mode: open ? 'retail_open' : 'retail_wait',
+        label: open ? 'Available' : 'Not for sale yet',
+        canBuy: open,
+        canPreorder: false,
+        badge: open ? 'Available' : 'Soon'
+      };
+    }
+    let status = p.preorderStatus || 'open';
+    const opensAt = p.preorderOpensAt ? new Date(p.preorderOpensAt) : null;
+    if (status === 'scheduled' && opensAt && !Number.isNaN(opensAt.getTime())) {
+      if (opensAt.getTime() <= Date.now()) status = 'open';
+      else {
+        return {
+          mode: 'preorder_scheduled',
+          label: `Pre-order opens ${opensAt.toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}`,
+          canBuy: false,
+          canPreorder: false,
+          badge: 'Scheduled',
+          opensAt
+        };
+      }
+    }
+    if (status === 'closed') {
+      return { mode: 'preorder_closed', label: 'Pre-order closed', canBuy: false, canPreorder: false, badge: 'Closed' };
+    }
+    return {
+      mode: 'preorder_open',
+      label: 'Pre-order open',
+      canBuy: false,
+      canPreorder: true,
+      badge: 'Pre-order open'
+    };
+  };
+
   const removeDiscount = (id) => {
     setDiscounts((d) => d.filter((x) => x.id !== id));
     if (appliedDiscount?.id === id) {
