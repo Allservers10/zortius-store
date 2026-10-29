@@ -87,7 +87,7 @@ const INITIAL_PRODUCTS = [
     name: 'ZORTIUS Core Pro Desktop Chassis',
     category: 'Desktops',
     price: 1899.0,
-    rating: 4.8,
+    rating: 4.2,
     reviewsCount: 88,
     image: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=800&q=80',
     images: ['https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=800&q=80','https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?auto=format&fit=crop&w=800&q=80'],
