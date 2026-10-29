@@ -1037,6 +1037,14 @@ export default function App() {
 
 
 
+  const toDatetimeLocalValue = (iso) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
   const getProductAvailability = (p) => {
     void scheduleTick; // re-check open times every 30s
     if (!p) return { mode: 'unknown', label: '', canBuy: false, canPreorder: false, badge: null, showInShop: false };
@@ -1721,7 +1729,7 @@ export default function App() {
       };
     }
     return {
-      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say 'human' to email the team.",
+      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say 'human'to email the team.",
       escalate: false
     };
   };
@@ -2294,6 +2302,12 @@ export default function App() {
       .map((x) => x.trim())
       .filter(Boolean);
     if (prodImage && !imageList.includes(prodImage)) imageList.unshift(prodImage);
+    const status = prodIsPreorder ? (prodPreorderStatus || 'open') : 'open';
+    let opensAtIso = null;
+    if (prodIsPreorder && status === 'scheduled' && prodPreorderOpensAt) {
+      const when = new Date(prodPreorderOpensAt);
+      opensAtIso = when.toISOString();
+    }
     const payload = {
       name: prodName,
       price: parseFloat(prodPrice),
@@ -2307,20 +2321,21 @@ export default function App() {
       specs: ['ZORTIUS Certified', 'High Throughput'],
       options: { colors: colorList.length ? colorList : ['Default'] },
       isPreorder: !!prodIsPreorder,
-      preorderStatus: prodIsPreorder ? (prodPreorderStatus || 'open') : 'open',
-      preorderOpensAt:
-        prodIsPreorder && prodPreorderStatus === 'scheduled' && prodPreorderOpensAt
-          ? new Date(prodPreorderOpensAt).toISOString()
-          : prodIsPreorder && prodPreorderStatus !== 'scheduled'
-            ? null
-            : null
+      preorderStatus: status,
+      preorderOpensAt: opensAtIso
     };
-    if (editingProductId) {
-      await updateDoc(doc(db, 'artifacts', appId, 'products', editingProductId), payload);
-      showNotification('Product updated globally.');
-    } else {
-      await addDoc(collection(db, 'artifacts', appId, 'products'), payload);
-      showNotification('Product added to live store.');
+    try {
+      if (editingProductId) {
+        await setDoc(doc(db, 'artifacts', appId, 'products', editingProductId), payload, { merge: true });
+        showNotification(`Product saved · pre-order: ${status}${opensAtIso ? ' @ ' + new Date(opensAtIso).toLocaleString('en-GB') : ''}`);
+      } else {
+        await addDoc(collection(db, 'artifacts', appId, 'products'), payload);
+        showNotification(`Product added · pre-order: ${status}`);
+      }
+    } catch (err) {
+      console.error(err);
+      showNotification('Save failed — check console / Firestore rules', 'error');
+      return;
     }
     setEditingProductId(null);
     setProdName('');
@@ -2330,7 +2345,9 @@ export default function App() {
     setProdVideo('');
     setProdDesc('');
     setProdColorOption('Dark Anodized, Titanium Silver');
-    setProdIsPreorder(true);
+    setProdIsPreorder(false);
+    setProdPreorderStatus('open');
+    setProdPreorderOpensAt('');
   };
 
   const handleDeleteProduct = async (id) => {
@@ -3130,6 +3147,13 @@ return (
                     <div>
                       <span className="font-bold text-white">{p.name}</span>
                       <span className="text-zinc-100 font-mono ml-3">£{p.price}</span>
+                      {p.isPreorder ? (
+                        <span className="text-amber-300/90 ml-2">
+                          [{p.preorderStatus || 'open'}{p.preorderStatus === 'scheduled' && p.preorderOpensAt ? ` ${new Date(p.preorderOpensAt).toLocaleString('en-GB')}` : ''}]
+                        </span>
+                      ) : (
+                        <span className="text-zinc-600 ml-2">[retail]</span>
+                      )}
                       {p.options?.colors && <span className="text-zinc-500 ml-2">[{p.options.colors.join(', ')}]</span>}
                     </div>
                     <div className="flex gap-2">
@@ -3144,9 +3168,13 @@ return (
                           setProdVideo(p.videoUrl || '');
                           setProdDesc(p.description || '');
                           setProdColorOption((p.options?.colors || ['Default']).join(', '));
-                          setProdIsPreorder(p.isPreorder !== false);
-                          setProdPreorderStatus(p.preorderStatus || 'open');
-                          setProdPreorderOpensAt(p.preorderOpensAt ? new Date(p.preorderOpensAt).toISOString().slice(0, 16) : '');
+                          setProdIsPreorder(!!p.isPreorder);
+                          setProdPreorderStatus(
+                            p.preorderStatus === 'closed' || p.preorderStatus === 'scheduled' || p.preorderStatus === 'open'
+                              ? p.preorderStatus
+                              : 'open'
+                          );
+                          setProdPreorderOpensAt(toDatetimeLocalValue(p.preorderOpensAt));
                         }}
                         className="text-zinc-400 hover:text-zinc-100 cursor-pointer"
                       >
