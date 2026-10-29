@@ -49,7 +49,7 @@ const renderSafe = (val, fallback = '') => {
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'zortius-store-v2';
 const firebaseConfig = {
   apiKey: 'AIzaSyBhsCLWDETaqh1zytvnNt33O8Lls63mna0',
-  authDomain: 'auth.zortius.com',
+  authDomain: 'zortiusweb1.firebaseapp.com',
   projectId: 'zortiusweb1',
   storageBucket: 'zortiusweb1.firebasestorage.app',
   messagingSenderId: '345352784478',
@@ -2258,7 +2258,7 @@ export default function App() {
   const sessionUser = authReady ? user : null;
 
 return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans antialiased selection:bg-white selection:text-zinc-950">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans antialiased selection:bg-sky-400 selection:text-zinc-950">
       {/* Toast */}
       {notification && (
         <div
@@ -2283,7 +2283,7 @@ return (
                 <span className="text-xl font-black tracking-wider bg-gradient-to-r from-white via-slate-200 to-cyan-400 bg-clip-text text-transparent">
                   ZORTIUS
                 </span>
-                <span className="block text-[10px] tracking-widest text-cyan-500 font-semibold uppercase">Innovation without a limit</span>
+                <span className="block text-[10px] tracking-widest text-sky-400 font-semibold uppercase">Built for focus</span>
               </div>
             </div>
 
@@ -2332,13 +2332,6 @@ return (
 
             <div className="flex items-center gap-3">
               <button
-                onClick={() => setAiDrawerOpen(true)}
-                className="px-3 py-2 bg-zinc-800 hover:bg-zinc-800 border border-zinc-600 rounded-xl text-zinc-100 text-xs font-bold flex items-center gap-2 transition cursor-pointer"
-              >
-                <Bot className="w-4 h-4" /> <span className="hidden sm:inline">Support</span>
-              </button>
-
-              <button
                 onClick={() => setProfileModalOpen(true)}
                 className="flex items-center gap-2.5 px-3.5 py-2 bg-zinc-900 hover:bg-slate-800 border border-zinc-800 rounded-xl text-zinc-300 hover:text-zinc-100 transition-all cursor-pointer"
               >
@@ -2358,7 +2351,7 @@ return (
                 className="relative p-2.5 bg-zinc-900 hover:bg-slate-800 border border-zinc-800 rounded-xl text-zinc-300 hover:text-zinc-100 transition-all flex items-center gap-2 cursor-pointer"
               >
                 <ShoppingCart className="w-5 h-5" />
-                <span className="text-xs font-bold hidden sm:inline">Basket</span>
+                <span className="sr-only">Basket</span>
                 {cartItemCount > 0 && (
                   <span className="absolute -top-1.5 -right-1.5 bg-white text-zinc-950 font-black text-xs w-5 h-5 rounded-full flex items-center justify-center shadow-lg">
                     {cartItemCount}
@@ -2527,14 +2520,21 @@ return (
       
       
       {/* Mobile quick actions */}
-      <div className="mobile-quick-actions md:hidden fixed bottom-4 left-4 right-4 z-40 flex gap-2 justify-center pointer-events-none">
-        <button type="button" onClick={() => setCmdOpen(true)} className="pointer-events-auto flex-1 max-w-[140px] py-3 rounded-2xl bg-zinc-900/95 border border-zinc-700 text-xs font-bold text-white shadow-xl backdrop-blur">
+      {/* Floating AI support — bottom right */}
+      <button
+        type="button"
+        onClick={() => setAiDrawerOpen(true)}
+        className="fixed bottom-5 right-5 z-50 w-14 h-14 rounded-full bg-gradient-to-br from-sky-400 to-indigo-500 text-white shadow-lg shadow-sky-500/30 flex items-center justify-center hover:scale-105 active:scale-95 transition border border-white/20"
+        aria-label="Support AI"
+      >
+        <Bot className="w-6 h-6" />
+      </button>
+
+      <div className="mobile-quick-actions md:hidden fixed bottom-5 left-4 right-20 z-40 flex gap-2 justify-start pointer-events-none">
+        <button type="button" onClick={() => setCmdOpen(true)} className="pointer-events-auto px-4 py-3 rounded-full bg-zinc-900/95 border border-zinc-700 text-xs font-bold text-white shadow-xl backdrop-blur">
           Menu
         </button>
-        <button type="button" onClick={() => setAiDrawerOpen(true)} className="pointer-events-auto flex-1 max-w-[140px] py-3 rounded-2xl bg-white text-zinc-950 text-xs font-bold shadow-xl shadow-cyan-500/20">
-          Support
-        </button>
-        <button type="button" onClick={() => setProfileModalOpen(true)} className="pointer-events-auto flex-1 max-w-[140px] py-3 rounded-2xl bg-zinc-900/95 border border-zinc-700 text-xs font-bold text-white shadow-xl backdrop-blur">
+        <button type="button" onClick={() => setProfileModalOpen(true)} className="pointer-events-auto px-4 py-3 rounded-full bg-zinc-900/95 border border-zinc-700 text-xs font-bold text-white shadow-xl backdrop-blur">
           Account
         </button>
       </div>
@@ -3442,7 +3442,7 @@ return (
               ← Back to store
             </button>
             <section className="rounded-3xl border border-zinc-800 bg-zinc-900/60 p-8 sm:p-12">
-              <span className="text-xs font-bold uppercase tracking-widest text-zinc-100">ZORTIUS · Innovation without a limit</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-zinc-100">ZORTIUS · Built for focus</span>
               <h1 className="mt-3 text-3xl sm:text-4xl font-black text-white">
                 {
                   {
@@ -3538,7 +3538,7 @@ return (
                   Workstations, displays, and peripherals built for creators and engineers — quiet power, clean design, honest specs.
                 </p>
                 <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
-                  <button type="button" onClick={() => navigateTo('shop', '/shop')} className="w-full sm:w-auto px-9 py-3.5 rounded-full bg-white hover:bg-zinc-200 text-zinc-950 font-semibold text-sm transition">
+                  <button type="button" onClick={() => navigateTo('shop', '/shop')} className="w-full sm:w-auto px-9 py-3.5 rounded-full bg-sky-400 hover:bg-sky-300 text-zinc-950 font-semibold text-sm transition shadow-lg shadow-sky-500/20">
                     Browse collection
                   </button>
                   <button type="button" onClick={() => navigateTo('compare', '/compare')} className="w-full sm:w-auto px-9 py-3.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold text-sm transition">
