@@ -1053,10 +1053,13 @@ export default function App() {
     }
     let status = p.preorderStatus || 'open';
     const opensAt = p.preorderOpensAt ? new Date(p.preorderOpensAt) : null;
-    if (status === 'scheduled' && opensAt && !Number.isNaN(opensAt.getTime())) {
-      if (opensAt.getTime() <= Date.now()) {
+    const opensAtValid = opensAt && !Number.isNaN(opensAt.getTime());
+
+    // Scheduled: only become "open" after the datetime; never collapse to open if date missing
+    if (status === 'scheduled') {
+      if (opensAtValid && opensAt.getTime() <= Date.now()) {
         status = 'open';
-      } else {
+      } else if (opensAtValid) {
         const now = new Date();
         const sameDay =
           opensAt.getFullYear() === now.getFullYear() &&
@@ -1074,6 +1077,15 @@ export default function App() {
           canPreorder: false,
           badge: sameDay ? `Opens ${timeStr}` : `Opens ${dateStr}`,
           opensAt,
+          showInShop: false
+        };
+      } else {
+        return {
+          mode: 'preorder_scheduled',
+          label: 'Pre-order scheduled — set open date in admin',
+          canBuy: false,
+          canPreorder: false,
+          badge: 'Scheduled',
           showInShop: false
         };
       }
@@ -1709,7 +1721,7 @@ export default function App() {
       };
     }
     return {
-      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say 'human to email the team.",
+      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say 'human' to email the team.",
       escalate: false
     };
   };
@@ -2258,6 +2270,21 @@ export default function App() {
   const handleSaveProduct = async (e) => {
     e.preventDefault();
     if (!db || !isAdmin) return;
+    if (prodIsPreorder && prodPreorderStatus === 'scheduled') {
+      if (!prodPreorderOpensAt) {
+        showNotification('Pick a date & time for scheduled pre-order', 'error');
+        return;
+      }
+      const when = new Date(prodPreorderOpensAt);
+      if (Number.isNaN(when.getTime())) {
+        showNotification('Invalid pre-order open date', 'error');
+        return;
+      }
+      if (when.getTime() <= Date.now()) {
+        showNotification('Scheduled time must be in the future (or choose status Open)', 'error');
+        return;
+      }
+    }
     const colorList = (prodColorOption || 'Default')
       .split(',')
       .map((x) => x.trim())
@@ -2279,7 +2306,14 @@ export default function App() {
       reviewsCount: 1,
       specs: ['ZORTIUS Certified', 'High Throughput'],
       options: { colors: colorList.length ? colorList : ['Default'] },
-      isPreorder: !!prodIsPreorder
+      isPreorder: !!prodIsPreorder,
+      preorderStatus: prodIsPreorder ? (prodPreorderStatus || 'open') : 'open',
+      preorderOpensAt:
+        prodIsPreorder && prodPreorderStatus === 'scheduled' && prodPreorderOpensAt
+          ? new Date(prodPreorderOpensAt).toISOString()
+          : prodIsPreorder && prodPreorderStatus !== 'scheduled'
+            ? null
+            : null
     };
     if (editingProductId) {
       await updateDoc(doc(db, 'artifacts', appId, 'products', editingProductId), payload);
