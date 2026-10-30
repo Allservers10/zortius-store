@@ -87,7 +87,7 @@ const INITIAL_PRODUCTS = [
     name: 'ZORTIUS Core Pro Desktop Chassis',
     category: 'Desktops',
     price: 1899.0,
-    rating: 4.2,
+    rating: 4.8,
     reviewsCount: 88,
     image: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=800&q=80',
     images: ['https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=800&q=80','https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?auto=format&fit=crop&w=800&q=80'],
@@ -342,7 +342,7 @@ export default function App() {
         setIsFullAdmin(false);
         setOtpGateActive(false);
         setVerifyMode(false);
-        clearOtpUnlocked();
+        // Do NOT clear OTP unlock here — auth briefly nulls on load and was wiping localStorage every night
       }
       setAuthLoading(false);
     };
@@ -853,7 +853,7 @@ export default function App() {
       if (raw === '1') return true;
       const ts = Number(raw);
       if (!Number.isFinite(ts)) return false;
-      return Date.now() - ts < 30 * 24 * 60 * 60 * 1000;
+      return Date.now() - ts < 90 * 24 * 60 * 60 * 1000;
     } catch {
       return false;
     }
@@ -931,12 +931,18 @@ export default function App() {
     setVerifyCode('');
     setProfileModalOpen(true);
     setAuthError('');
-    // Prevent duplicate sends for same user in a short window
+    // One code per window — survive tab close (localStorage) + block parallel double-calls
     const sendKey = `zortius_otp_sent_${currentUser.uid}`;
+    const lockKey = `zortius_otp_lock_${currentUser.uid}`;
     try {
-      const last = sessionStorage.getItem(sendKey);
-      if (last && Date.now() - Number(last) < 45000) return;
-      sessionStorage.setItem(sendKey, String(Date.now()));
+      const last = localStorage.getItem(sendKey);
+      if (last && Date.now() - Number(last) < 90 * 1000) {
+        showNotification('Use the code already emailed (or wait a minute to resend).');
+        return;
+      }
+      if (localStorage.getItem(lockKey) === '1') return;
+      localStorage.setItem(lockKey, '1');
+      localStorage.setItem(sendKey, String(Date.now()));
     } catch (_) {}
     if (otpSending) return;
     setOtpSending(true);
@@ -944,12 +950,19 @@ export default function App() {
       const code = generateVerifyCode();
       await saveVerifyCode(em, code, currentUser.uid);
       await sendVerifyCodeEmail(em, code, currentUser.displayName || em.split('@')[0]);
-      showNotification('Enter the 6-digit code we emailed you to finish signing in.');
+      showNotification('Enter the 6-digit code we emailed you (check junk).');
     } catch (err) {
       console.error(err);
+      try {
+        localStorage.removeItem(sendKey);
+        localStorage.removeItem(lockKey);
+      } catch (_) {}
       setAuthError('Could not send code. Tap Resend or use Contact support.');
     } finally {
       setOtpSending(false);
+      try {
+        localStorage.removeItem(lockKey);
+      } catch (_) {}
     }
   };
 
@@ -1304,13 +1317,25 @@ export default function App() {
       setAuthError('Enter your email first.');
       return;
     }
+    const uid = user?.uid;
+    if (uid) {
+      try {
+        localStorage.removeItem(`zortius_otp_sent_${uid}`);
+        localStorage.removeItem(`zortius_otp_lock_${uid}`);
+      } catch (_) {}
+    }
     setAuthSubmitting(true);
     setAuthError('');
     try {
       const code = generateVerifyCode();
-      await saveVerifyCode(em, code, user?.uid);
+      await saveVerifyCode(em, code, uid);
       await sendVerifyCodeEmail(em, code, em.split('@')[0]);
-      showNotification('New code sent. Check inbox and spam.');
+      if (uid) {
+        try {
+          localStorage.setItem(`zortius_otp_sent_${uid}`, String(Date.now()));
+        } catch (_) {}
+      }
+      showNotification('New code sent. Check inbox and junk.');
     } catch (err) {
       setAuthError(err.message || 'Could not resend code.');
     } finally {
