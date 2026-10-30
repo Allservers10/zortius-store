@@ -66,64 +66,8 @@ try {
   console.error('Firebase init error:', e);
 }
 
-const INITIAL_PRODUCTS = [
-  {
-    id: 'zort-apex-x9',
-    name: 'ZORTIUS Apex X9 Ultra Workstation',
-    category: 'Workstations',
-    price: 3499.0,
-    rating: 4.9,
-    reviewsCount: 42,
-    image: 'https://images.unsplash.com/photo-1587831990711-23ca6441447b?auto=format&fit=crop&w=800&q=80',
-    images: ['https://images.unsplash.com/photo-1587831990711-23ca6441447b?auto=format&fit=crop&w=800&q=80','https://images.unsplash.com/photo-1593640408182-31c70c8268f5?auto=format&fit=crop&w=800&q=80'],
-    description:
-      'Engineered for extreme computational demands. Features bespoke liquid immersion cooling, redundant power architectures, and uncompromised multi-threaded throughput for professional simulation and rendering.',
-    specs: ['64-Core Thread Processor', '128GB ECC DDR5 RAM', 'Dual PCIe Gen 5 Workstation Graphics', '4TB NVMe Ultra-Dense Storage'],
-    options: { colors: ['Dark Anodized', 'Titanium Silver'] },
-    isPreorder: true
-  },
-  {
-    id: 'zort-core-pro',
-    name: 'ZORTIUS Core Pro Desktop Chassis',
-    category: 'Desktops',
-    price: 1899.0,
-    rating: 4.8,
-    reviewsCount: 88,
-    image: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=800&q=80',
-    images: ['https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=800&q=80','https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?auto=format&fit=crop&w=800&q=80'],
-    description:
-      'Precision-milled anodized aluminum chassis paired with acoustically optimized thermal tunnels. Built for pristine signal integrity and silent operation under heavy sustained workloads.',
-    specs: ['Acoustically Tuned Airflow', 'Modular Toolless Bays', 'Anodized Gunmetal Finish', 'Integrated Cable Routing Matrix'],
-    options: { colors: ['Gunmetal Black', 'Matte White'] },
-    isPreorder: true
-  },
-  {
-    id: 'zort-quantum-display',
-    name: 'ZORTIUS Quantum 32 Pro Monitor',
-    category: 'Displays',
-    price: 1149.0,
-    rating: 4.9,
-    reviewsCount: 64,
-    image: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&w=800&q=80',
-    description:
-      '32-inch 4K UHD professional reference display with 100% DCI-P3 color gamut, hardware calibration support, and thunderbolt 4 passthrough for zero-latency studio environments.',
-    specs: ['3840 x 2160 Resolution', '165Hz Refresh Rate', 'Mini-LED Local Dimming', 'Factory Calibrated Delta E < 1'],
-    isPreorder: true
-  },
-  {
-    id: 'zort-matrix-array',
-    name: 'ZORTIUS Matrix Mechanical Keyboard',
-    category: 'Peripherals',
-    price: 249.0,
-    rating: 4.7,
-    reviewsCount: 156,
-    image: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=800&q=80',
-    description:
-      'Crafted from a single block of aerospace-grade aluminum. Custom linear switches factory-lubricated with gasket-mounted acoustic dampening for the ultimate tactile typing experience.',
-    specs: ['Hot-Swappable PCB', 'CNC Machined Aluminum Case', 'PBT Double-Shot Keycaps', 'Tri-Mode Wireless Connectivity'],
-    isPreorder: true
-  }
-];
+const INITIAL_PRODUCTS = [];
+
 
 export default function App() {
   const [user, setUser] = useState(null);
