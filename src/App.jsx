@@ -933,23 +933,31 @@ export default function App() {
     setNewsletterBusy(true);
     try {
       if (db) {
-        await addDoc(collection(db, 'artifacts', appId, 'newsletter'), {
-          email: em,
-          source: 'website',
-          userId: user?.uid || null,
-          createdAt: new Date().toISOString()
-        });
+        const ref = doc(db, 'artifacts', appId, 'newsletter', em.replace(/\//g, '_'));
+        await setDoc(
+          ref,
+          {
+            email: em,
+            status: 'subscribed',
+            source: 'website',
+            userId: user?.uid || null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          },
+          { merge: true }
+        );
       }
+      const unsubUrl = `https://zortius.com/unsubscribe?email=${encodeURIComponent(em)}`;
       await sendActualEmail(
         EMAILJS_CONTACT_TEMPLATE_ID,
         em,
         em.split('@')[0],
         'NEWSLETTER',
         'WELCOME',
-        `Welcome to the Zortius list.\n\nYou will get product launches, pre-order windows, and engineering notes.\n\nUnsubscribe anytime by replying STOP.\n\n— Zortius\nhttps://zortius.com`
+        `Welcome to the Zortius list.\n\nProduct launches, pre-order windows, and engineering notes.\n\nUnsubscribe any time (one click):\n${unsubUrl}\n\nOr visit https://zortius.com/unsubscribe\n\n— Zortius`
       );
       setNewsletterEmail('');
-      showNotification('You are on the list. Check inbox & junk for a welcome note.');
+      showNotification('You are on the list. Welcome email sent (check junk).');
     } catch (err) {
       console.error(err);
       showNotification('Could not join list. Try again.', 'error');
@@ -957,6 +965,40 @@ export default function App() {
       setNewsletterBusy(false);
     }
   };
+
+  const handleUnsubscribe = async (e) => {
+    e?.preventDefault?.();
+    const em = (unsubEmail || '').trim().toLowerCase();
+    if (!em || !em.includes('@')) {
+      showNotification('Enter the email to unsubscribe.', 'error');
+      return;
+    }
+    setUnsubBusy(true);
+    try {
+      if (db) {
+        const ref = doc(db, 'artifacts', appId, 'newsletter', em.replace(/\//g, '_'));
+        await setDoc(
+          ref,
+          {
+            email: em,
+            status: 'unsubscribed',
+            unsubscribedAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          },
+          { merge: true }
+        );
+      }
+      setUnsubDone(true);
+      showNotification('You are unsubscribed. You will not get marketing emails from this list.');
+    } catch (err) {
+      console.error(err);
+      showNotification('Could not unsubscribe. Email help@zortius.com', 'error');
+    } finally {
+      setUnsubBusy(false);
+    }
+  };
+
+
 
   const exportNewsletterCsv = () => {
     const rows = [['Email', 'Source', 'Date']];
@@ -2467,6 +2509,17 @@ export default function App() {
   // -------------------- RENDER --------------------
     const authReady = !!(user && !otpGateActive);
   useEffect(() => {
+    try {
+      const q = new URLSearchParams(window.location.search);
+      const em = q.get('email');
+      if (em && (window.location.pathname.includes('unsubscribe') || activeTab === 'unsubscribe')) {
+        setUnsubEmail(em.trim().toLowerCase());
+        setActiveTab('unsubscribe');
+      }
+    } catch (_) {}
+  }, []);
+
+  useEffect(() => {
     const titles = {
       home: 'Zortius — Premium Hardware & Workstations',
       shop: 'Shop — Zortius',
@@ -2480,6 +2533,7 @@ export default function App() {
       contact: 'Contact — Zortius',
       faq: 'FAQ — Zortius',
       shipping: 'Shipping — Zortius',
+      unsubscribe: 'Unsubscribe — Zortius',
       admin: 'Admin — Zortius',
       privacy: 'Privacy — Zortius',
       terms: 'Terms — Zortius'
@@ -4970,6 +5024,7 @@ return (
                   <button type="button" onClick={() => navigateTo('applications', '/careers')} className="text-left hover:text-white transition">Careers</button>
                   <button type="button" onClick={() => navigateTo('faq', '/faq')} className="text-left hover:text-white transition">FAQ</button>
                   <button type="button" onClick={() => navigateTo('shipping', '/shipping')} className="text-left hover:text-white transition">Shipping</button>
+                  <button type="button" onClick={() => navigateTo('unsubscribe', '/unsubscribe')} className="text-left hover:text-white transition">Unsubscribe</button>
                   <button type="button" onClick={() => navigateTo('contact', '/contact')} className="text-left hover:text-white transition">Contact</button>
                 </div>
               </div>
