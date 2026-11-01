@@ -146,6 +146,7 @@ export default function App() {
   const [prodTypeName, setProdTypeName] = useState('');
   const [prodTypeRows, setProdTypeRows] = useState(''); // lines: label | extra£ | image#
   const [selectedTypeValue, setSelectedTypeValue] = useState(null);
+  const [selectedTypeMap, setSelectedTypeMap] = useState({});
   const [prodImages, setProdImages] = useState('');
   const [prodVideo, setProdVideo] = useState('');
   const [preorders, setPreorders] = useState([]);
@@ -1413,12 +1414,20 @@ export default function App() {
     setProductGalleryIndex(0);
     if (product?.options?.colors?.length) setSelectedColor(product.options.colors[0]);
     else setSelectedColor('Standard');
-    const typeGroup = product?.options?.types?.[0];
-    if (typeGroup?.values?.length) {
-      setSelectedTypeValue(typeGroup.values[0]);
-      const mi = Number(typeGroup.values[0].mediaIndex);
+    const groups = product?.options?.types || [];
+    if (groups.length && groups[0].values?.length) {
+      const map = {};
+      groups.forEach((g) => {
+        if (g.values?.[0]) map[g.name] = { ...g.values[0], __type: g.name };
+      });
+      setSelectedTypeMap(map);
+      setSelectedTypeValue(map[groups[0].name] || null);
+      const mi = Number(groups[0].values[0].mediaIndex);
       if (Number.isFinite(mi) && mi >= 0) setProductGalleryIndex(mi);
-    } else setSelectedTypeValue(null);
+    } else {
+      setSelectedTypeMap({});
+      setSelectedTypeValue(null);
+    }
     setActiveTab('shop');
     const path = `/shop/${product.id}`;
     if (window.location.pathname !== path) window.history.pushState({}, '', path);
@@ -1428,28 +1437,29 @@ export default function App() {
 
   const addToCart = (product) => {
     const color = selectedColor || product.options?.colors?.[0] || 'Standard';
-    const typeVal = selectedTypeValue || product.options?.types?.[0]?.values?.[0] || null;
-    const priceAdd = typeVal ? (Number(typeVal.priceAdd) || 0) : 0;
+    const typeMap = { ...selectedTypeMap };
+    (product.options?.types || []).forEach((g) => {
+      if (!typeMap[g.name] && g.values?.[0]) typeMap[g.name] = { ...g.values[0], __type: g.name };
+    });
+    const priceAdd = Object.values(typeMap).reduce((s, v) => s + (Number(v?.priceAdd) || 0), 0);
     const unitPrice = (Number(product.price) || 0) + priceAdd;
+    const typeKey = Object.keys(typeMap).sort().map((k) => `${k}:${typeMap[k].label}`).join('|');
     const customItem = {
       ...product,
       selectedColor: color,
-      selectedType: typeVal ? { name: product.options?.types?.[0]?.name, label: typeVal.label, priceAdd } : null,
+      selectedTypes: typeMap,
+      selectedType: Object.values(typeMap)[0] || null,
+      typeKey,
       price: unitPrice,
       basePrice: product.price
     };
     const existing = cart.find(
-      (item) =>
-        item.id === product.id &&
-        item.selectedColor === color &&
-        (item.selectedType?.label || '') === (typeVal?.label || '')
+      (item) => item.id === product.id && item.selectedColor === color && (item.typeKey || '') === typeKey
     );
     let updated;
     if (existing) {
       updated = cart.map((item) =>
-        item.id === product.id &&
-        item.selectedColor === color &&
-        (item.selectedType?.label || '') === (typeVal?.label || '')
+        item.id === product.id && item.selectedColor === color && (item.typeKey || '') === typeKey
           ? { ...item, qty: item.qty + 1 }
           : item
       );
@@ -2271,19 +2281,32 @@ export default function App() {
   };
 
   // -------------------- ADMIN PRODUCT / DISCOUNT --------------------
-  const parseTypeRows = (text) => {
-    // Each line: label | extra£ | imageNumber (1 = first image)
-    // Also accepts comma: label, extra, imageNum
+  const parseTypeGroups = (text) => {
+    // Each LINE is its own type (not linked to the line above):
+    // Type | option1, option2 | extra1, extra2 | image1, image2
+    // Example:
+    // Size | 1.4, 2.4 | 0, 2 | 1, 2
+    // Storage | 512GB, 1TB | 0, 50 | 1, 1
     return (text || '')
       .split('\n')
       .map((line) => line.trim())
       .filter(Boolean)
       .map((line) => {
-        const parts = line.split(/[|,]/).map((x) => x.trim());
-        const label = parts[0] || '';
-        const priceAdd = parseFloat(parts[1]) || 0;
-        const mediaIndex = Math.max(0, (parseInt(parts[2], 10) || 1) - 1);
-        return label ? { label, priceAdd, mediaIndex } : null;
+        const cols = line.split('|').map((x) => x.trim());
+        if (cols.length < 2) return null;
+        const name = cols[0] || 'Option';
+        const labels = (cols[1] || '').split(',').map((x) => x.trim()).filter(Boolean);
+        const prices = (cols[2] || '').split(',').map((x) => parseFloat(x.trim()) || 0);
+        const images = (cols[3] || '').split(',').map((x) => parseInt(x.trim(), 10) || 1);
+        if (!labels.length) return null;
+        return {
+          name,
+          values: labels.map((label, i) => ({
+            label,
+            priceAdd: prices[i] != null && Number.isFinite(prices[i]) ? prices[i] : (prices[0] || 0),
+            mediaIndex: Math.max(0, ((images[i] != null && Number.isFinite(images[i]) ? images[i] : (images[0] || 1)) - 1))
+          }))
+        };
       })
       .filter(Boolean);
   };
@@ -2334,9 +2357,7 @@ export default function App() {
       specs: ['ZORTIUS Certified', 'High Throughput'],
       options: {
         colors: colorList.length ? colorList : ['Default'],
-        types: (prodTypeName || '').trim() && parseTypeRows(prodTypeRows).length
-          ? [{ name: prodTypeName.trim(), values: parseTypeRows(prodTypeRows) }]
-          : []
+        types: parseTypeGroups(prodTypeRows)
       },
       isPreorder: !!prodIsPreorder,
       preorderStatus: status,
@@ -3171,12 +3192,11 @@ return (
                   {!prodIsPreorder && <p className="text-[11px] text-zinc-500">Retail item — buy when Launch control is Orders OPEN.</p>}
                 </div>
                 <input type="text" placeholder="Colors (comma-separated)" value={prodColorOption} onChange={(e) => setProdColorOption(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-zinc-500 outline-none" />
-                <input type="text" placeholder="Extra option name (e.g. Size) — optional" value={prodTypeName} onChange={(e) => setProdTypeName(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-white outline-none" />
                 <textarea
-                  placeholder={"Option values (one per line):\nlabel | extra £ | image#\ne.g.\n1.4 | 0 | 1\n2.4 | 2 | 2\n(image# 1 = first image URL)"}
+                  placeholder={"Each line = one independent type:\nType | options (comma) | extra £ (comma) | image # (comma)\n\nSize | 1.4, 2.4 | 0, 2 | 1, 2\nStorage | 512GB, 1TB | 0, 50 | 1, 1"}
                   value={prodTypeRows}
                   onChange={(e) => setProdTypeRows(e.target.value)}
-                  rows={4}
+                  rows={5}
                   className="sm:col-span-2 bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-white outline-none font-mono"
                 />
                 <textarea placeholder="Description" value={prodDesc} onChange={(e) => setProdDesc(e.target.value)} rows="2" className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none md:col-span-3" />
@@ -3211,10 +3231,15 @@ return (
                           setProdVideo(p.videoUrl || '');
                           setProdDesc(p.description || '');
                           setProdColorOption((p.options?.colors || ['Default']).join(', '));
-                          setProdTypeName(p.options?.types?.[0]?.name || '');
+                          setProdTypeName('');
                           setProdTypeRows(
-                            (p.options?.types?.[0]?.values || [])
-                              .map((v) => `${v.label} | ${v.priceAdd || 0} | ${(Number(v.mediaIndex) || 0) + 1}`)
+                            (p.options?.types || [])
+                              .map((t) => {
+                                const labels = (t.values || []).map((v) => v.label).join(', ');
+                                const prices = (t.values || []).map((v) => v.priceAdd || 0).join(', ');
+                                const imgs = (t.values || []).map((v) => (Number(v.mediaIndex) || 0) + 1).join(', ');
+                                return `${t.name} | ${labels} | ${prices} | ${imgs}`;
+                              })
                               .join('\n')
                           );
                           setProdIsPreorder(!!p.isPreorder);
@@ -4396,40 +4421,47 @@ return (
                       </div>
                     </div>
                   )}
-                  {selectedProduct.options?.types?.[0]?.values?.length > 0 && (
-                    <div className="mb-4">
+                  {(selectedProduct.options?.types || []).map((group, gi) => (
+                    <div key={gi} className="mb-4">
                       <span className="text-sm font-bold text-zinc-300 block mb-3">
-                        Choose {selectedProduct.options.types[0].name || 'option'}
+                        Choose {group.name || 'option'}
                       </span>
                       <div className="flex flex-wrap gap-2">
-                        {selectedProduct.options.types[0].values.map((v, idx) => (
-                          <button
-                            key={idx}
-                            type="button"
-                            onClick={() => {
-                              setSelectedTypeValue(v);
-                              const mi = Number(v.mediaIndex);
-                              if (Number.isFinite(mi) && mi >= 0) setProductGalleryIndex(mi);
-                            }}
-                            className={`px-3 py-1.5 rounded-xl text-xs font-mono transition cursor-pointer ${
-                              selectedTypeValue?.label === v.label
-                                ? 'bg-sky-400 text-zinc-950 font-bold'
-                                : 'bg-zinc-950 text-zinc-300 border border-zinc-800 hover:border-zinc-600'
-                            }`}
-                          >
-                            {v.label}
-                            {v.priceAdd > 0 ? ` (+£${v.priceAdd})` : ''}
-                          </button>
-                        ))}
+                        {(group.values || []).map((v, idx) => {
+                          const active = (selectedTypeMap[group.name] || selectedTypeValue)?.label === v.label
+                            && ((selectedTypeMap[group.name] || selectedTypeValue)?.__type === group.name || !selectedTypeMap[group.name]);
+                          const isOn = selectedTypeMap[group.name]?.label === v.label;
+                          return (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => {
+                                const packed = { ...v, __type: group.name };
+                                setSelectedTypeMap((m) => ({ ...m, [group.name]: packed }));
+                                setSelectedTypeValue(packed);
+                                const mi = Number(v.mediaIndex);
+                                if (Number.isFinite(mi) && mi >= 0) setProductGalleryIndex(mi);
+                              }}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-mono transition cursor-pointer ${
+                                isOn
+                                  ? 'bg-sky-400 text-zinc-950 font-bold'
+                                  : 'bg-zinc-950 text-zinc-300 border border-zinc-800 hover:border-zinc-600'
+                              }`}
+                            >
+                              {v.label}
+                              {v.priceAdd > 0 ? ` (+£${v.priceAdd})` : ''}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
-                  )}
+                  ))}
                 </div>
 
                 <div className="pt-6 border-t border-zinc-800 flex items-center justify-between">
                   <div>
                     <span className="text-xs text-zinc-500 block">Total Price (GBP)</span>
-                    <span className="text-3xl font-black text-white">£{(Number(selectedProduct.price) + (Number(selectedTypeValue?.priceAdd) || 0)).toLocaleString('en-GB', { minimumFractionDigits: 2 })}</span>
+                    <span className="text-3xl font-black text-white">£{(Number(selectedProduct.price) + Object.values(selectedTypeMap || {}).reduce((s, v) => s + (Number(v?.priceAdd) || 0), 0)).toLocaleString('en-GB', { minimumFractionDigits: 2 })}</span>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                     {(() => {
