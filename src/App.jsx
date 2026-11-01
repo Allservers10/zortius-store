@@ -143,6 +143,9 @@ export default function App() {
   const [prodImage, setProdImage] = useState('');
   const [prodDesc, setProdDesc] = useState('');
   const [prodColorOption, setProdColorOption] = useState('Dark Anodized, Titanium Silver');
+  const [prodTypeName, setProdTypeName] = useState('');
+  const [prodTypeRows, setProdTypeRows] = useState(''); // lines: label | extra£ | image#
+  const [selectedTypeValue, setSelectedTypeValue] = useState(null);
   const [prodImages, setProdImages] = useState('');
   const [prodVideo, setProdVideo] = useState('');
   const [preorders, setPreorders] = useState([]);
@@ -1410,6 +1413,12 @@ export default function App() {
     setProductGalleryIndex(0);
     if (product?.options?.colors?.length) setSelectedColor(product.options.colors[0]);
     else setSelectedColor('Standard');
+    const typeGroup = product?.options?.types?.[0];
+    if (typeGroup?.values?.length) {
+      setSelectedTypeValue(typeGroup.values[0]);
+      const mi = Number(typeGroup.values[0].mediaIndex);
+      if (Number.isFinite(mi) && mi >= 0) setProductGalleryIndex(mi);
+    } else setSelectedTypeValue(null);
     setActiveTab('shop');
     const path = `/shop/${product.id}`;
     if (window.location.pathname !== path) window.history.pushState({}, '', path);
@@ -1419,12 +1428,30 @@ export default function App() {
 
   const addToCart = (product) => {
     const color = selectedColor || product.options?.colors?.[0] || 'Standard';
-    const customItem = { ...product, selectedColor: color };
-    const existing = cart.find((item) => item.id === product.id && item.selectedColor === color);
+    const typeVal = selectedTypeValue || product.options?.types?.[0]?.values?.[0] || null;
+    const priceAdd = typeVal ? (Number(typeVal.priceAdd) || 0) : 0;
+    const unitPrice = (Number(product.price) || 0) + priceAdd;
+    const customItem = {
+      ...product,
+      selectedColor: color,
+      selectedType: typeVal ? { name: product.options?.types?.[0]?.name, label: typeVal.label, priceAdd } : null,
+      price: unitPrice,
+      basePrice: product.price
+    };
+    const existing = cart.find(
+      (item) =>
+        item.id === product.id &&
+        item.selectedColor === color &&
+        (item.selectedType?.label || '') === (typeVal?.label || '')
+    );
     let updated;
     if (existing) {
       updated = cart.map((item) =>
-        item.id === product.id && item.selectedColor === color ? { ...item, qty: item.qty + 1 } : item
+        item.id === product.id &&
+        item.selectedColor === color &&
+        (item.selectedType?.label || '') === (typeVal?.label || '')
+          ? { ...item, qty: item.qty + 1 }
+          : item
       );
     } else {
       updated = [...cart, { ...customItem, qty: 1 }];
@@ -2244,6 +2271,23 @@ export default function App() {
   };
 
   // -------------------- ADMIN PRODUCT / DISCOUNT --------------------
+  const parseTypeRows = (text) => {
+    // Each line: label | extra£ | imageNumber (1 = first image)
+    // Also accepts comma: label, extra, imageNum
+    return (text || '')
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const parts = line.split(/[|,]/).map((x) => x.trim());
+        const label = parts[0] || '';
+        const priceAdd = parseFloat(parts[1]) || 0;
+        const mediaIndex = Math.max(0, (parseInt(parts[2], 10) || 1) - 1);
+        return label ? { label, priceAdd, mediaIndex } : null;
+      })
+      .filter(Boolean);
+  };
+
   const handleSaveProduct = async (e) => {
     e.preventDefault();
     if (!db || !isAdmin) return;
@@ -2288,7 +2332,12 @@ export default function App() {
       rating: 5.0,
       reviewsCount: 1,
       specs: ['ZORTIUS Certified', 'High Throughput'],
-      options: { colors: colorList.length ? colorList : ['Default'] },
+      options: {
+        colors: colorList.length ? colorList : ['Default'],
+        types: (prodTypeName || '').trim() && parseTypeRows(prodTypeRows).length
+          ? [{ name: prodTypeName.trim(), values: parseTypeRows(prodTypeRows) }]
+          : []
+      },
       isPreorder: !!prodIsPreorder,
       preorderStatus: status,
       preorderOpensAt: opensAtIso
@@ -2314,6 +2363,8 @@ export default function App() {
     setProdVideo('');
     setProdDesc('');
     setProdColorOption('Dark Anodized, Titanium Silver');
+    setProdTypeName('');
+    setProdTypeRows('');
     setProdIsPreorder(false);
     setProdPreorderStatus('open');
     setProdPreorderOpensAt('');
@@ -3119,7 +3170,15 @@ return (
                   )}
                   {!prodIsPreorder && <p className="text-[11px] text-zinc-500">Retail item — buy when Launch control is Orders OPEN.</p>}
                 </div>
-                <input type="text" placeholder="Colors (comma-separated)" value={prodColorOption} onChange={(e) => setProdColorOption(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none" />
+                <input type="text" placeholder="Colors (comma-separated)" value={prodColorOption} onChange={(e) => setProdColorOption(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-zinc-500 outline-none" />
+                <input type="text" placeholder="Extra option name (e.g. Size) — optional" value={prodTypeName} onChange={(e) => setProdTypeName(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-white outline-none" />
+                <textarea
+                  placeholder={"Option values (one per line):\nlabel | extra £ | image#\ne.g.\n1.4 | 0 | 1\n2.4 | 2 | 2\n(image# 1 = first image URL)"}
+                  value={prodTypeRows}
+                  onChange={(e) => setProdTypeRows(e.target.value)}
+                  rows={4}
+                  className="sm:col-span-2 bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-white outline-none font-mono"
+                />
                 <textarea placeholder="Description" value={prodDesc} onChange={(e) => setProdDesc(e.target.value)} rows="2" className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none md:col-span-3" />
                 <button type="submit" className="bg-white hover:bg-zinc-200 text-zinc-950 font-bold py-2.5 rounded-xl text-xs md:col-span-3 cursor-pointer">
                   {editingProductId ? 'Update Product' : 'Add Product to Live Store'}
@@ -3152,6 +3211,12 @@ return (
                           setProdVideo(p.videoUrl || '');
                           setProdDesc(p.description || '');
                           setProdColorOption((p.options?.colors || ['Default']).join(', '));
+                          setProdTypeName(p.options?.types?.[0]?.name || '');
+                          setProdTypeRows(
+                            (p.options?.types?.[0]?.values || [])
+                              .map((v) => `${v.label} | ${v.priceAdd || 0} | ${(Number(v.mediaIndex) || 0) + 1}`)
+                              .join('\n')
+                          );
                           setProdIsPreorder(!!p.isPreorder);
                           setProdPreorderStatus(
                             p.preorderStatus === 'closed' || p.preorderStatus === 'scheduled' || p.preorderStatus === 'open'
@@ -4331,12 +4396,40 @@ return (
                       </div>
                     </div>
                   )}
+                  {selectedProduct.options?.types?.[0]?.values?.length > 0 && (
+                    <div className="mb-4">
+                      <span className="text-sm font-bold text-zinc-300 block mb-3">
+                        Choose {selectedProduct.options.types[0].name || 'option'}
+                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedProduct.options.types[0].values.map((v, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => {
+                              setSelectedTypeValue(v);
+                              const mi = Number(v.mediaIndex);
+                              if (Number.isFinite(mi) && mi >= 0) setProductGalleryIndex(mi);
+                            }}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-mono transition cursor-pointer ${
+                              selectedTypeValue?.label === v.label
+                                ? 'bg-sky-400 text-zinc-950 font-bold'
+                                : 'bg-zinc-950 text-zinc-300 border border-zinc-800 hover:border-zinc-600'
+                            }`}
+                          >
+                            {v.label}
+                            {v.priceAdd > 0 ? ` (+£${v.priceAdd})` : ''}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="pt-6 border-t border-zinc-800 flex items-center justify-between">
                   <div>
                     <span className="text-xs text-zinc-500 block">Total Price (GBP)</span>
-                    <span className="text-3xl font-black text-white">£{Number(selectedProduct.price).toLocaleString('en-GB', { minimumFractionDigits: 2 })}</span>
+                    <span className="text-3xl font-black text-white">£{(Number(selectedProduct.price) + (Number(selectedTypeValue?.priceAdd) || 0)).toLocaleString('en-GB', { minimumFractionDigits: 2 })}</span>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                     {(() => {
