@@ -38,6 +38,18 @@ const EMAILJS_PUBLIC_KEY = 'ce23vL3ytn68UIxsf';
 const ADMIN_EMAIL = 'zortiusofficial@gmail.com';
 const LIMITED_ADMIN_EMAIL = 'gto.zortius@outlook.com';
 const SUPPORT_EMAIL = 'help@zortius.com';
+// Edit these to your real profiles
+const SOCIALS = [
+  { id: 'instagram', label: 'Instagram', handle: '@zortius', url: 'https://www.instagram.com/zortiusofficial' },
+  { id: 'youtube', label: 'YouTube', handle: 'Zortius', url: 'https://www.youtube.com/@ZortiusOfficial' },
+  { id: 'x', label: 'X', handle: '@zortius', url: 'https://x.com/zortius' },
+  { id: 'tiktok', label: 'TikTok', handle: '@zortius', url: 'https://www.tiktok.com/@zortius' },
+  { id: 'linkedin', label: 'LinkedIn', handle: 'Zortius', url: 'https://www.linkedin.com/company/zortius' },
+  { id: 'discord', label: 'Discord', handle: 'Community', url: 'https://discord.gg/zortius' }
+];
+const INSTAGRAM_URL = SOCIALS.find((s) => s.id === 'instagram')?.url || 'https://www.instagram.com/zortiusofficial';
+const INSTAGRAM_HANDLE = SOCIALS.find((s) => s.id === 'instagram')?.handle || '@zortius';
+const YOUTUBE_URL = SOCIALS.find((s) => s.id === 'youtube')?.url || 'https://www.youtube.com/@zortius';
 
 const renderSafe = (val, fallback = '') => {
   if (val === null || val === undefined) return fallback;
@@ -586,6 +598,8 @@ export default function App() {
     if (clean === '/wishlist') return 'wishlist';
     if (clean === '/shipping' || clean === '/returns') return 'shipping';
     if (clean === '/unsubscribe' || clean.startsWith('/unsubscribe')) return 'unsubscribe';
+    if (clean === '/newsletter' || clean === '/updates') return 'newsletter';
+    if (clean === '/socials' || clean === '/community') return 'socials';
     return 'home';
   };
 
@@ -965,15 +979,98 @@ export default function App() {
         em.split('@')[0],
         'NEWSLETTER',
         'WELCOME',
-        `Welcome to the Zortius list.\n\nProduct launches, pre-order windows, and engineering notes.\n\nUnsubscribe any time (one click):\n${unsubUrl}\n\nOr visit https://zortius.com/unsubscribe\n\n— Zortius`
+        `Welcome to the Zortius list.\n\nProduct launches, pre-order windows, and engineering notes.\n\nFollow us:\nInstagram ${INSTAGRAM_HANDLE}: ${INSTAGRAM_URL}\nYouTube: ${YOUTUBE_URL}\n\nRead Updates any time: https://zortius.com/newsletter\n\nUnsubscribe (one click):\n${unsubUrl}\n\n— Zortius`
       );
+      try {
+        localStorage.setItem('zortius_newsletter_' + em, '1');
+      } catch (_) {}
+      setNewsletterSubscribed(true);
       setNewsletterEmail('');
-      showNotification('You are on the list. Welcome email sent (check junk).');
+      showNotification('You are on the list — opening Updates.');
+      setTimeout(() => navigateTo('newsletter', '/newsletter'), 400);
     } catch (err) {
       console.error(err);
       showNotification('Could not join list. Try again.', 'error');
     } finally {
       setNewsletterBusy(false);
+    }
+  };
+
+  const publishNewsletterEdition = async (e) => {
+    e?.preventDefault?.();
+    if (!isAdmin || !db) return;
+    const title = (nlEditionTitle || '').trim();
+    const body = (nlEditionBody || '').trim();
+    if (!title || !body) {
+      showNotification('Add a title and body.', 'error');
+      return;
+    }
+    setNlSending(true);
+    try {
+      await addDoc(collection(db, 'artifacts', appId, 'newsletter_editions'), {
+        title,
+        body,
+        createdAt: new Date().toISOString(),
+        authorEmail: user?.email || '',
+        authorName: userName || 'Zortius'
+      });
+      let emailed = 0;
+      try {
+        // Prefer in-memory list if admin already loaded subscribers
+        const list = (newsletterSubscribers && newsletterSubscribers.length)
+          ? newsletterSubscribers
+          : (newsletters || []);
+        for (const row of list) {
+          const em = (row.email || row.id || '').toLowerCase();
+          if (!em || !em.includes('@')) continue;
+          if (row.status === 'unsubscribed') continue;
+          const unsubUrl = `https://zortius.com/unsubscribe?email=${encodeURIComponent(em)}`;
+          try {
+            await sendActualEmail(
+              EMAILJS_CONTACT_TEMPLATE_ID,
+              em,
+              em.split('@')[0],
+              'NEWSLETTER',
+              'UPDATE',
+              `${title}\n\n${body}\n\n— Zortius\nUpdates: https://zortius.com/newsletter\nInstagram: ${INSTAGRAM_URL}\nYouTube: ${YOUTUBE_URL}\n\nUnsubscribe: ${unsubUrl}`
+            );
+            emailed += 1;
+            await new Promise((r) => setTimeout(r, 350));
+          } catch (_) {}
+        }
+      } catch (_) {}
+      setNlEditionTitle('');
+      setNlEditionBody('');
+      showNotification(emailed ? `Published + emailed ${emailed} subscribers.` : 'Update published on Updates page.');
+    } catch (err) {
+      console.error(err);
+      showNotification('Could not publish.', 'error');
+    } finally {
+      setNlSending(false);
+    }
+  };
+
+  const postNewsletterComment = async (editionId) => {
+    const text = (nlComment || '').trim();
+    const em = (user?.email || '').toLowerCase();
+    if (!text) return;
+    if (!em) {
+      showNotification('Sign in to comment.', 'error');
+      return;
+    }
+    if (!db) return;
+    try {
+      await addDoc(collection(db, 'artifacts', appId, 'newsletter_editions', editionId, 'comments'), {
+        text,
+        email: em,
+        name: userName || em.split('@')[0],
+        createdAt: new Date().toISOString()
+      });
+      setNlComment('');
+      showNotification('Comment posted.');
+    } catch (err) {
+      console.error(err);
+      showNotification('Could not post comment.', 'error');
     }
   };
 
@@ -999,6 +1096,10 @@ export default function App() {
           { merge: true }
         );
       }
+      try {
+        localStorage.removeItem('zortius_newsletter_' + em);
+      } catch (_) {}
+      setNewsletterSubscribed(false);
       setUnsubDone(true);
       showNotification('You are unsubscribed. You will not get marketing emails from this list.');
     } catch (err) {
@@ -2597,6 +2698,36 @@ export default function App() {
     } catch (_) {}
   }, []);
 
+
+  useEffect(() => {
+    const em = (user?.email || newsletterEmail || '').toLowerCase().trim();
+    try {
+      if (em && localStorage.getItem('zortius_newsletter_' + em) === '1') {
+        setNewsletterSubscribed(true);
+      }
+    } catch (_) {}
+  }, [user?.email]);
+
+  useEffect(() => {
+    if (!db) return;
+    const unsub = onSnapshot(collection(db, 'artifacts', appId, 'newsletter'), (snap) => {
+      setNewsletterSubscribers(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    });
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    if (!db) return;
+    const unsub = onSnapshot(collection(db, 'artifacts', appId, 'newsletter_editions'), (snap) => {
+      setNewsletterEditions(
+        snap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+      );
+    });
+    return () => unsub();
+  }, []);
+
   useEffect(() => {
     const titles = {
       home: 'Zortius — Premium Hardware & Workstations',
@@ -2612,6 +2743,8 @@ export default function App() {
       faq: 'FAQ — Zortius',
       shipping: 'Shipping — Zortius',
       unsubscribe: 'Unsubscribe — Zortius',
+      newsletter: 'Updates — Zortius',
+      socials: 'Socials — Zortius',
       admin: 'Admin — Zortius',
       privacy: 'Privacy — Zortius',
       terms: 'Terms — Zortius'
@@ -2655,6 +2788,8 @@ return (
                 { tab: 'home', path: '/', label: 'Home' },
                 { tab: 'shop', path: '/shop', label: 'Shop' },
                 { tab: 'blog', path: '/blog', label: 'Blog' },
+                { tab: 'socials', path: '/socials', label: 'Socials' },
+                ...(newsletterSubscribed || isAdmin ? [{ tab: 'newsletter', path: '/newsletter', label: 'Updates' }] : []),
                 { tab: 'forum', path: '/forum', label: 'Forum' },
                 { tab: 'applications', path: '/careers', label: 'Careers' },
                 { tab: 'compare', path: '/compare', label: 'Compare' },
@@ -2757,6 +2892,8 @@ return (
                 { tab: 'home', path: '/', label: 'Home' },
                 { tab: 'shop', path: '/shop', label: 'Shop' },
                 { tab: 'blog', path: '/blog', label: 'Blog' },
+                { tab: 'socials', path: '/socials', label: 'Socials' },
+                ...(newsletterSubscribed || isAdmin ? [{ tab: 'newsletter', path: '/newsletter', label: 'Updates' }] : []),
                 { tab: 'forum', path: '/forum', label: 'Forum' },
                 { tab: 'applications', path: '/careers', label: 'Careers' },
                 { tab: 'compare', path: '/compare', label: 'Compare' },
@@ -3477,6 +3614,21 @@ return (
             )}
 
             
+            
+            {isAdmin && (
+              <section className="bg-zinc-900 border border-sky-500/20 rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-4">
+                <h3 className="text-sm font-mono font-bold text-zinc-100 uppercase tracking-wider">Publish newsletter update</h3>
+                <p className="text-xs text-zinc-500">Posts on the Updates page for subscribers. Mention Instagram in the body if you want.</p>
+                <form onSubmit={publishNewsletterEdition} className="space-y-3">
+                  <input value={nlEditionTitle} onChange={(e) => setNlEditionTitle(e.target.value)} placeholder="Title" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white" />
+                  <textarea value={nlEditionBody} onChange={(e) => setNlEditionBody(e.target.value)} rows={5} placeholder="Body…" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white" />
+                  <button type="submit" disabled={nlSending} className="px-5 py-2.5 rounded-full bg-sky-400 text-zinc-950 text-xs font-bold disabled:opacity-50">
+                    {nlSending ? 'Publishing…' : 'Publish to Updates page'}
+                  </button>
+                </form>
+              </section>
+            )}
+
             {isAdmin && (
               <section className="bg-zinc-900 border border-rose-500/20 rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-4">
                 <h3 className="text-sm font-mono font-bold text-zinc-100 uppercase tracking-wider">Promo / discount codes</h3>
@@ -4887,6 +5039,130 @@ return (
 
 
         {/* SHIPPING & RETURNS */}
+
+        
+        {activeTab === 'socials' && (
+          <div className="max-w-2xl mx-auto space-y-10">
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500">Community</p>
+              <h1 className="text-3xl sm:text-4xl font-semibold text-white tracking-tight mt-2">Socials</h1>
+              <p className="text-sm text-zinc-400 mt-3 leading-relaxed">
+                Builds, launches, and behind-the-scenes. Follow the channels you use — same brand everywhere.
+              </p>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-3">
+              {SOCIALS.map((s) => (
+                <a
+                  key={s.id}
+                  href={s.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/50 px-5 py-4 hover:border-zinc-600 transition"
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-white">{s.label}</p>
+                    <p className="text-xs text-zinc-500 mt-0.5">{s.handle}</p>
+                  </div>
+                  <span className="text-xs text-sky-400 font-medium">Open →</span>
+                </a>
+              ))}
+            </div>
+            <p className="text-xs text-zinc-600">
+              Prefer email? <button type="button" onClick={() => navigateTo('newsletter', '/newsletter')} className="text-sky-400 hover:underline">Join Updates</button>
+              {' · '}
+              <button type="button" onClick={() => navigateTo('unsubscribe', '/unsubscribe')} className="text-zinc-500 hover:underline">Unsubscribe</button>
+            </p>
+          </div>
+        )}
+
+        {activeTab === 'newsletter' && (
+          <div className="max-w-3xl mx-auto space-y-10">
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500">Subscriber hub</p>
+                <h1 className="text-3xl sm:text-4xl font-semibold text-white tracking-tight mt-2">Updates</h1>
+                <p className="text-sm text-zinc-400 mt-2">Launches, notes, and archive. Follow {INSTAGRAM_HANDLE} on Instagram.</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {SOCIALS.slice(0, 4).map((s) => (
+                  <a key={s.id} href={s.url} target="_blank" rel="noreferrer" className="px-3 py-2 rounded-full border border-zinc-700 text-zinc-200 text-xs font-semibold hover:bg-zinc-900">
+                    {s.label}
+                  </a>
+                ))}
+                <button type="button" onClick={() => { setUnsubDone(false); navigateTo('unsubscribe', '/unsubscribe'); }} className="px-4 py-2 rounded-full border border-zinc-700 text-zinc-300 text-xs font-semibold hover:bg-zinc-900">
+                  Unsubscribe
+                </button>
+              </div>
+            </div>
+
+            {!newsletterSubscribed && !isAdmin && (
+              <form onSubmit={handleNewsletterSignup} className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-5 flex flex-col sm:flex-row gap-3">
+                <input type="email" value={newsletterEmail} onChange={(e) => setNewsletterEmail(e.target.value)} placeholder="Join to unlock Updates" className="flex-1 bg-zinc-950 border border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-white" />
+                <button type="submit" disabled={newsletterBusy} className="px-5 py-2.5 rounded-full bg-sky-400 text-zinc-950 text-xs font-bold">Join</button>
+              </form>
+            )}
+
+            <div className="space-y-6">
+              <h2 className="text-sm font-semibold text-white uppercase tracking-wider">Archive</h2>
+              {newsletterEditions.length === 0 && (
+                <p className="text-sm text-zinc-500">No updates yet — check back soon, or follow us on Instagram.</p>
+              )}
+              {newsletterEditions.map((ed) => (
+                <article key={ed.id} className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5 sm:p-6 space-y-3">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <h3 className="text-lg font-semibold text-white">{ed.title}</h3>
+                    <time className="text-[11px] text-zinc-500">
+                      {ed.createdAt ? new Date(ed.createdAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : ''}
+                    </time>
+                  </div>
+                  <p className="text-sm text-zinc-300 whitespace-pre-wrap leading-relaxed">{ed.body}</p>
+                  <div className="pt-3 border-t border-zinc-800 space-y-2">
+                    <p className="text-[11px] text-zinc-500 font-medium">Comments</p>
+                    <div className="flex gap-2">
+                      <input
+                        value={nlComment}
+                        onChange={(e) => setNlComment(e.target.value)}
+                        placeholder={user ? 'Add a comment…' : 'Sign in to comment'}
+                        className="flex-1 bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white"
+                        disabled={!user}
+                      />
+                      <button type="button" disabled={!user || !nlComment.trim()} onClick={() => postNewsletterComment(ed.id)} className="px-3 py-2 rounded-xl bg-zinc-800 text-xs text-white font-semibold disabled:opacity-40">
+                        Post
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-zinc-600">Comments are stored for the team. Keep them respectful.</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'unsubscribe' && (
+          <div className="max-w-md mx-auto space-y-8 py-10">
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500">Email preferences</p>
+              <h1 className="text-3xl font-semibold text-white tracking-tight mt-2">Unsubscribe</h1>
+              <p className="text-sm text-zinc-400 mt-3 leading-relaxed">
+                Opt out of Zortius marketing emails. Order, application, and security messages may still be sent when required.
+              </p>
+            </div>
+            {unsubDone ? (
+              <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-6 space-y-3">
+                <p className="text-sm text-emerald-300 font-semibold">You are unsubscribed.</p>
+                <button type="button" onClick={() => navigateTo('home', '/')} className="text-xs text-sky-400">Back to home</button>
+              </div>
+            ) : (
+              <form onSubmit={handleUnsubscribe} className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6 space-y-4">
+                <input type="email" required value={unsubEmail} onChange={(e) => setUnsubEmail(e.target.value)} placeholder="you@example.com" className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-4 py-3 text-sm text-white" />
+                <button type="submit" disabled={unsubBusy} className="w-full py-3.5 rounded-full bg-white text-zinc-950 text-sm font-semibold disabled:opacity-50">
+                  {unsubBusy ? 'Processing…' : 'Confirm unsubscribe'}
+                </button>
+              </form>
+            )}
+          </div>
+        )}
+
         {activeTab === 'shipping' && (
           <div className="max-w-2xl mx-auto space-y-10">
             <div>
@@ -5105,6 +5381,7 @@ return (
                   <button type="button" onClick={() => navigateTo('shop', '/shop')} className="text-left hover:text-white transition">Shop</button>
                   <button type="button" onClick={() => navigateTo('compare', '/compare')} className="text-left hover:text-white transition">Compare</button>
                   <button type="button" onClick={() => navigateTo('blog', '/blog')} className="text-left hover:text-white transition">Blog</button>
+                  <button type="button" onClick={() => navigateTo('newsletter', '/newsletter')} className="text-left hover:text-white transition">Updates</button>
                   <button type="button" onClick={() => navigateTo('forum', '/forum')} className="text-left hover:text-white transition">Forum</button>
                 </div>
               </div>
