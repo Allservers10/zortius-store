@@ -40,14 +40,14 @@ const LIMITED_ADMIN_EMAIL = 'gto.zortius@outlook.com';
 const SUPPORT_EMAIL = 'help@zortius.com';
 // Edit these to your real profiles
 const SOCIALS = [
-  { id: 'instagram', label: 'Instagram', handle: '@zortius', url: 'https://www.instagram.com/zortiusofficial' },
-  { id: 'youtube', label: 'YouTube', handle: 'Zortius', url: 'https://www.youtube.com/@ZortiusOfficial' },
+  { id: 'instagram', label: 'Instagram', handle: '@zortius', url: 'https://www.instagram.com/zortius' },
+  { id: 'youtube', label: 'YouTube', handle: 'Zortius', url: 'https://www.youtube.com/@zortius' },
   { id: 'x', label: 'X', handle: '@zortius', url: 'https://x.com/zortius' },
   { id: 'tiktok', label: 'TikTok', handle: '@zortius', url: 'https://www.tiktok.com/@zortius' },
   { id: 'linkedin', label: 'LinkedIn', handle: 'Zortius', url: 'https://www.linkedin.com/company/zortius' },
   { id: 'discord', label: 'Discord', handle: 'Community', url: 'https://discord.gg/zortius' }
 ];
-const INSTAGRAM_URL = SOCIALS.find((s) => s.id === 'instagram')?.url || 'https://www.instagram.com/zortiusofficial';
+const INSTAGRAM_URL = SOCIALS.find((s) => s.id === 'instagram')?.url || 'https://www.instagram.com/zortius';
 const INSTAGRAM_HANDLE = SOCIALS.find((s) => s.id === 'instagram')?.handle || '@zortius';
 const YOUTUBE_URL = SOCIALS.find((s) => s.id === 'youtube')?.url || 'https://www.youtube.com/@zortius';
 
@@ -248,6 +248,16 @@ export default function App() {
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterBusy, setNewsletterBusy] = useState(false);
   const [newsletters, setNewsletters] = useState([]);
+  const [newsletterSubscribed, setNewsletterSubscribed] = useState(false);
+  const [newsletterSubscribers, setNewsletterSubscribers] = useState([]);
+  const [newsletterEditions, setNewsletterEditions] = useState([]);
+  const [nlComment, setNlComment] = useState('');
+  const [nlEditionTitle, setNlEditionTitle] = useState('');
+  const [nlEditionBody, setNlEditionBody] = useState('');
+  const [nlSending, setNlSending] = useState(false);
+  const [unsubEmail, setUnsubEmail] = useState('');
+  const [unsubBusy, setUnsubBusy] = useState(false);
+  const [unsubDone, setUnsubDone] = useState(false);
   const [wishlist, setWishlist] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('zortius_wishlist') || '[]');
