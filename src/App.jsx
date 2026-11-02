@@ -154,6 +154,7 @@ export default function App() {
   const [prodIsPreorder, setProdIsPreorder] = useState(true);
   const [prodPreorderStatus, setProdPreorderStatus] = useState('open');
   const [prodPreorderOpensAt, setProdPreorderOpensAt] = useState('');
+  const [prodAllowPurchase, setProdAllowPurchase] = useState(false);
   const [newDiscountCode, setNewDiscountCode] = useState('');
   const [newDiscountPercent, setNewDiscountPercent] = useState('10');
   const [newDiscountFixed, setNewDiscountFixed] = useState('');
