@@ -1130,8 +1130,18 @@ export default function App() {
       }
     }
 
-    // Closed = hidden everywhere
+    // Closed: public cannot see — UNLESS allow purchase + this user pre-ordered (private checkout)
     if (status === 'closed') {
+      if (allowBuy && onList) {
+        return {
+          mode: 'preorder_buy',
+          label: 'Reserved checkout — thanks for pre-ordering',
+          canBuy: true,
+          canPreorder: false,
+          badge: 'Buy now',
+          showInShop: true
+        };
+      }
       return {
         mode: 'preorder_closed',
         label: 'Pre-order closed',
@@ -1142,7 +1152,7 @@ export default function App() {
       };
     }
 
-    // Open: visible. Register interest. Purchase only if admin ticked allow + user is on preorder list
+    // Open: visible. Register interest. Purchase if admin ticked allow + user is on preorder list
     if (allowBuy && onList) {
       return {
         mode: 'preorder_buy',
@@ -1512,7 +1522,7 @@ export default function App() {
 
   const openProduct = (product) => {
     const av = getProductAvailability(product);
-    if (product?.isPreorder && !av.showInShop && !isAdmin) {
+    if (product?.isPreorder && !av.showInShop && !av.canBuy && !isAdmin) {
       showNotification('This product is not available.', 'error');
       navigateTo('shop', '/shop');
       return;
@@ -3307,7 +3317,7 @@ return (
                         {prodPreorderStatus === 'scheduled' && prodPreorderOpensAt
                           ? ` · ${new Date(prodPreorderOpensAt).toLocaleString('en-GB')}`
                           : ''}
-                        {' '}— Closed = hidden everywhere. Open = visible for interest.
+                        {' '}— Closed = hidden from public. Open = visible for interest. Allow purchase = pre-order list can buy even if Closed.
                       </p>
                       <label className="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer mt-2">
                         <input
@@ -3318,7 +3328,7 @@ return (
                         />
                         <span>
                           <strong className="text-white">Allow purchase</strong> for people who already pre-ordered this item
-                          (they can buy; closed still hides the product)
+                          (works when Open or Closed — public still cannot see if Closed)
                         </span>
                       </label>
                     </div>
