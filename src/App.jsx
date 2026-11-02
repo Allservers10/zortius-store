@@ -584,6 +584,7 @@ export default function App() {
     if (clean === '/compare') return 'compare';
     if (clean === '/wishlist') return 'wishlist';
     if (clean === '/shipping' || clean === '/returns') return 'shipping';
+    if (clean === '/unsubscribe' || clean.startsWith('/unsubscribe')) return 'unsubscribe';
     return 'home';
   };
 
@@ -670,6 +671,15 @@ export default function App() {
           userId: user?.uid || null
         });
       }
+      try {
+        const key = 'zortius_preorders_' + em.toLowerCase();
+        const prev = JSON.parse(localStorage.getItem(key) || '[]');
+        const id = product?.id || 'general';
+        if (!prev.includes(id)) {
+          prev.push(id);
+          localStorage.setItem(key, JSON.stringify(prev));
+        }
+      } catch (_) {}
       await sendActualEmail(
         EMAILJS_CONTACT_TEMPLATE_ID,
         em,
@@ -1048,8 +1058,26 @@ export default function App() {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   };
 
+  const userPreorderedProduct = (productId) => {
+    if (!productId) return false;
+    const em = (user?.email || waitlistEmail || '').toLowerCase().trim();
+    if (!em) return false;
+    const fromFs = (preorders || []).some(
+      (r) =>
+        (r.email || '').toLowerCase() === em &&
+        (r.productId === productId || r.productId == null)
+    );
+    if (fromFs) return true;
+    try {
+      const prev = JSON.parse(localStorage.getItem('zortius_preorders_' + em) || '[]');
+      return Array.isArray(prev) && (prev.includes(productId) || prev.includes('general'));
+    } catch {
+      return false;
+    }
+  };
+
   const getProductAvailability = (p) => {
-    void scheduleTick; // re-check open times every 30s
+    void scheduleTick;
     if (!p) return { mode: 'unknown', label: '', canBuy: false, canPreorder: false, badge: null, showInShop: false };
     if (!p.isPreorder) {
       const open = !!(storeSettings && storeSettings.takingOrders);
@@ -1062,11 +1090,13 @@ export default function App() {
         showInShop: true
       };
     }
+
     let status = p.preorderStatus || 'open';
     const opensAt = p.preorderOpensAt ? new Date(p.preorderOpensAt) : null;
     const opensAtValid = opensAt && !Number.isNaN(opensAt.getTime());
+    const allowBuy = !!p.preorderAllowPurchase;
+    const onList = userPreorderedProduct(p.id);
 
-    // Scheduled: only become "open" after the datetime; never collapse to open if date missing
     if (status === 'scheduled') {
       if (opensAtValid && opensAt.getTime() <= Date.now()) {
         status = 'open';
@@ -1078,12 +1108,9 @@ export default function App() {
           opensAt.getDate() === now.getDate();
         const dateStr = opensAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
         const timeStr = opensAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-        const label = sameDay
-          ? `Pre-orders open today at ${timeStr}`
-          : `Pre-orders open ${dateStr}`;
         return {
           mode: 'preorder_scheduled',
-          label,
+          label: sameDay ? `Pre-orders open today at ${timeStr}` : `Pre-orders open ${dateStr}`,
           canBuy: false,
           canPreorder: false,
           badge: sameDay ? `Opens ${timeStr}` : `Opens ${dateStr}`,
@@ -1093,7 +1120,7 @@ export default function App() {
       } else {
         return {
           mode: 'preorder_scheduled',
-          label: 'Pre-order scheduled — set open date in admin',
+          label: 'Pre-order scheduled',
           canBuy: false,
           canPreorder: false,
           badge: 'Scheduled',
@@ -1101,12 +1128,43 @@ export default function App() {
         };
       }
     }
+
+    // Closed = hidden everywhere
     if (status === 'closed') {
-      return { mode: 'preorder_closed', label: 'Pre-order closed', canBuy: false, canPreorder: false, badge: 'Closed', showInShop: false };
+      return {
+        mode: 'preorder_closed',
+        label: 'Pre-order closed',
+        canBuy: false,
+        canPreorder: false,
+        badge: 'Closed',
+        showInShop: false
+      };
+    }
+
+    // Open: visible. Register interest. Purchase only if admin ticked allow + user is on preorder list
+    if (allowBuy && onList) {
+      return {
+        mode: 'preorder_buy',
+        label: 'Pre-order checkout open for your account',
+        canBuy: true,
+        canPreorder: false,
+        badge: 'Buy now',
+        showInShop: true
+      };
+    }
+    if (allowBuy && !onList) {
+      return {
+        mode: 'preorder_open',
+        label: 'Pre-order open — register to unlock purchase when invited',
+        canBuy: false,
+        canPreorder: true,
+        badge: 'Pre-order open',
+        showInShop: true
+      };
     }
     return {
       mode: 'preorder_open',
-      label: 'Pre-order open',
+      label: 'Pre-order open — register your interest',
       canBuy: false,
       canPreorder: true,
       badge: 'Pre-order open',
@@ -1452,6 +1510,12 @@ export default function App() {
   // -------------------- CART --------------------
 
   const openProduct = (product) => {
+    const av = getProductAvailability(product);
+    if (product?.isPreorder && !av.showInShop && !isAdmin) {
+      showNotification('This product is not available.', 'error');
+      navigateTo('shop', '/shop');
+      return;
+    }
     setSelectedProduct(product);
     setProductGalleryIndex(0);
     if (product?.options?.colors?.length) setSelectedColor(product.options.colors[0]);
@@ -2403,7 +2467,8 @@ export default function App() {
       },
       isPreorder: !!prodIsPreorder,
       preorderStatus: status,
-      preorderOpensAt: opensAtIso
+      preorderOpensAt: opensAtIso,
+      preorderAllowPurchase: !!prodIsPreorder && !!prodAllowPurchase
     };
     try {
       if (editingProductId) {
@@ -2431,6 +2496,7 @@ export default function App() {
     setProdIsPreorder(false);
     setProdPreorderStatus('open');
     setProdPreorderOpensAt('');
+    setProdAllowPurchase(false);
   };
 
   const handleDeleteProduct = async (id) => {
@@ -2510,11 +2576,12 @@ export default function App() {
     const authReady = !!(user && !otpGateActive);
   useEffect(() => {
     try {
+      const path = window.location.pathname || '';
       const q = new URLSearchParams(window.location.search);
-      const em = q.get('email');
-      if (em && (window.location.pathname.includes('unsubscribe') || activeTab === 'unsubscribe')) {
-        setUnsubEmail(em.trim().toLowerCase());
+      const em = (q.get('email') || '').trim().toLowerCase();
+      if (path.includes('unsubscribe') || activeTab === 'unsubscribe') {
         setActiveTab('unsubscribe');
+        if (em) setUnsubEmail(em);
       }
     } catch (_) {}
   }, []);
@@ -3239,8 +3306,20 @@ return (
                         {prodPreorderStatus === 'scheduled' && prodPreorderOpensAt
                           ? ` · ${new Date(prodPreorderOpensAt).toLocaleString('en-GB')}`
                           : ''}
-                        {' '}— only becomes Open when this time passes, or if you choose Open.
+                        {' '}— Closed = hidden everywhere. Open = visible for interest.
                       </p>
+                      <label className="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer mt-2">
+                        <input
+                          type="checkbox"
+                          checked={prodAllowPurchase}
+                          onChange={(e) => setProdAllowPurchase(e.target.checked)}
+                          className="rounded border-zinc-600"
+                        />
+                        <span>
+                          <strong className="text-white">Allow purchase</strong> for people who already pre-ordered this item
+                          (they can buy; closed still hides the product)
+                        </span>
+                      </label>
                     </div>
                   )}
                   {!prodIsPreorder && <p className="text-[11px] text-zinc-500">Retail item — buy when Launch control is Orders OPEN.</p>}
@@ -3303,6 +3382,7 @@ return (
                               : 'open'
                           );
                           setProdPreorderOpensAt(toDatetimeLocalValue(p.preorderOpensAt));
+                          setProdAllowPurchase(!!p.preorderAllowPurchase);
                         }}
                         className="text-zinc-400 hover:text-zinc-100 cursor-pointer"
                       >
@@ -3956,7 +4036,7 @@ return (
               {(() => {
                 const featuredOpen = products.filter((p) => {
                   const av = getProductAvailability(p);
-                  return av.mode === 'preorder_open' || av.mode === 'preorder_scheduled';
+                  return av.showInShop && (av.mode === 'preorder_open' || av.mode === 'preorder_buy' || av.mode === 'preorder_scheduled');
                 });
                 const spotlight = featuredOpen[0];
                 if (spotlight) {
