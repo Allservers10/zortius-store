@@ -612,7 +612,7 @@ export default function App() {
     if (clean === '/unsubscribe' || clean.startsWith('/unsubscribe')) return 'unsubscribe';
     if (clean === '/newsletter' || clean === '/updates') return 'newsletter';
     if (clean === '/socials' || clean === '/community') return 'socials';
-    return 'home';
+    return 'notfound';
   };
 
   const navigateTo = (tab, path) => {
@@ -958,6 +958,39 @@ export default function App() {
     await setDoc(doc(db, 'artifacts', appId, 'public_data', 'settings'), next, { merge: true });
     setStoreSettings(next);
     showNotification('Store settings saved.');
+  };
+
+  const sendOrderStatusEmail = async (order, statusLabel) => {
+    const em = (order?.email || order?.customerEmail || '').trim();
+    if (!em || !em.includes('@')) return;
+    const unsubUrl = `https://zortius.com/unsubscribe?email=${encodeURIComponent(em.toLowerCase())}`;
+    await sendActualEmail(
+      EMAILJS_CONTACT_TEMPLATE_ID,
+      em,
+      order?.name || em.split('@')[0],
+      'ORDER',
+      (statusLabel || order?.status || 'UPDATE').toUpperCase(),
+      `Order update from Zortius\n\nStatus: ${statusLabel || order?.status}\nRef: ${order?.id || '—'}\n\nTrack or manage from your account when signed in.\n\n— Zortius\nhttps://zortius.com\n\nMarketing unsub (not order mail): ${unsubUrl}`
+    );
+  };
+
+  const downloadSiteBackup = () => {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      products,
+      preorders,
+      newsletters,
+      newsletterEditions,
+      storeSettings
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `zortius-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showNotification('Backup JSON downloaded');
   };
 
   const handleNewsletterSignup = async (e) => {
@@ -1982,7 +2015,7 @@ export default function App() {
       };
     }
     return {
-      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say 'human'to email the team.",
+      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say 'human' to email the team.",
       escalate: false
     };
   };
@@ -2776,6 +2809,7 @@ export default function App() {
       unsubscribe: 'Unsubscribe — Zortius',
       newsletter: 'Updates — Zortius',
       socials: 'Socials — Zortius',
+      notfound: 'Page not found — Zortius',
       admin: 'Admin — Zortius',
       privacy: 'Privacy — Zortius',
       terms: 'Terms — Zortius'
@@ -3650,6 +3684,13 @@ return (
             
             {isAdmin && (
               <section className="bg-zinc-900 border border-sky-500/20 rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-4">
+                <h3 className="text-sm font-mono font-bold text-zinc-100 uppercase tracking-wider">Site backup</h3>
+                <p className="text-xs text-zinc-500">Download products, pre-orders, and newsletter data as JSON.</p>
+                <button type="button" onClick={downloadSiteBackup} className="px-4 py-2 rounded-xl bg-zinc-800 border border-zinc-600 text-xs font-bold text-white">Download backup JSON</button>
+              </section>
+            )}
+            {isAdmin && (
+              <section className="bg-zinc-900 border border-sky-500/20 rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-4">
                 <h3 className="text-sm font-mono font-bold text-zinc-100 uppercase tracking-wider">Publish newsletter update</h3>
                 <p className="text-xs text-zinc-500">Posts on the Updates page for subscribers. Mention Instagram in the body if you want.</p>
                 <form onSubmit={publishNewsletterEdition} className="space-y-3">
@@ -4174,9 +4215,19 @@ return (
                 }
               </h1>
               {activeTab === 'about' && (
-                <p className="mt-4 text-zinc-300 leading-relaxed">
-                  Zortius is a hardware company. We design workstations, displays, and peripherals for people who care about specs, thermals, and long sessions — not marketing noise. Based around a UK-first launch, we sell pre-order interest today and full checkout when manufacturing is ready.
-                </p>
+                <div className="mt-4 space-y-4 text-zinc-300 leading-relaxed">
+                  <p>
+                    Zortius is a hardware company. We design workstations, displays, and peripherals for people who care about specs, thermals, and long sessions — not marketing noise.
+                  </p>
+                  <p>
+                    UK-first launch. Pre-order interest is open on selected products; full checkout arrives when manufacturing is ready. We publish schedules on the site and in Updates.
+                  </p>
+                  <p>
+                    Follow builds and announcements on our <button type="button" onClick={() => navigateTo('socials', '/socials')} className="text-sky-400 hover:underline">socials</button>,
+                    or join <button type="button" onClick={() => navigateTo('newsletter', '/newsletter')} className="text-sky-400 hover:underline">Updates</button>.
+                    Support: {SUPPORT_EMAIL}
+                  </p>
+                </div>
               )}
               {activeTab === 'faq' && (
                 <div className="mt-5 space-y-4 text-sm text-zinc-300">
@@ -4203,9 +4254,11 @@ return (
                 </div>
               )}
               {activeTab === 'privacy' && (
-                <p className="mt-4 text-zinc-300 leading-relaxed">
-                  Zortius only collects information needed to operate accounts, process orders and review applications.
-                </p>
+                <div className="mt-4 space-y-3 text-zinc-300 leading-relaxed text-sm">
+                  <p>Zortius only collects information needed to operate accounts, process orders, review applications, and (if you opt in) send product Updates.</p>
+                  <p>Newsletter and marketing mail always include an unsubscribe link: https://zortius.com/unsubscribe</p>
+                  <p>Contact for privacy requests: {SUPPORT_EMAIL}</p>
+                </div>
               )}
               {activeTab === 'terms' && (
                 <p className="mt-4 text-zinc-300 leading-relaxed">Draft terms placeholder. Publish final purchase, delivery and returns terms before accepting real orders.</p>
@@ -4586,6 +4639,16 @@ return (
               </div>
             </div>
 
+            {filteredProducts.length === 0 && (
+              <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-10 text-center space-y-3">
+                <p className="text-lg font-semibold text-white">Nothing listed right now</p>
+                <p className="text-sm text-zinc-400">Pre-order windows and products appear here when published.</p>
+                <div className="flex flex-wrap gap-2 justify-center pt-2">
+                  <button type="button" onClick={() => navigateTo('newsletter', '/newsletter')} className="px-4 py-2 rounded-full bg-sky-400 text-zinc-950 text-xs font-bold">Updates</button>
+                  <button type="button" onClick={() => navigateTo('socials', '/socials')} className="px-4 py-2 rounded-full border border-zinc-700 text-xs text-white font-semibold">Socials</button>
+                </div>
+              </div>
+            )}
             <div id="catalog-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredProducts.map((product) => (
                 <div
@@ -5087,6 +5150,20 @@ return (
         {/* SHIPPING & RETURNS */}
 
         
+        
+        {activeTab === 'notfound' && (
+          <div className="max-w-lg mx-auto text-center space-y-6 py-16">
+            <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-zinc-500">404</p>
+            <h1 className="text-3xl sm:text-4xl font-semibold text-white tracking-tight">This page doesn’t exist.</h1>
+            <p className="text-sm text-zinc-400">The link may be old, or the product is no longer listed.</p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button type="button" onClick={() => navigateTo('home', '/')} className="px-6 py-3 rounded-full bg-sky-400 text-zinc-950 text-sm font-semibold">Home</button>
+              <button type="button" onClick={() => navigateTo('shop', '/shop')} className="px-6 py-3 rounded-full border border-zinc-700 text-white text-sm font-semibold">Shop</button>
+              <button type="button" onClick={() => navigateTo('contact', '/contact')} className="px-6 py-3 rounded-full border border-zinc-700 text-white text-sm font-semibold">Contact</button>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'socials' && (
           <div className="max-w-2xl mx-auto space-y-10">
             <div>
