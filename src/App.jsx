@@ -162,11 +162,13 @@ export default function App() {
   const [prodImages, setProdImages] = useState('');
   const [prodVideo, setProdVideo] = useState('');
   const [preorders, setPreorders] = useState([]);
+  const [preorderFilter, setPreorderFilter] = useState('all'); // all | general | productId
   const [productGalleryIndex, setProductGalleryIndex] = useState(0);
   const [prodIsPreorder, setProdIsPreorder] = useState(true);
   const [prodPreorderStatus, setProdPreorderStatus] = useState('open');
   const [prodPreorderOpensAt, setProdPreorderOpensAt] = useState('');
   const [prodAllowPurchase, setProdAllowPurchase] = useState(false);
+  const [prodStock, setProdStock] = useState('');
   const [newDiscountCode, setNewDiscountCode] = useState('');
   const [newDiscountPercent, setNewDiscountPercent] = useState('10');
   const [newDiscountFixed, setNewDiscountFixed] = useState('');
@@ -1123,9 +1125,14 @@ export default function App() {
 
 
   const exportNewsletterCsv = () => {
-    const rows = [['Email', 'Source', 'Date']];
-    newsletters.forEach((r) => {
-      rows.push([r.email || '', r.source || '', r.createdAt ? new Date(r.createdAt).toISOString() : '']);
+    const rows = [['Email', 'Status', 'Source', 'Date']];
+    (newsletters || []).forEach((r) => {
+      rows.push([
+        r.email || r.id || '',
+        r.status || 'subscribed',
+        r.source || '',
+        r.createdAt ? new Date(r.createdAt).toISOString() : ''
+      ]);
     });
     const csv = rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -1139,10 +1146,12 @@ export default function App() {
   };
 
   const emailAllPreorders = async () => {
-    if (!isFullAdmin || preorders.length === 0) return;
-    if (!window.confirm(`Email all ${preorders.length} pre-order contacts?`)) return;
+    if (!isFullAdmin) return;
+    const list = getFilteredPreorders();
+    if (list.length === 0) return;
+    if (!window.confirm(`Email ${list.length} contacts in this filter?`)) return;
     let ok = 0;
-    for (const row of preorders) {
+    for (const row of list) {
       if (!row.email) continue;
       try {
         await sendActualEmail(
@@ -1344,12 +1353,22 @@ export default function App() {
     showNotification(`Added ${code}`);
   };
 
+  const getFilteredPreorders = () => {
+    if (preorderFilter === 'all') return preorders;
+    if (preorderFilter === 'general') {
+      return preorders.filter((r) => !r.productId || r.productId === 'general');
+    }
+    return preorders.filter((r) => r.productId === preorderFilter);
+  };
+
   const exportPreordersCsv = () => {
-    const rows = [['Email', 'Product', 'Colour', 'Date']];
-    preorders.forEach((r) => {
+    const list = getFilteredPreorders();
+    const rows = [['Email', 'Product', 'ProductId', 'Colour', 'Date']];
+    list.forEach((r) => {
       rows.push([
         r.email || '',
         r.productName || 'General',
+        r.productId || '',
         r.color || '',
         r.createdAt ? new Date(r.createdAt).toISOString() : ''
       ]);
@@ -1963,7 +1982,7 @@ export default function App() {
       };
     }
     return {
-      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say 'human' to email the team.",
+      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say 'human'to email the team.",
       escalate: false
     };
   };
@@ -2590,7 +2609,8 @@ export default function App() {
       isPreorder: !!prodIsPreorder,
       preorderStatus: status,
       preorderOpensAt: opensAtIso,
-      preorderAllowPurchase: !!prodIsPreorder && !!prodAllowPurchase
+      preorderAllowPurchase: !!prodIsPreorder && !!prodAllowPurchase,
+      stock: prodStock === '' || prodStock == null ? null : parseInt(prodStock, 10)
     };
     try {
       if (editingProductId) {
@@ -2619,6 +2639,7 @@ export default function App() {
     setProdPreorderStatus('open');
     setProdPreorderOpensAt('');
     setProdAllowPurchase(false);
+    setProdStock('');
   };
 
   const handleDeleteProduct = async (id) => {
@@ -3417,7 +3438,8 @@ return (
               </h3>
               <form onSubmit={handleSaveProduct} className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <input type="text" placeholder="Product Name" required value={prodName} onChange={(e) => setProdName(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none" />
-                <input type="number" step="0.01" placeholder="Price (£)" required value={prodPrice} onChange={(e) => setProdPrice(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none font-mono" />
+                <input type="number" step="0.01" placeholder="Price (£)" required value={prodPrice} onChange={(e) => setProdPrice(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-white" />
+                <input type="number" min="0" placeholder="Stock (optional)" value={prodStock} onChange={(e) => setProdStock(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none font-mono" />
                 <input type="text" placeholder="Category" value={prodCategory} onChange={(e) => setProdCategory(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none" />
                 <input type="url" placeholder="Image URL" value={prodImage} onChange={(e) => setProdImage(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none md:col-span-2" />
                 <textarea placeholder="Extra image URLs (one per line) — Amazon-style gallery" value={prodImages} onChange={(e) => setProdImages(e.target.value)} rows="3" className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-cyan-500 sm:col-span-2 font-mono text-xs" />
@@ -3541,6 +3563,7 @@ return (
                           );
                           setProdPreorderOpensAt(toDatetimeLocalValue(p.preorderOpensAt));
                           setProdAllowPurchase(!!p.preorderAllowPurchase);
+                          setProdStock(p.stock != null && p.stock !== '' ? String(p.stock) : '');
                         }}
                         className="text-zinc-400 hover:text-zinc-100 cursor-pointer"
                       >
@@ -3708,23 +3731,36 @@ return (
               <section className="bg-zinc-900 border border-zinc-800 rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <h3 className="text-sm font-mono font-bold text-zinc-100 uppercase tracking-wider">Pre-order interest list</h3>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <select
+                      value={preorderFilter}
+                      onChange={(e) => setPreorderFilter(e.target.value)}
+                      className="bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-1.5 text-xs text-white max-w-[14rem]"
+                    >
+                      <option value="all">All ({preorders.length})</option>
+                      <option value="general">General only</option>
+                      {products.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} ({preorders.filter((r) => r.productId === p.id).length})
+                        </option>
+                      ))}
+                    </select>
                     <button type="button" onClick={() => {
-                      const emails = preorders.map((p) => p.email).filter(Boolean).join(', ');
-                      navigator.clipboard?.writeText(emails);
-                      showNotification('Emails copied');
+                      const emails = [...new Set(getFilteredPreorders().map((p) => p.email).filter(Boolean))];
+                      navigator.clipboard?.writeText(emails.join(', '));
+                      showNotification(`${emails.length} emails copied`);
                     }} className="px-3 py-1.5 rounded-lg bg-slate-800 border border-zinc-700 text-zinc-200 text-xs font-bold">
                       Copy emails
                     </button>
-                    <button type="button" onClick={emailAllPreorders} className="px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-200 text-xs font-bold">Email all</button>
+                    <button type="button" onClick={emailAllPreorders} className="px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-200 text-xs font-bold">Email filtered</button>
                     <button type="button" onClick={exportPreordersCsv} className="px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-200 text-xs font-bold">
-                      Export CSV ({preorders.length})
+                      Export CSV ({getFilteredPreorders().length})
                     </button>
                   </div>
                 </div>
-                <p className="text-xs text-zinc-400">People who registered interest. Contact them when you open orders.</p>
-                {preorders.length === 0 ? (
-                  <p className="text-xs text-zinc-500">No pre-order signups yet.</p>
+                <p className="text-xs text-zinc-400">Filter by product or general interest, then copy / email / export only that group.</p>
+                {getFilteredPreorders().length === 0 ? (
+                  <p className="text-xs text-zinc-500">No signups in this filter.</p>
                 ) : (
                   <div className="overflow-x-auto rounded-xl border border-zinc-800">
                     <table className="w-full text-left text-xs">
@@ -3737,7 +3773,7 @@ return (
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-800">
-                        {preorders.map((row) => (
+                        {getFilteredPreorders().map((row) => (
                           <tr key={row.id} className="text-zinc-200">
                             <td className="px-3 py-2.5 break-all">{row.email}</td>
                             <td className="px-3 py-2.5">{row.productName || 'General'}</td>
