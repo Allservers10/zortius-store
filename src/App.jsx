@@ -2850,7 +2850,7 @@ return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigateTo('home', '/')}>
-              <img src="/logo.jpg" alt="Zortius" className="h-10 sm:h-12 w-auto object-contain shrink-0" onError={(e) => { e.currentTarget.style.display='none'; }} />
+              <img src="/logo.jpg" alt="Zortius" className="h-14 sm:h-16 md:h-20 w-auto max-w-[220px] object-contain shrink-0" onError={(e) => { e.currentTarget.style.display='none'; }} />
               <div>
                 <span className="text-xl font-black tracking-wider bg-gradient-to-r from-white via-slate-200 to-cyan-400 bg-clip-text text-transparent">
                   ZORTIUS
