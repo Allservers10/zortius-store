@@ -1376,6 +1376,12 @@ export default function App() {
     showNotification(`Added ${code}`);
   };
 
+  const visibleProducts = () =>
+    (products || []).filter((p) => {
+      const av = getProductAvailability(p);
+      return av.showInShop !== false;
+    });
+
   const getFilteredPreorders = () => {
     if (preorderFilter === 'all') return preorders;
     if (preorderFilter === 'general') {
@@ -4492,7 +4498,7 @@ return (
                 <button type="button" onClick={() => navigateTo('shop', '/shop')} className="text-xs font-semibold text-zinc-100 hover:text-zinc-200">View all →</button>
               </div>
               <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {products.slice(0, 4).map((p) => (
+                {visibleProducts().slice(0, 4).map((p) => (
                   <button
                     key={p.id}
                     type="button"
@@ -4539,7 +4545,7 @@ return (
                 <button type="button" onClick={() => navigateTo('shop', '/shop')} className="text-sm font-medium text-zinc-100 hover:text-zinc-200">View all →</button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
-                {products.slice(0, 4).map((p) => (
+                {visibleProducts().slice(0, 4).map((p) => (
                   <button
                     key={p.id}
                     type="button"
@@ -5115,7 +5121,7 @@ return (
                 <thead className="bg-zinc-950 text-zinc-400">
                   <tr>
                     <th className="px-4 py-3">Feature</th>
-                    {products.slice(0, 4).map((p) => (
+                    {visibleProducts().slice(0, 4).map((p) => (
                       <th key={p.id} className="px-4 py-3 text-white font-bold">{p.name}</th>
                     ))}
                   </tr>
@@ -5123,25 +5129,25 @@ return (
                 <tbody className="divide-y divide-slate-800 text-zinc-300">
                   <tr>
                     <td className="px-4 py-3 text-zinc-500">Price</td>
-                    {products.slice(0, 4).map((p) => (
+                    {visibleProducts().slice(0, 4).map((p) => (
                       <td key={p.id} className="px-4 py-3 text-zinc-200 font-bold">£{Number(p.price).toLocaleString('en-GB')}</td>
                     ))}
                   </tr>
                   <tr>
                     <td className="px-4 py-3 text-zinc-500">Category</td>
-                    {products.slice(0, 4).map((p) => (
+                    {visibleProducts().slice(0, 4).map((p) => (
                       <td key={p.id} className="px-4 py-3">{p.category}</td>
                     ))}
                   </tr>
                   <tr>
                     <td className="px-4 py-3 text-zinc-500">Mode</td>
-                    {products.slice(0, 4).map((p) => (
+                    {visibleProducts().slice(0, 4).map((p) => (
                       <td key={p.id} className="px-4 py-3">{p.isPreorder !== false ? 'Pre-order' : 'Standard'}</td>
                     ))}
                   </tr>
                   <tr>
                     <td className="px-4 py-3 text-zinc-500 align-top">Specs</td>
-                    {products.slice(0, 4).map((p) => (
+                    {visibleProducts().slice(0, 4).map((p) => (
                       <td key={p.id} className="px-4 py-3">
                         <ul className="space-y-1 list-disc list-inside">
                           {(p.specs || []).map((s, i) => <li key={i}>{s}</li>)}
