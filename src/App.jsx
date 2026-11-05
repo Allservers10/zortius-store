@@ -61,7 +61,7 @@ const renderSafe = (val, fallback = '') => {
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'zortius-v2';
 const firebaseConfig = {
   apiKey: 'AIzaSyBhsCLWDETaqh1zytvnNt33O8Lls63mna0',
-  authDomain: 'auth.zortius.com',
+  authDomain: 'zortiusweb1.firebaseapp.com',
   projectId: 'zortiusweb1',
   storageBucket: 'zortiusweb1.firebasestorage.app',
   messagingSenderId: '345352784478',
@@ -1283,18 +1283,8 @@ export default function App() {
       }
     }
 
-    // Closed: public cannot see — UNLESS allow purchase + this user pre-ordered (private checkout)
+    // Closed = hidden EVERYWHERE (shop, home, deep links). Allow purchase only works when Open.
     if (status === 'closed') {
-      if (allowBuy && onList) {
-        return {
-          mode: 'preorder_buy',
-          label: 'Reserved checkout — thanks for pre-ordering',
-          canBuy: true,
-          canPreorder: false,
-          badge: 'Buy now',
-          showInShop: true
-        };
-      }
       return {
         mode: 'preorder_closed',
         label: 'Pre-order closed',
@@ -1685,7 +1675,7 @@ export default function App() {
 
   const openProduct = (product) => {
     const av = getProductAvailability(product);
-    if (product?.isPreorder && !av.showInShop && !av.canBuy && !isAdmin) {
+    if (product?.isPreorder && !av.showInShop && !isAdmin) {
       showNotification('This product is not available.', 'error');
       navigateTo('shop', '/shop');
       return;
@@ -2675,6 +2665,21 @@ export default function App() {
     setProdStock('');
   };
 
+  const togglePreorderStatus = async (p, nextStatus) => {
+    if (!db || !isAdmin || !p?.id) return;
+    try {
+      await setDoc(
+        doc(db, 'artifacts', appId, 'products', p.id),
+        { preorderStatus: nextStatus, isPreorder: true, updatedAt: new Date().toISOString() },
+        { merge: true }
+      );
+      showNotification(`${p.name}: ${nextStatus}`);
+    } catch (err) {
+      console.error(err);
+      showNotification('Could not update status', 'error');
+    }
+  };
+
   const handleDeleteProduct = async (id) => {
     if (!db || !isAdmin) return;
     if (window.confirm('Are you sure you want to delete this product globally?')) {
@@ -3520,7 +3525,7 @@ return (
                         {prodPreorderStatus === 'scheduled' && prodPreorderOpensAt
                           ? ` · ${new Date(prodPreorderOpensAt).toLocaleString('en-GB')}`
                           : ''}
-                        {' '}— Closed = hidden from public. Open = visible for interest. Allow purchase = pre-order list can buy even if Closed.
+                        {' '}— Closed = hidden everywhere. Open = visible. Allow purchase = pre-order list can buy while Open.
                       </p>
                       <label className="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer mt-2">
                         <input
@@ -3530,8 +3535,7 @@ return (
                           className="rounded border-zinc-600"
                         />
                         <span>
-                          <strong className="text-white">Allow purchase</strong> for people who already pre-ordered this item
-                          (works when Open or Closed — public still cannot see if Closed)
+                          <strong className="text-white">Allow purchase</strong> for people who already pre-ordered this item (only while status is Open)
                         </span>
                       </label>
                     </div>
@@ -3603,6 +3607,12 @@ return (
                       >
                         <Edit3 className="w-4 h-4" />
                       </button>
+                      {p.isPreorder && (
+                        <>
+                          <button type="button" title="Open pre-order" onClick={() => togglePreorderStatus(p, 'open')} className="text-[10px] font-bold text-emerald-400 hover:text-emerald-300 px-1">Open</button>
+                          <button type="button" title="Close — hide everywhere" onClick={() => togglePreorderStatus(p, 'closed')} className="text-[10px] font-bold text-rose-400 hover:text-rose-300 px-1">Close</button>
+                        </>
+                      )}
                       <button onClick={() => handleDeleteProduct(p.id)} className="text-zinc-400 hover:text-rose-400 cursor-pointer">
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -4298,7 +4308,7 @@ return (
               {(() => {
                 const featuredOpen = products.filter((p) => {
                   const av = getProductAvailability(p);
-                  return av.showInShop && (av.mode === 'preorder_open' || av.mode === 'preorder_buy' || av.mode === 'preorder_scheduled');
+                  return av.showInShop && (av.mode === 'preorder_open' || av.mode === 'preorder_buy');
                 });
                 const spotlight = featuredOpen[0];
                 if (spotlight) {
