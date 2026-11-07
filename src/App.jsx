@@ -2020,7 +2020,7 @@ export default function App() {
     e?.preventDefault?.();
     const text = (chatInput || '').trim();
     if (!text || chatSending) return;
-    setChatSending(true);
+    setChatSending(true);className="h-16 sm:h-20 md:h-24 w-auto max-w-[280px] object-contain shrink-0"
     setChatMessages((m) => [...m, { role: 'user', text }]);
     setChatInput('');
     let botText = '';
@@ -2847,17 +2847,24 @@ return (
 
       {/* Header */}
       <header className="sticky top-0 z-40 bg-zinc-950/90 backdrop-blur-md border-b border-zinc-800/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-24 sm:h-28">
-            <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigateTo('home', '/')}>
-              <img src="/logo.jpg" alt="Zortius" className="h-16 sm:h-20 md:h-24 w-auto max-w-[280px] object-contain shrink-0" onError={(e) => { e.currentTarget.style.display='none'; }} />
-              <div>
-                <span className="text-xl font-black tracking-wider bg-gradient-to-r from-white via-slate-200 to-cyan-400 bg-clip-text text-transparent">
-                  ZORTIUS
-                </span>
-                <span className="block text-[10px] tracking-widest text-sky-400 font-semibold uppercase">Built for focus</span>
-              </div>
-            </div>
+  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="flex items-center justify-between h-28 sm:h-32">
+      <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigateTo('home', '/')}>
+        <img
+          src="/logo.jpg"
+          alt="Zortius"
+          className="h-20 sm:h-24 md:h-32 w-auto max-w-[320px] object-contain shrink-0"
+          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+        />
+        <div>
+          <span className="text-xl font-black tracking-wider bg-gradient-to-r from-white via-slate-200 to-cyan-400 bg-clip-text text-transparent">
+            ZORTIUS
+          </span>
+          <span className="block text-[10px] tracking-widest text-sky-400 font-semibold uppercase">
+            Built for focus
+          </span>
+        </div>
+      </div>
 
             <nav className="hidden md:flex items-center gap-7">
               {[
