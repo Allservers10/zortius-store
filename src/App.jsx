@@ -38,6 +38,9 @@ const EMAILJS_PUBLIC_KEY = 'ce23vL3ytn68UIxsf';
 const ADMIN_EMAIL = 'zortiusofficial@gmail.com';
 const LIMITED_ADMIN_EMAIL = 'gto.zortius@outlook.com';
 const SUPPORT_EMAIL = 'help@zortius.com';
+// CAN-SPAM / marketing footer — set your real registered address
+const COMPANY_POSTAL = 'Zortius, United Kingdom'; // replace with full postal address when you have one
+const COMPANY_LEGAL_NAME = 'Zortius';
 // Edit these to your real profiles
 const SOCIALS = [
   { id: 'instagram', label: 'Instagram', handle: '@zortius', url: 'https://www.instagram.com/zortius' },
@@ -226,6 +229,7 @@ export default function App() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+  const [signupAgeOk, setSignupAgeOk] = useState(false);
   const [authError, setAuthError] = useState('');
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [forgotMode, setForgotMode] = useState(false);
@@ -612,6 +616,7 @@ export default function App() {
     if (clean === '/unsubscribe' || clean.startsWith('/unsubscribe')) return 'unsubscribe';
     if (clean === '/newsletter' || clean === '/updates') return 'newsletter';
     if (clean === '/socials' || clean === '/community') return 'socials';
+    if (clean === '/dmca') return 'dmca';
     return 'notfound';
   };
 
@@ -1024,7 +1029,7 @@ export default function App() {
         em.split('@')[0],
         'NEWSLETTER',
         'WELCOME',
-        `Welcome to the Zortius list.\n\nProduct launches, pre-order windows, and engineering notes.\n\nFollow us:\nInstagram ${INSTAGRAM_HANDLE}: ${INSTAGRAM_URL}\nYouTube: ${YOUTUBE_URL}\n\nRead Updates any time: https://zortius.com/newsletter\n\nUnsubscribe (one click):\n${unsubUrl}\n\n— Zortius`
+        `Welcome to the Zortius list.\n\nProduct launches, pre-order windows, and engineering notes.\n\nFollow us:\nInstagram ${INSTAGRAM_HANDLE}: ${INSTAGRAM_URL}\nYouTube: ${YOUTUBE_URL}\n\nRead Updates: https://zortius.com/newsletter\n\nUnsubscribe: ${unsubUrl}\n\n${COMPANY_LEGAL_NAME}\n${COMPANY_POSTAL}\n${SUPPORT_EMAIL}`
       );
       try {
         localStorage.setItem('zortius_newsletter_' + em, '1');
@@ -1077,7 +1082,7 @@ export default function App() {
               em.split('@')[0],
               'NEWSLETTER',
               'UPDATE',
-              `${title}\n\n${body}\n\n— Zortius\nUpdates: https://zortius.com/newsletter\nInstagram: ${INSTAGRAM_URL}\nYouTube: ${YOUTUBE_URL}\n\nUnsubscribe: ${unsubUrl}`
+              `${title}\n\n${body}\n\n— Zortius\nUpdates: https://zortius.com/newsletter\n\nUnsubscribe: ${unsubUrl}\n\n${COMPANY_LEGAL_NAME}\n${COMPANY_POSTAL}\n${SUPPORT_EMAIL}`
             );
             emailed += 1;
             await new Promise((r) => setTimeout(r, 350));
@@ -1447,6 +1452,10 @@ export default function App() {
     e.preventDefault();
     if (!email || !password) {
       setAuthError('Please enter both email and password.');
+      return;
+    }
+    if (!signupAgeOk) {
+      setAuthError('Confirm you are 16 or older to create an account.');
       return;
     }
     if (password.length < 6) {
@@ -2011,7 +2020,7 @@ export default function App() {
       };
     }
     return {
-      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say 'human' to email the team.",
+      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say 'human'to email the team.",
       escalate: false
     };
   };
@@ -2020,7 +2029,7 @@ export default function App() {
     e?.preventDefault?.();
     const text = (chatInput || '').trim();
     if (!text || chatSending) return;
-    setChatSending(true);className="h-16 sm:h-20 md:h-24 w-auto max-w-[280px] object-contain shrink-0"
+    setChatSending(true);
     setChatMessages((m) => [...m, { role: 'user', text }]);
     setChatInput('');
     let botText = '';
@@ -2803,6 +2812,17 @@ export default function App() {
     return () => unsub();
   }, []);
 
+  // Non-admins must not open /admin — show 404, no "admin" label in UI for them
+  useEffect(() => {
+    if (authLoading) return;
+    if (activeTab === 'admin' && !isAdmin) {
+      setActiveTab('notfound');
+      if (window.location.pathname === '/admin') {
+        window.history.replaceState({}, '', '/404');
+      }
+    }
+  }, [activeTab, isAdmin, authLoading]);
+
   useEffect(() => {
     const titles = {
       home: 'Zortius — Premium Hardware & Workstations',
@@ -2819,6 +2839,7 @@ export default function App() {
       shipping: 'Shipping — Zortius',
       unsubscribe: 'Unsubscribe — Zortius',
       newsletter: 'Updates — Zortius',
+      dmca: 'DMCA — Zortius',
       socials: 'Socials — Zortius',
       notfound: 'Page not found — Zortius',
       admin: 'Admin — Zortius',
@@ -2847,24 +2868,17 @@ return (
 
       {/* Header */}
       <header className="sticky top-0 z-40 bg-zinc-950/90 backdrop-blur-md border-b border-zinc-800/60">
-  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div className="flex items-center justify-between h-28 sm:h-32">
-      <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigateTo('home', '/')}>
-        <img
-          src="/logo.jpg"
-          alt="Zortius"
-          className="h-20 sm:h-24 md:h-32 w-auto max-w-[320px] object-contain shrink-0"
-          onError={(e) => { e.currentTarget.style.display = 'none'; }}
-        />
-        <div>
-          <span className="text-xl font-black tracking-wider bg-gradient-to-r from-white via-slate-200 to-cyan-400 bg-clip-text text-transparent">
-            ZORTIUS
-          </span>
-          <span className="block text-[10px] tracking-widest text-sky-400 font-semibold uppercase">
-            Built for focus
-          </span>
-        </div>
-      </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-24 sm:h-28">
+            <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigateTo('home', '/')}>
+              <img src="/logo.jpg" alt="Zortius" className="h-16 sm:h-20 md:h-24 w-auto max-w-[280px] object-contain shrink-0" onError={(e) => { e.currentTarget.style.display='none'; }} />
+              <div>
+                <span className="text-xl font-black tracking-wider bg-gradient-to-r from-white via-slate-200 to-cyan-400 bg-clip-text text-transparent">
+                  ZORTIUS
+                </span>
+                <span className="block text-[10px] tracking-widest text-sky-400 font-semibold uppercase">Built for focus</span>
+              </div>
+            </div>
 
             <nav className="hidden md:flex items-center gap-7">
               {[
@@ -4279,8 +4293,11 @@ return (
               {activeTab === 'privacy' && (
                 <div className="mt-4 space-y-3 text-zinc-300 leading-relaxed text-sm">
                   <p>Zortius only collects information needed to operate accounts, process orders, review applications, and (if you opt in) send product Updates.</p>
-                  <p>Newsletter and marketing mail always include an unsubscribe link: https://zortius.com/unsubscribe</p>
-                  <p>Contact for privacy requests: {SUPPORT_EMAIL}</p>
+                  <p>Accounts require you to confirm you are 16 or older. We do not knowingly collect data from children under 16.</p>
+                  <p>We do not use session-replay or keystroke-recording tools on this site.</p>
+                  <p>Fonts and assets are served from our host (or system fonts) — not third-party font CDNs that receive your IP for typography alone.</p>
+                  <p>Newsletter / marketing emails include an unsubscribe link and our contact details. Unsubscribe: https://zortius.com/unsubscribe</p>
+                  <p>Copyright notices: /dmca · Privacy requests: {SUPPORT_EMAIL}</p>
                 </div>
               )}
               {activeTab === 'terms' && (
@@ -4998,7 +5015,7 @@ return (
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-zinc-100/90">Official media</p>
               <h1 className="text-3xl sm:text-4xl font-semibold text-white tracking-tight mt-1">News & engineering notes</h1>
-              <p className="text-sm text-zinc-400 mt-2">Updates from the Zortius team. Admins control comments and likes per post.</p>
+              <p className="text-sm text-zinc-400 mt-2">Updates from the Zortius team. Post settings control comments and likes.</p>
             </div>
             {selectedBlog ? (
               <article className="space-y-6">
@@ -5036,7 +5053,7 @@ return (
                 ); })()}
               </article>
             ) : blogPosts.length === 0 ? (
-              <p className="text-sm text-zinc-500 py-12 text-center border border-dashed border-zinc-800 rounded-3xl">No posts yet. Admins can publish from the Admin panel.</p>
+              <p className="text-sm text-zinc-500 py-12 text-center border border-dashed border-zinc-800 rounded-3xl">No posts yet. Editors publish official posts from the internal tools.</p>
             ) : (
               <div className="space-y-4">
                 {blogPosts.map((p) => (
@@ -5174,6 +5191,22 @@ return (
 
         
         
+        
+        {activeTab === 'dmca' && (
+          <div className="max-w-xl mx-auto space-y-6 py-10 text-sm text-zinc-300 leading-relaxed">
+            <h1 className="text-3xl font-semibold text-white tracking-tight">DMCA / copyright</h1>
+            <p>If you believe content on zortius.com infringes your copyright, email <strong className="text-white">{SUPPORT_EMAIL}</strong> with:</p>
+            <ul className="list-disc pl-5 space-y-1 text-zinc-400">
+              <li>Your contact details</li>
+              <li>Description of the work and the URL on our site</li>
+              <li>A statement that you have a good-faith belief the use is not authorised</li>
+              <li>A statement under penalty of perjury that the information is accurate and you are the owner or authorised agent</li>
+              <li>Your physical or electronic signature</li>
+            </ul>
+            <p className="text-xs text-zinc-500">US operators should also register a designated agent at copyright.gov (DMCA designated agent directory). This page is informational, not legal advice.</p>
+          </div>
+        )}
+
         {activeTab === 'notfound' && (
           <div className="max-w-lg mx-auto text-center space-y-6 py-16">
             <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-zinc-500">404</p>
@@ -5761,6 +5794,12 @@ return (
                       </button>
                     </div>
                   </div>
+                  {authMode === 'signup' && (
+                    <label className="flex items-start gap-2 text-xs text-zinc-400 cursor-pointer">
+                      <input type="checkbox" checked={signupAgeOk} onChange={(e) => setSignupAgeOk(e.target.checked)} className="mt-0.5 rounded border-zinc-600" />
+                      <span>I confirm I am <strong className="text-zinc-200">16 or older</strong>. Accounts are not offered to children under 16.</span>
+                    </label>
+                  )}
                   <label className="flex items-center gap-2 text-xs text-zinc-400">
                     <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} />
                     Remember me
@@ -5780,7 +5819,7 @@ return (
                       Continue with Google
                     </button>
                     <p className="text-[10px] text-zinc-500 text-center leading-relaxed">
-                      On phones, Google opens a secure page then returns you here signed in. Use the same browser — not private mode.
+                      By continuing you confirm you are 16+. On phones, Google opens a secure page then returns you here signed in. Use the same browser — not private mode.
                     </p>
                   </>
                 ) : (
