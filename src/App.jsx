@@ -172,6 +172,7 @@ export default function App() {
   const [prodPreorderOpensAt, setProdPreorderOpensAt] = useState('');
   const [prodAllowPurchase, setProdAllowPurchase] = useState(false);
   const [prodStock, setProdStock] = useState('');
+  const [prodSoldOut, setProdSoldOut] = useState(false);
   const [newDiscountCode, setNewDiscountCode] = useState('');
   const [newDiscountPercent, setNewDiscountPercent] = useState('10');
   const [newDiscountFixed, setNewDiscountFixed] = useState('');
@@ -211,6 +212,8 @@ export default function App() {
   const [discCode, setDiscCode] = useState('');
   const [discVal, setDiscVal] = useState('');
   const [discType, setDiscType] = useState('percent');
+  const [discMaxUses, setDiscMaxUses] = useState(''); // '' = unlimited, 1 = one-time, N = limit
+  const [discEmailOnly, setDiscEmailOnly] = useState('');
 
   // Checkout / Shipping (proper address)
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
@@ -1304,6 +1307,16 @@ export default function App() {
   const getProductAvailability = (p) => {
     void scheduleTick;
     if (!p) return { mode: 'unknown', label: '', canBuy: false, canPreorder: false, badge: null, showInShop: false };
+    if (p.soldOut) {
+      return {
+        mode: 'sold_out',
+        label: 'Sold out',
+        canBuy: false,
+        canPreorder: false,
+        badge: 'Sold out',
+        showInShop: true
+      };
+    }
     if (!p.isPreorder) {
       const open = !!(storeSettings && storeSettings.takingOrders);
       return {
@@ -1794,6 +1807,11 @@ export default function App() {
   };
 
   const addToCart = (product) => {
+    const av = getProductAvailability(product);
+    if (product.soldOut || av.mode === 'sold_out' || !av.canBuy) {
+      showNotification(product.soldOut || av.mode === 'sold_out' ? 'Sold out' : 'This item is not available to buy yet.', 'error');
+      return;
+    }
     const color = selectedColor || product.options?.colors?.[0] || 'Standard';
     const typeMap = { ...selectedTypeMap };
     (product.options?.types || []).forEach((g) => {
@@ -1890,17 +1908,44 @@ export default function App() {
       const active = d.active !== false && d.enabled !== false;
       return c0 === code && active;
     });
-    if (match) {
-      setAppliedDiscount({ ...match, code: String(match.code || match.id).toUpperCase() });
-      const pct = match.percent ?? match.value;
-      const msg = match.percent || match.type === 'percent'
-        ? `${match.percent || match.value}% off`
-        : `£${match.fixed || match.value || match.amount} off`;
-      showNotification(`Promo ${match.code || code} applied (${msg})`);
-    } else {
+    if (!match) {
       setDiscountError('Invalid or inactive promo code.');
       setAppliedDiscount(null);
+      return;
     }
+    const emailOnly = (match.emailOnly || '').toLowerCase().trim();
+    if (emailOnly) {
+      const mine = (user?.email || '').toLowerCase().trim();
+      if (!mine) {
+        setDiscountError('Sign in with the allowed email to use this code.');
+        setAppliedDiscount(null);
+        return;
+      }
+      if (mine !== emailOnly) {
+        setDiscountError('This code is not valid for your account.');
+        setAppliedDiscount(null);
+        return;
+      }
+    }
+    const maxUses = match.maxUses == null || match.maxUses === '' ? null : Number(match.maxUses);
+    const used = Number(match.usedCount || 0);
+    if (maxUses != null && Number.isFinite(maxUses) && used >= maxUses) {
+      setDiscountError('This code has reached its use limit.');
+      setAppliedDiscount(null);
+      return;
+    }
+    setAppliedDiscount({ ...match, code: String(match.code || match.id).toUpperCase() });
+    const msg = match.percent || match.type === 'percent'
+      ? `${match.percent || match.value}% off`
+      : `£${match.fixed || match.value || match.amount} off`;
+    showNotification(`Promo ${match.code || code} applied (${msg})`);
+  };
+
+  const handleRemoveDiscount = () => {
+    setAppliedDiscount(null);
+    setAppliedCode('');
+    setDiscountError('');
+    showNotification('Promo removed');
   };
 
   // -------------------- CHECKOUT / STRIPE --------------------
@@ -2003,6 +2048,7 @@ export default function App() {
               })),
               subtotal,
               discountAmount: calculateDiscount(),
+              discountCode: appliedDiscount?.code || null,
               total: grandTotal,
               status: 'paid',
               paymentMethod: 'Card',
@@ -2801,7 +2847,8 @@ export default function App() {
       preorderStatus: status,
       preorderOpensAt: opensAtIso,
       preorderAllowPurchase: !!prodIsPreorder && !!prodAllowPurchase,
-      stock: prodStock === '' || prodStock == null ? null : parseInt(prodStock, 10)
+      stock: prodStock === '' || prodStock == null ? null : parseInt(prodStock, 10),
+      soldOut: !!prodSoldOut
     };
     try {
       if (editingProductId) {
@@ -2831,6 +2878,7 @@ export default function App() {
     setProdPreorderOpensAt('');
     setProdAllowPurchase(false);
     setProdStock('');
+    setProdSoldOut(false);
   };
 
   const togglePreorderStatus = async (p, nextStatus) => {
@@ -2873,20 +2921,37 @@ export default function App() {
       showNotification('Percent max is 100', 'error');
       return;
     }
+    let maxUses = null;
+    const mu = (discMaxUses || '').trim().toLowerCase();
+    if (mu === '' || mu === 'inf' || mu === 'unlimited') maxUses = null;
+    else {
+      const n = parseInt(mu, 10);
+      if (!Number.isFinite(n) || n < 1) {
+        showNotification('Max uses: blank = unlimited, or 1, 2, 3…', 'error');
+        return;
+      }
+      maxUses = n;
+    }
+    const emailOnly = (discEmailOnly || '').trim().toLowerCase() || null;
     const payload = {
       code: codeClean,
       active: true,
       type: discType === 'percent' ? 'percent' : 'fixed',
+      maxUses,
+      emailOnly,
+      usedCount: 0,
       ...(discType === 'percent' ? { percent: raw, value: raw } : { fixed: raw, value: raw })
     };
     try {
-      if (db) await setDoc(doc(db, 'artifacts', appId, 'discounts', codeClean), payload);
+      if (db) await setDoc(doc(db, 'artifacts', appId, 'discounts', codeClean), payload, { merge: true });
       setDiscounts((list) => {
         const rest = (list || []).filter((d) => String(d.code || d.id).toUpperCase() !== codeClean);
         return [...rest, { id: codeClean, ...payload }];
       });
       setDiscCode('');
       setDiscVal('');
+      setDiscMaxUses('');
+      setDiscEmailOnly('');
       showNotification('Promo ' + codeClean + ' saved');
     } catch (err) {
       console.error(err);
@@ -3072,6 +3137,18 @@ export default function App() {
         try {
           if (sessionId) sessionStorage.setItem('zortius_paid_done_' + sessionId, '1');
         } catch (_) {}
+        // Consume promo use count
+        try {
+          const codeUsed = (pending.discountCode || '').toUpperCase();
+          if (codeUsed && db) {
+            const dref = doc(db, 'artifacts', appId, 'discounts', codeUsed);
+            const cur = (discounts || []).find((x) => String(x.code || x.id).toUpperCase() === codeUsed);
+            const usedCount = Number(cur?.usedCount || 0) + 1;
+            await setDoc(dref, { usedCount, lastUsedAt: new Date().toISOString(), lastUsedBy: pending.customerEmail || '' }, { merge: true });
+          }
+        } catch (_) {}
+        setAppliedDiscount(null);
+        setAppliedCode('');
 
         if (!cancelled) {
           const successPayload = {
@@ -3824,7 +3901,12 @@ return (
               <form onSubmit={handleSaveProduct} className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <input type="text" placeholder="Product Name" required value={prodName} onChange={(e) => setProdName(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none" />
                 <input type="number" step="0.01" placeholder="Price (£)" required value={prodPrice} onChange={(e) => setProdPrice(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-white" />
-                <input type="number" min="0" placeholder="Stock (optional)" value={prodStock} onChange={(e) => setProdStock(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none font-mono" />
+                <input type="number" min="0" placeholder="Stock (optional)" value={prodStock} onChange={(e) => setProdStock(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-white" />
+                <label className="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer col-span-full">
+                  <input type="checkbox" checked={prodSoldOut} onChange={(e) => setProdSoldOut(e.target.checked)} className="rounded border-zinc-600" />
+                  <span><strong className="text-white">Sold out</strong> — customers see Sold out and cannot buy</span>
+                </label>
+                
                 <input type="text" placeholder="Category" value={prodCategory} onChange={(e) => setProdCategory(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none" />
                 <input type="url" placeholder="Image URL" value={prodImage} onChange={(e) => setProdImage(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none md:col-span-2" />
                 <textarea placeholder="Extra image URLs (one per line) — Amazon-style gallery" value={prodImages} onChange={(e) => setProdImages(e.target.value)} rows="3" className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-cyan-500 sm:col-span-2 font-mono text-xs" />
@@ -3948,6 +4030,7 @@ return (
                           setProdPreorderOpensAt(toDatetimeLocalValue(p.preorderOpensAt));
                           setProdAllowPurchase(!!p.preorderAllowPurchase);
                           setProdStock(p.stock != null && p.stock !== '' ? String(p.stock) : '');
+                          setProdSoldOut(!!p.soldOut);
                         }}
                         className="text-zinc-400 hover:text-zinc-100 cursor-pointer"
                       >
@@ -3973,16 +4056,21 @@ return (
               <h3 className="text-sm font-mono font-bold text-zinc-100 uppercase tracking-wider flex items-center gap-2">
                 <Tag className="w-4 h-4" /> Global Promo & Discount Codes
               </h3>
-              <form onSubmit={handleAddDiscount} className="flex gap-3">
-                <input type="text" placeholder="CODE (e.g. ZORT20)" required value={discCode} onChange={(e) => setDiscCode(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-xs uppercase text-white flex-1 outline-none" />
-                <input type="number" placeholder="Value" required value={discVal} onChange={(e) => setDiscVal(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-xs text-white w-28 outline-none" />
-                <select value={discType} onChange={(e) => setDiscType(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white outline-none">
-                  <option value="percent">% Off</option>
-                  <option value="fixed">£ Off</option>
-                </select>
-                <button type="submit" className="bg-white hover:bg-zinc-200 text-zinc-950 font-bold px-4 py-2 rounded-xl text-xs cursor-pointer">
-                  Create
-                </button>
+              <form onSubmit={handleAddDiscount} className="space-y-2">
+                <div className="flex flex-wrap gap-2">
+                  <input type="text" placeholder="CODE (e.g. ZORT20)" required value={discCode} onChange={(e) => setDiscCode(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-xs uppercase text-white flex-1 min-w-[8rem] outline-none" />
+                  <input type="number" placeholder="Value" required value={discVal} onChange={(e) => setDiscVal(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-xs text-white w-24 outline-none" />
+                  <select value={discType} onChange={(e) => setDiscType(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white outline-none">
+                    <option value="percent">% Off</option>
+                    <option value="fixed">£ Off</option>
+                  </select>
+                  <button type="submit" className="bg-white hover:bg-zinc-200 text-zinc-950 font-bold px-4 py-2 rounded-xl text-xs cursor-pointer">Create</button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <input type="text" placeholder="Max uses (blank = unlimited, 1 = one-time)" value={discMaxUses} onChange={(e) => setDiscMaxUses(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-xs text-white flex-1 min-w-[12rem] outline-none" />
+                  <input type="email" placeholder="Only this email (optional)" value={discEmailOnly} onChange={(e) => setDiscEmailOnly(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-xs text-white flex-1 min-w-[12rem] outline-none" />
+                </div>
+                <p className="text-[10px] text-zinc-500">Unlimited = leave max uses empty. One-time = 1. Email lock = only that account can apply the code.</p>
               </form>
               <div className="flex flex-wrap gap-2 pt-2">
                 {discounts.map((d) => (
@@ -5868,9 +5956,14 @@ return (
                     </div>
                     {discountError && <p className="text-[11px] text-rose-400">{discountError}</p>}
                     {appliedDiscount && (
-                      <p className="text-[11px] text-emerald-400 font-bold">
-                        ✓ {appliedDiscount.code} — saving £{calculateDiscount().toFixed(2)}
-                      </p>
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-[11px] text-emerald-400 font-bold">
+                          ✓ {appliedDiscount.code} — saving £{calculateDiscount().toFixed(2)}
+                        </p>
+                        <button type="button" onClick={handleRemoveDiscount} className="text-[11px] text-zinc-400 hover:text-rose-400 font-semibold">
+                          Remove
+                        </button>
+                      </div>
                     )}
                   </div>
                   <div className="space-y-3 text-sm pt-4 border-t border-zinc-800">
