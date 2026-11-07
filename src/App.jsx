@@ -2036,7 +2036,7 @@ export default function App() {
       };
     }
     return {
-      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say 'human'to email the team.",
+      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say 'human' to email the team.",
       escalate: false
     };
   };
@@ -2889,12 +2889,17 @@ return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-24 sm:h-28">
             <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigateTo('home', '/')}>
-              <img src="/logo.jpg" alt="Zortius" className="h-16 sm:h-20 md:h-24 w-auto max-w-[280px] object-contain shrink-0" onError={(e) => { e.currentTarget.style.display='none'; }} />
-              <div>
-                <span className="text-xl font-black tracking-wider bg-gradient-to-r from-white via-slate-200 to-cyan-400 bg-clip-text text-transparent">
+              <img
+                src="/logo.jpg"
+                alt="Zortius logo — circuit Z mark"
+                className="h-16 sm:h-20 md:h-28 w-auto max-w-[300px] object-contain shrink-0"
+                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+              />
+              <div className="hidden xs:block sm:block">
+                <span className="text-xl font-black tracking-wider bg-gradient-to-r from-white via-orange-200 to-sky-400 bg-clip-text text-transparent">
                   ZORTIUS
                 </span>
-                <span className="block text-[10px] tracking-widest text-sky-400 font-semibold uppercase">Built for focus</span>
+                <span className="block text-[10px] tracking-widest text-orange-400/90 font-semibold uppercase">Built for focus</span>
               </div>
             </div>
 
@@ -5660,7 +5665,10 @@ return (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-10 mb-12">
               <div className="col-span-2 md:col-span-1 space-y-4">
-                <p className="text-sm font-semibold text-white tracking-tight">Zortius</p>
+                <div className="flex items-center gap-3">
+                  <img src="/logo.jpg" alt="" className="h-12 w-auto object-contain" />
+                  <p className="text-sm font-semibold text-white tracking-tight">Zortius</p>
+                </div>
                 <p className="text-xs text-zinc-500 leading-relaxed">Hardware for people who measure twice. Workstations, displays, and tools with honest specs.</p>
               </div>
               <div>
@@ -5693,7 +5701,7 @@ return (
               </div>
             </div>
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-8 border-t border-zinc-900 text-[11px] text-zinc-600">
-              <span>© {new Date().getFullYear()} Zortius. All rights reserved.</span>
+              <span>© {new Date().getFullYear()} Zortius. All rights reserved. · UK fulfilment · Accounts 16+</span>
               <div className="flex gap-4">
                 <button type="button" onClick={() => navigateTo('privacy', '/privacy')} className="hover:text-zinc-400">Privacy</button>
                 <button type="button" onClick={() => navigateTo('terms', '/terms')} className="hover:text-zinc-400">Terms</button>
