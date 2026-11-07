@@ -1340,7 +1340,8 @@ export default function App() {
           canPreorder: false,
           badge: sameDay ? `Opens ${timeStr}` : `Opens ${dateStr}`,
           opensAt,
-          showInShop: false
+          showInShop: true,
+          showAsComingSoon: true
         };
       } else {
         return {
@@ -1416,15 +1417,11 @@ export default function App() {
     }
   };
 
-  const addDiscountCode = (e) => {
+  const addDiscountCode = async (e) => {
     e?.preventDefault?.();
     const code = (newDiscountCode || '').trim().toUpperCase();
     if (!code) {
       showNotification('Enter a code', 'error');
-      return;
-    }
-    if (discounts.some((d) => d.code === code)) {
-      showNotification('Code already exists', 'error');
       return;
     }
     const percent = parseFloat(newDiscountPercent);
@@ -1433,18 +1430,28 @@ export default function App() {
       id: code,
       code,
       active: true,
-      ...(Number.isFinite(percent) && percent > 0 ? { percent } : {}),
-      ...(Number.isFinite(fixed) && fixed > 0 ? { fixed } : {})
+      type: Number.isFinite(percent) && percent > 0 ? 'percent' : 'fixed',
+      ...(Number.isFinite(percent) && percent > 0 ? { percent, value: percent } : {}),
+      ...(Number.isFinite(fixed) && fixed > 0 ? { fixed, value: fixed } : {})
     };
     if (!entry.percent && !entry.fixed) {
-      showNotification('Set percent or fixed amount', 'error');
+      showNotification('Set percent or fixed £ amount', 'error');
       return;
     }
-    setDiscounts((d) => [...d, entry]);
-    setNewDiscountCode('');
-    setNewDiscountPercent('10');
-    setNewDiscountFixed('');
-    showNotification(`Added ${code}`);
+    try {
+      if (db) await setDoc(doc(db, 'artifacts', appId, 'discounts', code), entry);
+      setDiscounts((d) => {
+        const rest = (d || []).filter((x) => (x.code || x.id) !== code);
+        return [...rest, entry];
+      });
+      setNewDiscountCode('');
+      setNewDiscountPercent('10');
+      setNewDiscountFixed('');
+      showNotification(`Promo ${code} saved`);
+    } catch (err) {
+      console.error(err);
+      showNotification('Could not save promo', 'error');
+    }
   };
 
   const visibleProducts = () =>
@@ -1848,13 +1855,23 @@ export default function App() {
   const calculateDiscount = () => {
     if (!appliedDiscount || subtotal <= 0) return 0;
     const d = appliedDiscount;
-    const pct = Number(d.percent ?? (d.type === 'percent' || d.type === '%' ? d.value ?? d.amount : NaN));
-    const fixed = Number(d.fixed ?? (d.type === 'fixed' || d.type === 'flat' || d.type === '£' ? d.value ?? d.amount : NaN));
-    if (Number.isFinite(pct) && pct > 0) return Math.min(subtotal, (subtotal * pct) / 100);
+    let pct = Number(d.percent);
+    let fixed = Number(d.fixed);
+    const val = Number(d.value ?? d.amount);
+    const type = String(d.type || '').toLowerCase();
+    if (!Number.isFinite(pct) || pct <= 0) {
+      if (type === 'percent' || type === '%') pct = val;
+    }
+    if (!Number.isFinite(fixed) || fixed <= 0) {
+      if (type === 'fixed' || type === 'flat' || type === '£' || type === 'gbp') fixed = val;
+    }
+    // If only one number and type missing: values <= 100 treated as percent when type empty and percent field was intended
+    if (!(Number.isFinite(pct) && pct > 0) && !(Number.isFinite(fixed) && fixed > 0) && Number.isFinite(val) && val > 0) {
+      if (val <= 100 && d.fixed == null) pct = val;
+      else fixed = val;
+    }
+    if (Number.isFinite(pct) && pct > 0) return Math.min(subtotal, Math.round(((subtotal * pct) / 100) * 100) / 100);
     if (Number.isFinite(fixed) && fixed > 0) return Math.min(subtotal, fixed);
-    // bare value field with percent flag
-    if (d.isPercent && Number.isFinite(Number(d.value))) return Math.min(subtotal, (subtotal * Number(d.value)) / 100);
-    if (Number.isFinite(Number(d.amount)) && !d.percent) return Math.min(subtotal, Number(d.amount));
     return 0;
   };
 
@@ -2841,17 +2858,40 @@ export default function App() {
 
   const handleAddDiscount = async (e) => {
     e.preventDefault();
-    if (!db || !isAdmin) return;
-    const codeClean = discCode.trim().toUpperCase();
+    if (!isAdmin) return;
+    const codeClean = (discCode || '').trim().toUpperCase();
+    const raw = parseFloat(discVal);
+    if (!codeClean) {
+      showNotification('Enter a code', 'error');
+      return;
+    }
+    if (!Number.isFinite(raw) || raw <= 0) {
+      showNotification('Enter a valid amount', 'error');
+      return;
+    }
+    if (discType === 'percent' && raw > 100) {
+      showNotification('Percent max is 100', 'error');
+      return;
+    }
     const payload = {
       code: codeClean,
       active: true,
-      ...(discType === 'percent' ? { percent: parseFloat(discVal) } : { fixed: parseFloat(discVal) })
+      type: discType === 'percent' ? 'percent' : 'fixed',
+      ...(discType === 'percent' ? { percent: raw, value: raw } : { fixed: raw, value: raw })
     };
-    await setDoc(doc(db, 'artifacts', appId, 'discounts', codeClean), payload);
-    setDiscCode('');
-    setDiscVal('');
-    showNotification('Discount promo code created globally.');
+    try {
+      if (db) await setDoc(doc(db, 'artifacts', appId, 'discounts', codeClean), payload);
+      setDiscounts((list) => {
+        const rest = (list || []).filter((d) => String(d.code || d.id).toUpperCase() !== codeClean);
+        return [...rest, { id: codeClean, ...payload }];
+      });
+      setDiscCode('');
+      setDiscVal('');
+      showNotification('Promo ' + codeClean + ' saved');
+    } catch (err) {
+      console.error(err);
+      showNotification('Could not save promo', 'error');
+    }
   };
 
   const handleUpdateOrderStatus = async (targetOrder, newStatus) => {
@@ -4712,7 +4752,7 @@ return (
               {(() => {
                 const featuredOpen = products.filter((p) => {
                   const av = getProductAvailability(p);
-                  return av.showInShop && (av.mode === 'preorder_open' || av.mode === 'preorder_buy');
+                  return av.showInShop && (av.mode === 'preorder_open' || av.mode === 'preorder_buy' || av.mode === 'preorder_scheduled');
                 });
                 const spotlight = featuredOpen[0];
                 if (spotlight) {
