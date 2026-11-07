@@ -430,16 +430,16 @@ export default function App() {
       return;
     }
     let unsub;
-    if (isFullAdmin) {
+    if (isAdmin) {
       unsub = onSnapshot(collection(db, 'artifacts', appId, 'orders'), (snapshot) => {
         const loaded = snapshot.docs.map((d) => ({ docId: d.id, ...d.data() }));
-        setOrders(loaded.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)));
+        setOrders(loaded.sort((a, b) => new Date(b.createdAt || b.date || 0) - new Date(a.createdAt || a.date || 0)));
       });
     } else {
       unsub = onSnapshot(collection(db, 'artifacts', appId, 'orders'), (snapshot) => {
         const loaded = snapshot.docs
           .map((d) => ({ docId: d.id, ...d.data() }))
-          .filter((o) => (o.customerEmail || '').toLowerCase() === (user.email || '').toLowerCase());
+          .filter((o) => (o.customerEmail || '').toLowerCase() === (user.email || '').toLowerCase() || o.userId === user.uid);
         setOrders(loaded.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)));
       });
     }
@@ -993,6 +993,36 @@ export default function App() {
       (statusLabel || order?.status || 'UPDATE').toUpperCase(),
       `Order update from Zortius\n\nStatus: ${statusLabel || order?.status}\nRef: ${order?.id || '—'}\n\nTrack or manage from your account when signed in.\n\n— Zortius\nhttps://zortius.com\n\nMarketing unsub (not order mail): ${unsubUrl}`
     );
+  };
+
+  const updateOrderStatus = async (order, nextStatus) => {
+    if (!isAdmin || !db || !order?.docId) {
+      showNotification('Cannot update order', 'error');
+      return;
+    }
+    try {
+      await updateDoc(doc(db, 'artifacts', appId, 'orders', order.docId), {
+        status: nextStatus,
+        updatedAt: new Date().toISOString()
+      });
+      const em = (order.customerEmail || '').trim();
+      if (em) {
+        try {
+          await sendActualEmail(
+            EMAILJS_ORDER_TEMPLATE_ID || EMAILJS_CONTACT_TEMPLATE_ID,
+            em,
+            order.customerName || em.split('@')[0],
+            order.id || order.docId,
+            String(nextStatus).toUpperCase(),
+            `Order update\n\nOrder: ${order.id || order.docId}\nStatus: ${nextStatus}\n\n— Zortius\n${SUPPORT_EMAIL}`
+          );
+        } catch (_) {}
+      }
+      showNotification('Order updated · customer emailed');
+    } catch (err) {
+      console.error(err);
+      showNotification('Update failed', 'error');
+    }
   };
 
   const downloadSiteBackup = () => {
@@ -1894,6 +1924,33 @@ export default function App() {
       if (response.ok) {
         const data = await response.json();
         if (data.url) {
+          try {
+            const pending = {
+              id: data.id || ('ZRT-' + Date.now()),
+              sessionId: data.id || null,
+              customerEmail: user.email,
+              customerName: userName,
+              userId: user.uid,
+              shippingAddress,
+              shipping: shippingObj,
+              items: cart.map((i) => ({
+                id: i.id,
+                name: i.name,
+                price: i.price,
+                qty: i.qty,
+                selectedColor: i.selectedColor,
+                selectedType: i.selectedType || null
+              })),
+              subtotal,
+              discountAmount: calculateDiscount(),
+              total: grandTotal,
+              status: 'paid',
+              paymentMethod: 'Card',
+              createdAt: new Date().toISOString(),
+              date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+            };
+            localStorage.setItem('zortius_pending_order', JSON.stringify(pending));
+          } catch (_) {}
           window.location.href = data.url;
           return;
         }
@@ -2055,7 +2112,7 @@ export default function App() {
       };
     }
     return {
-      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say 'human' to email the team.",
+      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say 'human'to email the team.",
       escalate: false
     };
   };
@@ -2846,6 +2903,61 @@ export default function App() {
     });
     return () => unsub();
   }, []);
+
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('paid') !== '1') return;
+    let cancelled = false;
+    (async () => {
+      let pending = null;
+      try {
+        pending = JSON.parse(localStorage.getItem('zortius_pending_order') || 'null');
+      } catch (_) {}
+      if (!pending || !pending.customerEmail) {
+        if (!cancelled) {
+          showNotification('Payment received. Open Order History or contact support if needed.', 'success');
+          setActiveTab('orders');
+          window.history.replaceState({}, '', '/account/orders');
+        }
+        return;
+      }
+      try {
+        if (db) {
+          await addDoc(collection(db, 'artifacts', appId, 'orders'), {
+            ...pending,
+            status: 'paid',
+            updatedAt: new Date().toISOString()
+          });
+        }
+        try {
+          await sendActualEmail(
+            EMAILJS_ORDER_TEMPLATE_ID || EMAILJS_CONTACT_TEMPLATE_ID,
+            pending.customerEmail,
+            pending.customerName || pending.customerEmail.split('@')[0],
+            pending.id,
+            'PAID',
+            `Thanks for your order.\n\nOrder: ${pending.id}\nTotal: £${Number(pending.total || 0).toFixed(2)}\nStatus: Paid\n\nShip to:\n${pending.shippingAddress || ''}\n\nView Order History when signed in.\n\n— Zortius\n${SUPPORT_EMAIL}`
+          );
+        } catch (mailErr) {
+          console.warn(mailErr);
+        }
+        setCart([]);
+        try {
+          localStorage.removeItem('zortius_pending_order');
+        } catch (_) {}
+        if (!cancelled) {
+          showNotification('Payment successful — confirmation email sent.');
+          setActiveTab('orders');
+        }
+      } catch (err) {
+        console.error(err);
+        if (!cancelled) showNotification('Paid, but order save failed — email support.', 'error');
+      }
+      window.history.replaceState({}, '', '/account/orders');
+    })();
+    return () => { cancelled = true; };
+  }, [db]);
 
   // Non-admins must not open /admin — show 404, no "admin" label in UI for them
   useEffect(() => {
@@ -3793,6 +3905,35 @@ return (
                 <button type="button" onClick={downloadSiteBackup} className="px-4 py-2 rounded-xl bg-zinc-800 border border-zinc-600 text-xs font-bold text-white">Download backup JSON</button>
               </section>
             )}
+            
+            {isAdmin && (
+              <section className="bg-zinc-900 border border-emerald-500/20 rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-4">
+                <h3 className="text-sm font-mono font-bold text-zinc-100 uppercase tracking-wider">Orders management</h3>
+                <p className="text-xs text-zinc-500">Paid orders. Update status to email the customer.</p>
+                {orders.length === 0 ? (
+                  <p className="text-xs text-zinc-600">No orders yet.</p>
+                ) : (
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {orders.map((o) => (
+                      <div key={o.docId || o.id} className="rounded-xl border border-zinc-800 bg-zinc-950 p-3 text-xs space-y-2">
+                        <div className="flex flex-wrap justify-between gap-2">
+                          <span className="font-bold text-white">{o.id || o.docId}</span>
+                          <span className="text-emerald-400 font-semibold uppercase">{o.status || 'paid'}</span>
+                        </div>
+                        <p className="text-zinc-400">{o.customerEmail} · £{Number(o.total || 0).toFixed(2)} · {o.date}</p>
+                        <p className="text-zinc-500 truncate">{o.shippingAddress}</p>
+                        <div className="flex flex-wrap gap-1">
+                          {['paid', 'processing', 'shipped', 'delivered', 'cancelled'].map((st) => (
+                            <button key={st} type="button" onClick={() => updateOrderStatus(o, st)} className="px-2 py-1 rounded-lg border border-zinc-700 text-[10px] font-bold text-zinc-300 hover:bg-zinc-800 capitalize">{st}</button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+
             {isAdmin && (
               <section className="bg-zinc-900 border border-sky-500/20 rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-4">
                 <h3 className="text-sm font-mono font-bold text-zinc-100 uppercase tracking-wider">Publish newsletter update</h3>
@@ -5628,7 +5769,7 @@ return (
             ) : (
               <div className="space-y-6">
                 {orders.map((order) => (
-                  <div key={order.id} className="bg-zinc-900/60 rounded-3xl border border-zinc-800 p-6 sm:p-8 space-y-6 shadow-2xl">
+                  <div key={order.docId || order.id} className="bg-zinc-900/60 rounded-3xl border border-zinc-800 p-6 sm:p-8 space-y-6 shadow-2xl">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-zinc-800">
                       <div>
                         <div className="flex items-center gap-2">
