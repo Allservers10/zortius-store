@@ -214,6 +214,7 @@ export default function App() {
 
   // Checkout / Shipping (proper address)
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
+  const [orderSuccess, setOrderSuccess] = useState(null); // last paid order for success screen
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [shipFullName, setShipFullName] = useState('');
   const [shipLine1, setShipLine1] = useState('');
@@ -423,28 +424,45 @@ export default function App() {
     return () => unsub();
   }, []);
 
-  // PRIVATE orders: full admin sees all; others only their own
+  // Orders: admin sees all; customers query by userId + email (rules-friendly)
   useEffect(() => {
     if (!db || !user) {
       if (!user) setOrders([]);
       return;
     }
-    let unsub;
+    const sortOrders = (list) =>
+      list.sort((a, b) => new Date(b.createdAt || b.date || 0) - new Date(a.createdAt || a.date || 0));
+
     if (isAdmin) {
-      unsub = onSnapshot(collection(db, 'artifacts', appId, 'orders'), (snapshot) => {
-        const loaded = snapshot.docs.map((d) => ({ docId: d.id, ...d.data() }));
-        setOrders(loaded.sort((a, b) => new Date(b.createdAt || b.date || 0) - new Date(a.createdAt || a.date || 0)));
+      const unsub = onSnapshot(collection(db, 'artifacts', appId, 'orders'), (snapshot) => {
+        setOrders(sortOrders(snapshot.docs.map((d) => ({ docId: d.id, ...d.data() }))));
       });
-    } else {
-      unsub = onSnapshot(collection(db, 'artifacts', appId, 'orders'), (snapshot) => {
-        const loaded = snapshot.docs
-          .map((d) => ({ docId: d.id, ...d.data() }))
-          .filter((o) => (o.customerEmail || '').toLowerCase() === (user.email || '').toLowerCase() || o.userId === user.uid);
-        setOrders(loaded.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)));
-      });
+      return () => unsub();
     }
-    return () => unsub && unsub();
-  }, [user, isFullAdmin]);
+
+    const email = (user.email || '').toLowerCase();
+    const map = new Map();
+    const publish = () => setOrders(sortOrders([...map.values()]));
+
+    const unsubs = [];
+    if (user.uid) {
+      unsubs.push(
+        onSnapshot(query(collection(db, 'artifacts', appId, 'orders'), where('userId', '==', user.uid)), (snap) => {
+          snap.docs.forEach((d) => map.set(d.id, { docId: d.id, ...d.data() }));
+          publish();
+        })
+      );
+    }
+    if (email) {
+      unsubs.push(
+        onSnapshot(query(collection(db, 'artifacts', appId, 'orders'), where('customerEmail', '==', email)), (snap) => {
+          snap.docs.forEach((d) => map.set(d.id, { docId: d.id, ...d.data() }));
+          publish();
+        })
+      );
+    }
+    return () => unsubs.forEach((u) => u());
+  }, [db, user, isAdmin]);
 
   useEffect(() => {
     if (!db) return;
@@ -604,6 +622,7 @@ export default function App() {
     if (clean === '/shop' || clean.startsWith('/shop/')) return 'shop';
     if (clean === '/cart') return 'cart';
     if (clean === '/account/orders') return 'orders';
+    if (clean === '/order-success') return 'order-success';
     if (clean === '/careers' || clean.startsWith('/careers/')) return 'applications';
     if (clean === '/about') return 'about';
     if (clean === '/contact') return 'contact';
@@ -2113,7 +2132,7 @@ export default function App() {
       };
     }
     return {
-      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say 'human to email the team.",
+      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say 'human' to email the team.",
       escalate: false
     };
   };
@@ -2991,9 +3010,16 @@ export default function App() {
         } catch (_) {}
 
         if (!cancelled) {
-          showNotification('Payment successful — order is in your Order History.');
-          setActiveTab('orders');
-          window.history.replaceState({}, '', '/account/orders');
+          const successPayload = {
+            ...pending,
+            id: pending.id || orderDocId,
+            docId: orderDocId,
+            status: 'paid'
+          };
+          setOrderSuccess(successPayload);
+          showNotification('Payment successful!');
+          setActiveTab('order-success');
+          window.history.replaceState({}, '', '/order-success');
         }
       } catch (err) {
         console.error('save order', err);
@@ -5805,6 +5831,73 @@ return (
         )}
 
         {/* ORDERS HISTORY (customer) */}
+        
+        {activeTab === 'order-success' && orderSuccess && (
+          <div className="max-w-lg mx-auto py-12 sm:py-16 text-center space-y-8">
+            <div className="mx-auto w-24 h-24 rounded-full bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center animate-pulse">
+              <CheckCircle className="w-14 h-14 text-emerald-400" strokeWidth={2.5} />
+            </div>
+            <div className="space-y-2">
+              <h1 className="text-3xl sm:text-4xl font-semibold text-white tracking-tight">Order confirmed</h1>
+              <p className="text-sm text-zinc-400">Thank you — payment received. A confirmation email is on its way.</p>
+            </div>
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-5 text-left space-y-3 text-sm">
+              <div className="flex justify-between gap-3">
+                <span className="text-zinc-500">Order</span>
+                <span className="font-mono text-white font-bold">{orderSuccess.id}</span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="text-zinc-500">Status</span>
+                <span className="text-emerald-400 font-semibold uppercase tracking-wide">{orderSuccess.status || 'paid'}</span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="text-zinc-500">Total</span>
+                <span className="text-white font-bold">£{Number(orderSuccess.total || 0).toFixed(2)}</span>
+              </div>
+              {orderSuccess.shippingAddress && (
+                <div className="pt-2 border-t border-zinc-800">
+                  <p className="text-zinc-500 text-xs mb-1">Ship to</p>
+                  <p className="text-zinc-300 text-xs whitespace-pre-wrap">{orderSuccess.shippingAddress}</p>
+                </div>
+              )}
+              {Array.isArray(orderSuccess.items) && orderSuccess.items.length > 0 && (
+                <div className="pt-2 border-t border-zinc-800 space-y-1">
+                  <p className="text-zinc-500 text-xs">Items</p>
+                  {orderSuccess.items.map((it, i) => (
+                    <p key={i} className="text-zinc-300 text-xs">
+                      {it.qty || 1}× {it.name}
+                      {it.selectedColor ? ` · ${it.selectedColor}` : ''}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button
+                type="button"
+                onClick={() => { setActiveTab('orders'); window.history.pushState({}, '', '/account/orders'); }}
+                className="px-6 py-3 rounded-full bg-sky-400 text-zinc-950 text-sm font-bold"
+              >
+                View order status
+              </button>
+              <button
+                type="button"
+                onClick={() => { setOrderSuccess(null); navigateTo('shop', '/shop'); }}
+                className="px-6 py-3 rounded-full border border-zinc-700 text-white text-sm font-semibold"
+              >
+                Continue shopping
+              </button>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'order-success' && !orderSuccess && (
+          <div className="max-w-md mx-auto py-16 text-center space-y-4">
+            <p className="text-zinc-400 text-sm">No recent order on this device.</p>
+            <button type="button" onClick={() => navigateTo('orders', '/account/orders')} className="text-sky-400 text-sm font-semibold">Go to Order History</button>
+          </div>
+        )}
+
         {activeTab === 'orders' && (
           <div className="max-w-4xl mx-auto space-y-6">
             <h1 className="text-3xl font-extrabold text-white mb-2">Order History</h1>
