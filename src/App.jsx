@@ -1830,6 +1830,11 @@ export default function App() {
       .join(', ');
   };
 
+  const paymentsOpen = () => {
+    if (storeSettings?.takingOrders) return true;
+    return (cart || []).some((item) => getProductAvailability(item).canBuy);
+  };
+
   const handleInitiateCheckout = () => {
     if (cart.length === 0) return;
     if (!user) {
@@ -1838,15 +1843,20 @@ export default function App() {
       setProfileModalOpen(true);
       return;
     }
+    if (!paymentsOpen()) {
+      showNotification('Payments are not open for these items yet. Use pre-order interest or wait for launch.', 'error');
+      return;
+    }
     setCheckoutModalOpen(true);
   };
 
   // Real Stripe Checkout Session
   const handleProcessPayment = async (e) => {
     e.preventDefault();
-    showNotification("You can't buy yet — wait. Checkout is not available at the moment.", 'error');
-    return;
-    // purchases disabled below
+    if (!user?.email) {
+      showNotification('Sign in to pay.', 'error');
+      return;
+    }
     if (!shipFullName || !shipLine1 || !shipCity || !shipPostcode || !shipCountry) {
       showNotification('Please fill in all required shipping fields.', 'error');
       return;
@@ -1884,13 +1894,22 @@ export default function App() {
       if (response.ok) {
         const data = await response.json();
         if (data.url) {
-          // Save pending order context locally then redirect to Stripe
           window.location.href = data.url;
           return;
         }
+        showNotification(data.error || 'No checkout URL returned', 'error');
+      } else {
+        let msg = 'Checkout failed';
+        try {
+          const errBody = await response.json();
+          msg = errBody.error || msg;
+        } catch (_) {}
+        showNotification(msg + ' (is STRIPE_SECRET_KEY set on Vercel?)', 'error');
+        setIsProcessingPayment(false);
+        return;
       }
 
-      // Fallback: demo order (if Stripe API not ready yet)
+      // Fallback only if response ok but no url (should not happen)
       const orderId = 'ZRT-PAY-' + Math.floor(100000 + Math.random() * 900000);
       const newOrder = {
         id: orderId,
@@ -5716,23 +5735,40 @@ return (
       {checkoutModalOpen && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-zinc-950/80 backdrop-blur-md">
           <div className="bg-zinc-900 border border-zinc-800 rounded-t-3xl sm:rounded-3xl p-5 sm:p-7 max-w-md w-full shadow-2xl space-y-5 relative max-h-[92vh] overflow-y-auto">
-            <button onClick={() => setCheckoutModalOpen(false)} className="absolute top-5 right-5 p-2 rounded-xl bg-zinc-950 text-zinc-400 hover:text-white">
+            <button type="button" onClick={() => setCheckoutModalOpen(false)} className="absolute top-5 right-5 p-2 rounded-xl bg-zinc-950 text-zinc-400 hover:text-white">
               <X className="w-5 h-5" />
             </button>
-            <div className="flex items-center gap-2 text-amber-400">
-              <AlertCircle className="w-6 h-6" />
-              <h3 className="text-lg font-extrabold text-white">Checkout unavailable</h3>
-            </div>
-            <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-100 leading-relaxed">
-              <p className="font-bold text-amber-200 mb-1">Pre-orders are not open yet.</p>
-              <p>We are not accepting payments yet. Your basket is saved. Join the pre-order list from the Shop or Home page to be notified at launch.</p>
-            </div>
-            <p className="text-xs text-zinc-400">
-              Basket total: <strong className="text-white">£{grandTotal.toFixed(2)}</strong>
-            </p>
-            <button type="button" onClick={() => setCheckoutModalOpen(false)} className="w-full py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm">
-              Back to basket
-            </button>
+            {!paymentsOpen() ? (
+              <>
+                <div className="flex items-center gap-2 text-amber-400">
+                  <AlertCircle className="w-6 h-6" />
+                  <h3 className="text-lg font-extrabold text-white">Checkout unavailable</h3>
+                </div>
+                <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-100 leading-relaxed">
+                  <p className="font-bold text-amber-200 mb-1">Payments not open for this basket</p>
+                  <p>Turn on <strong>Orders OPEN</strong> in Admin → Launch control, or enable purchase on a pre-order product. Your basket is saved.</p>
+                </div>
+                <button type="button" onClick={() => setCheckoutModalOpen(false)} className="w-full py-3 rounded-xl bg-slate-800 text-white font-bold text-sm">Back to basket</button>
+              </>
+            ) : (
+              <form onSubmit={handleProcessPayment} className="space-y-4">
+                <h3 className="text-lg font-extrabold text-white pr-8">Checkout</h3>
+                <p className="text-xs text-zinc-400">UK shipping only · Total <strong className="text-white">£{grandTotal.toFixed(2)}</strong></p>
+                <input required placeholder="Full name" value={shipFullName} onChange={(e) => setShipFullName(e.target.value)} className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2.5 text-sm text-white" />
+                <input required placeholder="Address line 1" value={shipLine1} onChange={(e) => setShipLine1(e.target.value)} className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2.5 text-sm text-white" />
+                <input placeholder="Address line 2 (optional)" value={shipLine2} onChange={(e) => setShipLine2(e.target.value)} className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2.5 text-sm text-white" />
+                <div className="grid grid-cols-2 gap-2">
+                  <input required placeholder="City" value={shipCity} onChange={(e) => setShipCity(e.target.value)} className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2.5 text-sm text-white" />
+                  <input required placeholder="Postcode" value={shipPostcode} onChange={(e) => setShipPostcode(e.target.value)} className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2.5 text-sm text-white" />
+                </div>
+                <input required placeholder="Country" value={shipCountry || 'United Kingdom'} onChange={(e) => setShipCountry(e.target.value)} className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2.5 text-sm text-white" />
+                <input placeholder="Phone (optional)" value={shipPhone} onChange={(e) => setShipPhone(e.target.value)} className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2.5 text-sm text-white" />
+                <p className="text-[11px] text-zinc-500 leading-relaxed">You will continue on a secure payment page. Refund terms: see Refunds policy. UK only.</p>
+                <button type="submit" disabled={isProcessingPayment} className="w-full py-3.5 rounded-xl bg-sky-400 hover:bg-sky-300 text-zinc-950 font-bold text-sm disabled:opacity-50">
+                  {isProcessingPayment ? 'Redirecting…' : 'Pay with card'}
+                </button>
+              </form>
+            )}
           </div>
         </div>
       )}
