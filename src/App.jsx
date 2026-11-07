@@ -2036,7 +2036,7 @@ export default function App() {
       };
     }
     return {
-      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say 'human' to email the team.",
+      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say 'human'to email the team.",
       escalate: false
     };
   };
@@ -3167,7 +3167,7 @@ return (
         <div className="cookie-consent-banner fixed bottom-0 inset-x-0 z-[100] border-t border-zinc-800 bg-zinc-950/95 backdrop-blur-md p-4 sm:p-5">
           <div className="max-w-4xl mx-auto flex flex-col sm:flex-row gap-4 sm:items-center justify-between">
             <p className="text-xs text-zinc-400 leading-relaxed">
-              We use essential cookies so the site and login work. We do not use advertising trackers or session replay.
+              We use essential cookies so the site and sign-in work. We do not use advertising trackers or session replay.
               See <button type="button" className="text-sky-400 underline" onClick={() => navigateTo('privacy', '/privacy')}>Privacy</button>
               {' & '}
               <button type="button" className="text-sky-400 underline" onClick={() => navigateTo('cookies', '/cookies')}>Cookies</button>.
@@ -3221,8 +3221,7 @@ return (
                 { label: 'Volume / education enquiry', tab: 'contact', path: '/contact' },
                 { label: 'Join newsletter', action: () => { navigateTo('home', '/'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); } },
                 { label: 'Account', action: () => setProfileModalOpen(true) },
-                ...(isAdmin ? [{ label: 'Admin panel', tab: 'admin', path: '/admin' }] : []),
-              ]
+                              ]
                 .filter((i) => !cmdQuery || i.label.toLowerCase().includes(cmdQuery.toLowerCase()))
                 .map((i) => (
                   <button
@@ -4335,21 +4334,45 @@ return (
                 </div>
               )}
               {activeTab === 'privacy' && (
-                <div className="mt-4 space-y-3 text-zinc-300 leading-relaxed text-sm">
-                  <p><strong className="text-white">Who we are.</strong> Zortius is a UK trading name. Contact: {SUPPORT_EMAIL}. Postal: {COMPANY_POSTAL}.</p>
-                  <p><strong className="text-white">Data we collect.</strong> Account email, name if provided, order/pre-order details, support messages, and newsletter signup if you opt in. We minimise data to what is needed to run the service.</p>
-                  <p><strong className="text-white">Age.</strong> Accounts require confirmation you are 16 or older. We do not knowingly collect data from children under 16.</p>
-                  <p><strong className="text-white">Processors.</strong> Hosting (e.g. Vercel), auth/database (Google Firebase), email delivery (e.g. EmailJS / Resend). Review their policies.</p>
-                  <p><strong className="text-white">No session replay.</strong> We do not record keystrokes or session replays.</p>
-                  <p><strong className="text-white">Marketing.</strong> Only if you join Updates. Every marketing email includes unsubscribe: https://zortius.com/unsubscribe</p>
-                  <p><strong className="text-white">Deletion.</strong> Email {SUPPORT_EMAIL} to request access or deletion of your account data.</p>
-                  <p>Also see <button type="button" className="text-sky-400 underline" onClick={() => navigateTo('cookies', '/cookies')}>Cookies</button>, <button type="button" className="text-sky-400 underline" onClick={() => navigateTo('terms', '/terms')}>Terms</button>, <button type="button" className="text-sky-400 underline" onClick={() => navigateTo('refunds', '/refunds')}>Refunds</button>, <button type="button" className="text-sky-400 underline" onClick={() => navigateTo('dmca', '/dmca')}>DMCA</button>.</p>
+                <div className="mt-4 space-y-4 text-zinc-300 leading-relaxed text-sm max-w-2xl">
+                  <p className="text-xs text-zinc-500">Last updated: November 2026 · Applies to zortius.com · UK-focused</p>
+                  <p><strong className="text-white">1. Who we are</strong><br />
+                  Zortius is a trading name operated from the United Kingdom. Contact: {SUPPORT_EMAIL}. Postal contact: {COMPANY_POSTAL}. If you form a company later, the registered details will replace this section.</p>
+                  <p><strong className="text-white">2. What this policy covers</strong><br />
+                  How we handle personal data when you use our website, create an account, join Updates, submit a pre-order interest, apply for roles, or contact us.</p>
+                  <p><strong className="text-white">3. Data we collect</strong><br />
+                  Only what we need: email address; name if you give it; account identifiers; pre-order and order details; messages you send us; newsletter preference; basic technical data needed for security and operation of the site (for example approximate device/browser information). We do not seek special category data.</p>
+                  <p><strong className="text-white">4. Why we use it (lawful bases)</strong><br />
+                  Contract / steps before a contract (account, orders, pre-order interest); legitimate interests (security, improving the site, answering support); consent where required (marketing emails — you can withdraw any time); legal obligation where applicable.</p>
+                  <p><strong className="text-white">5. Marketing</strong><br />
+                  We only send product/launch emails if you opt in. Every marketing message includes an unsubscribe link. You can also use https://zortius.com/unsubscribe</p>
+                  <p><strong className="text-white">6. Age</strong><br />
+                  Our services are aimed at people aged 16 or over. We do not knowingly collect personal data from children under 16. If you believe a child has registered, contact {SUPPORT_EMAIL} and we will delete the account data.</p>
+                  <p><strong className="text-white">7. Sharing</strong><br />
+                  We use carefully chosen infrastructure and service providers to host the site, run accounts, store data, and send email. They only process data on our instructions. We do not sell your personal data.</p>
+                  <p><strong className="text-white">8. International transfers</strong><br />
+                  Some providers may process data outside the UK. Where that happens, we rely on appropriate safeguards required by UK data protection law.</p>
+                  <p><strong className="text-white">9. Retention</strong><br />
+                  We keep account and order-related data as long as needed for the service, legal claims, and accounting. Newsletter data is kept until you unsubscribe or ask us to delete it, subject to minimal records of the opt-out.</p>
+                  <p><strong className="text-white">10. Your rights (UK)</strong><br />
+                  You may have rights to access, correct, delete, restrict, object, and data portability, and to withdraw consent. Contact {SUPPORT_EMAIL}. You may complain to the ICO (ico.org.uk).</p>
+                  <p><strong className="text-white">11. Security</strong><br />
+                  We use industry-standard measures (encrypted connections, access controls). No method is 100% secure.</p>
+                  <p><strong className="text-white">12. Contact</strong><br />
+                  Privacy requests: {SUPPORT_EMAIL}</p>
                 </div>
               )}
               {activeTab === 'cookies' && (
-                <div className="mt-4 space-y-3 text-zinc-300 leading-relaxed text-sm">
-                  <p>We use <strong className="text-white">essential</strong> storage so login, cart, and security checks work (Firebase auth, local preferences). We do not use advertising cookies or third-party ad trackers.</p>
-                  <p>You can clear site data in your browser settings. Contact {SUPPORT_EMAIL} with questions.</p>
+                <div className="mt-4 space-y-4 text-zinc-300 leading-relaxed text-sm max-w-2xl">
+                  <p className="text-xs text-zinc-500">Last updated: November 2026</p>
+                  <p><strong className="text-white">What we use</strong><br />
+                  We use essential cookies and similar storage so the website works: keeping you signed in, remembering basic preferences (for example cookie consent), security checks, and basket contents on your device.</p>
+                  <p><strong className="text-white">What we do not use</strong><br />
+                  We do not use advertising cookies, social-media tracking pixels for ads, or session-replay tools that record your browsing or keystrokes.</p>
+                  <p><strong className="text-white">Your choice</strong><br />
+                  Essential storage is required for login and core features. You can clear site data in your browser settings at any time; you may need to sign in again.</p>
+                  <p><strong className="text-white">More detail</strong><br />
+                  See our Privacy Policy. Questions: {SUPPORT_EMAIL}</p>
                 </div>
               )}
               {activeTab === 'refunds' && (
@@ -4360,16 +4383,35 @@ return (
                 </div>
               )}
               {activeTab === 'terms' && (
-                <div className="mt-4 space-y-3 text-zinc-300 leading-relaxed text-sm">
-                  <p>By using zortius.com you agree to use the site lawfully, provide accurate information, and not attempt to access other users’ data or admin tools.</p>
-                  <p>Products, prices, and pre-order windows may change. UK only for fulfilment unless we publish otherwise.</p>
-                  <p>Accounts: 16+. Content you post (forum/comments) must not be illegal or infringing; we may remove content. See /dmca.</p>
-                  <p>Service is provided as available. Contact {SUPPORT_EMAIL}. Policies: Privacy, Cookies, Refunds.</p>
+                <div className="mt-4 space-y-4 text-zinc-300 leading-relaxed text-sm max-w-2xl">
+                  <p className="text-xs text-zinc-500">Last updated: November 2026 · Governing law: England and Wales</p>
+                  <p><strong className="text-white">1. About these terms</strong><br />
+                  These terms govern use of zortius.com. By using the site you agree to them. If you do not agree, do not use the site.</p>
+                  <p><strong className="text-white">2. Who we are</strong><br />
+                  Zortius is a UK trading name. Contact {SUPPORT_EMAIL}. Postal: {COMPANY_POSTAL}.</p>
+                  <p><strong className="text-white">3. Eligibility</strong><br />
+                  You must be 16 or older to create an account. Purchases, when enabled, must be made by someone legally able to enter the contract (typically 18+ or with a parent/guardian’s involvement where required).</p>
+                  <p><strong className="text-white">4. Accounts</strong><br />
+                  Keep your login details confidential. You are responsible for activity under your account. We may suspend accounts that abuse the service or break the law.</p>
+                  <p><strong className="text-white">5. Products, pre-orders and UK supply</strong><br />
+                  Product descriptions and prices may change. Pre-order interest is not a completed purchase until payment checkout is offered and completed. Unless we say otherwise, fulfilment is intended for the United Kingdom only.</p>
+                  <p><strong className="text-white">6. Acceptable use</strong><br />
+                  Do not misuse the site, attempt unauthorised access, scrape in an abusive way, upload unlawful content, or interfere with other users.</p>
+                  <p><strong className="text-white">7. User content</strong><br />
+                  If you post comments or forum content, you grant us a licence to display it on the service. You must not post illegal or infringing material. See /dmca for copyright notices.</p>
+                  <p><strong className="text-white">8. Intellectual property</strong><br />
+                  Site design, branding, and our content belong to us or our licensors. You may not copy them for commercial use without permission.</p>
+                  <p><strong className="text-white">9. Liability</strong><br />
+                  Nothing in these terms excludes liability that cannot be excluded under UK law (including for death or personal injury caused by negligence, or fraud). The site is provided as available; we are not liable for losses that were not reasonably foreseeable.</p>
+                  <p><strong className="text-white">10. Privacy</strong><br />
+                  Personal data is handled as described in our Privacy Policy and Cookies notice.</p>
+                  <p><strong className="text-white">11. Changes</strong><br />
+                  We may update these terms. Continued use after changes means you accept the updated terms.</p>
+                  <p><strong className="text-white">12. Contact</strong><br />
+                  {SUPPORT_EMAIL}</p>
                 </div>
               )}
-              {false && activeTab === 'terms' && (
-                <p className="mt-4 text-zinc-300 leading-relaxed">Draft terms placeholder. Publish final purchase, delivery and returns terms before accepting real orders.</p>
-              )}
+              
               {activeTab === 'account' && (
                 <div className="mt-5 space-y-3">
                   <p className="text-zinc-300">{sessionUser ? `Signed in as ${user.email}` : 'Sign in to manage your account and applications.'}</p>
