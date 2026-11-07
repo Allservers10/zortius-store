@@ -419,7 +419,8 @@ export default function App() {
   useEffect(() => {
     if (!db) return;
     const unsub = onSnapshot(collection(db, 'artifacts', appId, 'discounts'), (snapshot) => {
-      setDiscounts(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
+      const rows = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+      if (rows.length > 0) setDiscounts(rows);
     });
     return () => unsub();
   }, []);
@@ -1845,9 +1846,15 @@ export default function App() {
   const subtotal = cart.reduce((acc, item) => acc + Number(item.price) * Number(item.qty || 1), 0);
 
   const calculateDiscount = () => {
-    if (!appliedDiscount) return 0;
-    if (appliedDiscount.percent) return (subtotal * appliedDiscount.percent) / 100;
-    if (appliedDiscount.fixed) return Math.min(subtotal, appliedDiscount.fixed);
+    if (!appliedDiscount || subtotal <= 0) return 0;
+    const d = appliedDiscount;
+    const pct = Number(d.percent ?? (d.type === 'percent' || d.type === '%' ? d.value ?? d.amount : NaN));
+    const fixed = Number(d.fixed ?? (d.type === 'fixed' || d.type === 'flat' || d.type === '£' ? d.value ?? d.amount : NaN));
+    if (Number.isFinite(pct) && pct > 0) return Math.min(subtotal, (subtotal * pct) / 100);
+    if (Number.isFinite(fixed) && fixed > 0) return Math.min(subtotal, fixed);
+    // bare value field with percent flag
+    if (d.isPercent && Number.isFinite(Number(d.value))) return Math.min(subtotal, (subtotal * Number(d.value)) / 100);
+    if (Number.isFinite(Number(d.amount)) && !d.percent) return Math.min(subtotal, Number(d.amount));
     return 0;
   };
 
@@ -1855,12 +1862,26 @@ export default function App() {
 
   const handleApplyDiscount = () => {
     setDiscountError('');
-    const match = discounts.find((d) => d.code.toUpperCase() === appliedCode.trim().toUpperCase() && d.active);
+    const code = (appliedCode || '').trim().toUpperCase();
+    if (!code) {
+      setDiscountError('Enter a promo code.');
+      return;
+    }
+    const list = Array.isArray(discounts) ? discounts : [];
+    const match = list.find((d) => {
+      const c0 = String(d.code || d.id || '').trim().toUpperCase();
+      const active = d.active !== false && d.enabled !== false;
+      return c0 === code && active;
+    });
     if (match) {
-      setAppliedDiscount(match);
-      showNotification(`Promo code ${match.code} applied!`);
+      setAppliedDiscount({ ...match, code: String(match.code || match.id).toUpperCase() });
+      const pct = match.percent ?? match.value;
+      const msg = match.percent || match.type === 'percent'
+        ? `${match.percent || match.value}% off`
+        : `£${match.fixed || match.value || match.amount} off`;
+      showNotification(`Promo ${match.code || code} applied (${msg})`);
     } else {
-      setDiscountError('Invalid or expired discount code.');
+      setDiscountError('Invalid or inactive promo code.');
       setAppliedDiscount(null);
     }
   };
@@ -1906,21 +1927,15 @@ export default function App() {
       showNotification('Sign in to pay.', 'error');
       return;
     }
-    if (!shipFullName || !shipLine1 || !shipCity || !shipPostcode || !shipCountry) {
-      showNotification('Please fill in all required shipping fields.', 'error');
-      return;
-    }
     setIsProcessingPayment(true);
 
-    const shippingAddress = formatShippingAddress();
+    const shippingAddress = shipFullName
+      ? `${shipFullName} (full address collected on payment page)`
+      : 'Address collected on payment page (UK)';
     const shippingObj = {
-      fullName: shipFullName,
-      line1: shipLine1,
-      line2: shipLine2,
-      city: shipCity,
-      postcode: shipPostcode,
-      country: shipCountry,
-      phone: shipPhone
+      fullName: shipFullName || userName || '',
+      note: 'Address collected via Stripe Checkout',
+      country: 'GB'
     };
 
     try {
@@ -1929,12 +1944,21 @@ export default function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          items: cart,
+          items: (() => {
+            const disc = calculateDiscount();
+            const factor = subtotal > 0 ? Math.max(0, (subtotal - disc) / subtotal) : 1;
+            return cart.map((item) => ({
+              ...item,
+              price: Math.round(Number(item.price) * factor * 100) / 100,
+              originalPrice: item.price
+            }));
+          })(),
           customerEmail: user.email,
-          shippingAddress,
+          shippingAddress: shippingAddress || 'Collected on payment page',
           shipping: shippingObj,
           discountCode: appliedDiscount?.code || null,
           discountAmount: calculateDiscount(),
+          userId: user.uid,
           successUrl: `${window.location.origin}/account/orders?paid=1&session_id={CHECKOUT_SESSION_ID}`,
           cancelUrl: `${window.location.origin}/cart`
         })
@@ -5803,7 +5827,11 @@ return (
                       </button>
                     </div>
                     {discountError && <p className="text-[11px] text-rose-400">{discountError}</p>}
-                    {appliedDiscount && <p className="text-[11px] text-emerald-400 font-bold">✓ Applied {appliedDiscount.code}!</p>}
+                    {appliedDiscount && (
+                      <p className="text-[11px] text-emerald-400 font-bold">
+                        ✓ {appliedDiscount.code} — saving £{calculateDiscount().toFixed(2)}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-3 text-sm pt-4 border-t border-zinc-800">
                     <div className="flex justify-between text-zinc-400">
@@ -6037,19 +6065,22 @@ return (
             ) : (
               <form onSubmit={handleProcessPayment} className="space-y-4">
                 <h3 className="text-lg font-extrabold text-white pr-8">Checkout</h3>
-                <p className="text-xs text-zinc-400">UK shipping only · Total <strong className="text-white">£{grandTotal.toFixed(2)}</strong></p>
-                <input required placeholder="Full name" value={shipFullName} onChange={(e) => setShipFullName(e.target.value)} className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2.5 text-sm text-white" />
-                <input required placeholder="Address line 1" value={shipLine1} onChange={(e) => setShipLine1(e.target.value)} className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2.5 text-sm text-white" />
-                <input placeholder="Address line 2 (optional)" value={shipLine2} onChange={(e) => setShipLine2(e.target.value)} className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2.5 text-sm text-white" />
-                <div className="grid grid-cols-2 gap-2">
-                  <input required placeholder="City" value={shipCity} onChange={(e) => setShipCity(e.target.value)} className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2.5 text-sm text-white" />
-                  <input required placeholder="Postcode" value={shipPostcode} onChange={(e) => setShipPostcode(e.target.value)} className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2.5 text-sm text-white" />
-                </div>
-                <input required placeholder="Country" value={shipCountry || 'United Kingdom'} onChange={(e) => setShipCountry(e.target.value)} className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2.5 text-sm text-white" />
-                <input placeholder="Phone (optional)" value={shipPhone} onChange={(e) => setShipPhone(e.target.value)} className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2.5 text-sm text-white" />
-                <p className="text-[11px] text-zinc-500 leading-relaxed">You will continue on a secure payment page. Refund terms: see Refunds policy. UK only.</p>
+                <p className="text-xs text-zinc-400">
+                  Total <strong className="text-white">£{grandTotal.toFixed(2)}</strong>
+                  {appliedDiscount ? ` · promo ${appliedDiscount.code}` : ''}
+                </p>
+                <p className="text-[11px] text-zinc-500 leading-relaxed rounded-xl border border-zinc-800 bg-zinc-950/50 p-3">
+                  Address and card are entered once on the secure payment page (UK only). No need to type them here.
+                </p>
+                <input
+                  placeholder="Full name (optional)"
+                  value={shipFullName}
+                  onChange={(e) => setShipFullName(e.target.value)}
+                  className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2.5 text-sm text-white"
+                />
+                <p className="text-[11px] text-zinc-500">Refunds: see policy. You will be redirected to pay.</p>
                 <button type="submit" disabled={isProcessingPayment} className="w-full py-3.5 rounded-xl bg-sky-400 hover:bg-sky-300 text-zinc-950 font-bold text-sm disabled:opacity-50">
-                  {isProcessingPayment ? 'Redirecting…' : 'Pay with card'}
+                  {isProcessingPayment ? 'Redirecting…' : 'Continue to payment'}
                 </button>
               </form>
             )}
