@@ -30,10 +30,10 @@ import emailjs from '@emailjs/browser';
 // =========================================================================
 // CONFIG
 // =========================================================================
-const EMAILJS_SERVICE_ID = 'service_0606epp';
-const EMAILJS_CONTACT_TEMPLATE_ID = 'template_h7ffmct';
-const EMAILJS_ORDER_TEMPLATE_ID = 'template_pfqrr0l';
-const EMAILJS_PUBLIC_KEY = 'ce23vL3ytn68UIxsf';
+const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_0606epp';
+const EMAILJS_CONTACT_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_CONTACT_TEMPLATE || 'template_h7ffmct';
+const EMAILJS_ORDER_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_ORDER_TEMPLATE || 'template_pfqrr0l';
+const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'ce23vL3ytn68UIxsf';
 
 const ADMIN_EMAIL = 'zortiusofficial@gmail.com';
 const LIMITED_ADMIN_EMAIL = 'gto.zortius@outlook.com';
@@ -63,13 +63,13 @@ const renderSafe = (val, fallback = '') => {
 
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'zortius-v2';
 const firebaseConfig = {
-  apiKey: 'AIzaSyBhsCLWDETaqh1zytvnNt33O8Lls63mna0',
-  authDomain: 'zortiusweb1.firebaseapp.com',
-  projectId: 'zortiusweb1',
-  storageBucket: 'zortiusweb1.firebasestorage.app',
-  messagingSenderId: '345352784478',
-  appId: '1:345352784478:web:e2968f2e0d28f5b27182cf',
-  measurementId: 'G-DTVERCPFXL'
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyBhsCLWDETaqh1zytvnNt33O8Lls63mna0',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'auth.zortius.com',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'zortiusweb1',
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'zortiusweb1.firebasestorage.app',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '345352784478',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:345352784478:web:e2968f2e0d28f5b27182cf',
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || 'G-DTVERCPFXL'
 };
 
 let app, db, auth;
@@ -230,6 +230,9 @@ export default function App() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [signupAgeOk, setSignupAgeOk] = useState(false);
+  const [cookieConsent, setCookieConsent] = useState(() => {
+    try { return localStorage.getItem('zortius_cookie_consent') || ''; } catch { return ''; }
+  });
   const [authError, setAuthError] = useState('');
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [forgotMode, setForgotMode] = useState(false);
@@ -607,6 +610,8 @@ export default function App() {
     if (clean === '/faq') return 'faq';
     if (clean === '/privacy') return 'privacy';
     if (clean === '/terms') return 'terms';
+    if (clean === '/cookies') return 'cookies';
+    if (clean === '/refunds' || clean === '/refund') return 'refunds';
     if (clean === '/account') return 'account';
     if (clean === '/blog' || clean.startsWith('/blog/')) return 'blog';
     if (clean === '/forum' || clean.startsWith('/forum/')) return 'forum';
@@ -767,6 +772,17 @@ export default function App() {
 
   // -------------------- EMAIL (EmailJS only) --------------------
   const sendActualEmail = async (templateId, toEmail, customerName, orderId, statusVal, messageDetails) => {
+    // Client-side rate limit (server limits still needed on EmailJS / Resend)
+    try {
+      const key = 'zortius_email_rl';
+      const now = Date.now();
+      const arr = JSON.parse(sessionStorage.getItem(key) || '[]').filter((t) => now - t < 60000);
+      if (arr.length >= 8) throw new Error('Too many emails from this browser. Wait a minute.');
+      arr.push(now);
+      sessionStorage.setItem(key, JSON.stringify(arr));
+    } catch (e) {
+      if (e.message && e.message.startsWith('Too many')) throw e;
+    }
     const templateParams = {
       to_email: toEmail,
       name: customerName,
@@ -2020,7 +2036,7 @@ export default function App() {
       };
     }
     return {
-      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say 'human'to email the team.",
+      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say 'human' to email the team.",
       escalate: false
     };
   };
@@ -2844,6 +2860,8 @@ export default function App() {
       notfound: 'Page not found — Zortius',
       admin: 'Admin — Zortius',
       privacy: 'Privacy — Zortius',
+      cookies: 'Cookies — Zortius',
+      refunds: 'Refunds — Zortius',
       terms: 'Terms — Zortius'
     };
     document.title = titles[activeTab] || 'Zortius — Premium Hardware & Workstations';
@@ -3143,6 +3161,32 @@ return (
       >
         <Bot className="w-6 h-6" />
       </button>
+
+      
+      {!cookieConsent && (
+        <div className="cookie-consent-banner fixed bottom-0 inset-x-0 z-[100] border-t border-zinc-800 bg-zinc-950/95 backdrop-blur-md p-4 sm:p-5">
+          <div className="max-w-4xl mx-auto flex flex-col sm:flex-row gap-4 sm:items-center justify-between">
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              We use essential cookies so the site and login work. We do not use advertising trackers or session replay.
+              See <button type="button" className="text-sky-400 underline" onClick={() => navigateTo('privacy', '/privacy')}>Privacy</button>
+              {' & '}
+              <button type="button" className="text-sky-400 underline" onClick={() => navigateTo('cookies', '/cookies')}>Cookies</button>.
+            </p>
+            <div className="flex gap-2 shrink-0">
+              <button
+                type="button"
+                className="px-4 py-2 rounded-full bg-white text-zinc-950 text-xs font-bold"
+                onClick={() => {
+                  try { localStorage.setItem('zortius_cookie_consent', 'essential'); } catch (_) {}
+                  setCookieConsent('essential');
+                }}
+              >
+                Accept essential
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="mobile-quick-actions md:hidden fixed bottom-5 left-4 right-20 z-40 flex gap-2 justify-start pointer-events-none">
         <button type="button" onClick={() => setCmdOpen(true)} className="pointer-events-auto px-4 py-3 rounded-full bg-zinc-900/95 border border-zinc-700 text-xs font-bold text-white shadow-xl backdrop-blur">
@@ -4292,15 +4336,38 @@ return (
               )}
               {activeTab === 'privacy' && (
                 <div className="mt-4 space-y-3 text-zinc-300 leading-relaxed text-sm">
-                  <p>Zortius only collects information needed to operate accounts, process orders, review applications, and (if you opt in) send product Updates.</p>
-                  <p>Accounts require you to confirm you are 16 or older. We do not knowingly collect data from children under 16.</p>
-                  <p>We do not use session-replay or keystroke-recording tools on this site.</p>
-                  <p>Fonts and assets are served from our host (or system fonts) — not third-party font CDNs that receive your IP for typography alone.</p>
-                  <p>Newsletter / marketing emails include an unsubscribe link and our contact details. Unsubscribe: https://zortius.com/unsubscribe</p>
-                  <p>Copyright notices: /dmca · Privacy requests: {SUPPORT_EMAIL}</p>
+                  <p><strong className="text-white">Who we are.</strong> Zortius is a UK trading name. Contact: {SUPPORT_EMAIL}. Postal: {COMPANY_POSTAL}.</p>
+                  <p><strong className="text-white">Data we collect.</strong> Account email, name if provided, order/pre-order details, support messages, and newsletter signup if you opt in. We minimise data to what is needed to run the service.</p>
+                  <p><strong className="text-white">Age.</strong> Accounts require confirmation you are 16 or older. We do not knowingly collect data from children under 16.</p>
+                  <p><strong className="text-white">Processors.</strong> Hosting (e.g. Vercel), auth/database (Google Firebase), email delivery (e.g. EmailJS / Resend). Review their policies.</p>
+                  <p><strong className="text-white">No session replay.</strong> We do not record keystrokes or session replays.</p>
+                  <p><strong className="text-white">Marketing.</strong> Only if you join Updates. Every marketing email includes unsubscribe: https://zortius.com/unsubscribe</p>
+                  <p><strong className="text-white">Deletion.</strong> Email {SUPPORT_EMAIL} to request access or deletion of your account data.</p>
+                  <p>Also see <button type="button" className="text-sky-400 underline" onClick={() => navigateTo('cookies', '/cookies')}>Cookies</button>, <button type="button" className="text-sky-400 underline" onClick={() => navigateTo('terms', '/terms')}>Terms</button>, <button type="button" className="text-sky-400 underline" onClick={() => navigateTo('refunds', '/refunds')}>Refunds</button>, <button type="button" className="text-sky-400 underline" onClick={() => navigateTo('dmca', '/dmca')}>DMCA</button>.</p>
+                </div>
+              )}
+              {activeTab === 'cookies' && (
+                <div className="mt-4 space-y-3 text-zinc-300 leading-relaxed text-sm">
+                  <p>We use <strong className="text-white">essential</strong> storage so login, cart, and security checks work (Firebase auth, local preferences). We do not use advertising cookies or third-party ad trackers.</p>
+                  <p>You can clear site data in your browser settings. Contact {SUPPORT_EMAIL} with questions.</p>
+                </div>
+              )}
+              {activeTab === 'refunds' && (
+                <div className="mt-4 space-y-3 text-zinc-300 leading-relaxed text-sm">
+                  <p><strong className="text-white">Pre-order interest</strong> is not a paid order until checkout is enabled. Cancelling interest: contact {SUPPORT_EMAIL}.</p>
+                  <p><strong className="text-white">Paid orders</strong> (when Stripe is live): UK consumer cooling-off may apply to eligible distance sales; custom/built-to-order goods can differ. Full refund terms will be shown at checkout before you pay — no hidden fees.</p>
+                  <p>UK shipping only unless stated otherwise. Contact {SUPPORT_EMAIL} for any refund request.</p>
                 </div>
               )}
               {activeTab === 'terms' && (
+                <div className="mt-4 space-y-3 text-zinc-300 leading-relaxed text-sm">
+                  <p>By using zortius.com you agree to use the site lawfully, provide accurate information, and not attempt to access other users’ data or admin tools.</p>
+                  <p>Products, prices, and pre-order windows may change. UK only for fulfilment unless we publish otherwise.</p>
+                  <p>Accounts: 16+. Content you post (forum/comments) must not be illegal or infringing; we may remove content. See /dmca.</p>
+                  <p>Service is provided as available. Contact {SUPPORT_EMAIL}. Policies: Privacy, Cookies, Refunds.</p>
+                </div>
+              )}
+              {false && activeTab === 'terms' && (
                 <p className="mt-4 text-zinc-300 leading-relaxed">Draft terms placeholder. Publish final purchase, delivery and returns terms before accepting real orders.</p>
               )}
               {activeTab === 'account' && (
