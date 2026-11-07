@@ -1916,7 +1916,7 @@ export default function App() {
           shipping: shippingObj,
           discountCode: appliedDiscount?.code || null,
           discountAmount: calculateDiscount(),
-          successUrl: `${window.location.origin}/account/orders?paid=1`,
+          successUrl: `${window.location.origin}/account/orders?paid=1&session_id={CHECKOUT_SESSION_ID}`,
           cancelUrl: `${window.location.origin}/cart`
         })
       });
@@ -1950,6 +1950,7 @@ export default function App() {
               date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
             };
             localStorage.setItem('zortius_pending_order', JSON.stringify(pending));
+            sessionStorage.setItem('zortius_pending_order', JSON.stringify(pending));
           } catch (_) {}
           window.location.href = data.url;
           return;
@@ -2112,7 +2113,7 @@ export default function App() {
       };
     }
     return {
-      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say 'human'to email the team.",
+      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say 'human to email the team.",
       escalate: false
     };
   };
@@ -2908,56 +2909,105 @@ export default function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('paid') !== '1') return;
+    if (!db) return;
+
     let cancelled = false;
-    (async () => {
-      let pending = null;
+
+    const readPending = () => {
       try {
-        pending = JSON.parse(localStorage.getItem('zortius_pending_order') || 'null');
+        const a = localStorage.getItem('zortius_pending_order');
+        const b = sessionStorage.getItem('zortius_pending_order');
+        return JSON.parse(a || b || 'null');
+      } catch {
+        return null;
+      }
+    };
+
+    const clearPending = () => {
+      try {
+        localStorage.removeItem('zortius_pending_order');
+        sessionStorage.removeItem('zortius_pending_order');
       } catch (_) {}
+    };
+
+    (async () => {
+      const sessionId = params.get('session_id') || '';
+      let pending = readPending();
+
+      try {
+        if (sessionId && sessionStorage.getItem('zortius_paid_done_' + sessionId)) {
+          window.history.replaceState({}, '', '/account/orders');
+          setActiveTab('orders');
+          return;
+        }
+      } catch (_) {}
+
       if (!pending || !pending.customerEmail) {
         if (!cancelled) {
-          showNotification('Payment received. Open Order History or contact support if needed.', 'success');
+          showNotification('Payment may have succeeded. Check Order History or contact support.', 'success');
           setActiveTab('orders');
           window.history.replaceState({}, '', '/account/orders');
         }
         return;
       }
+
+      if (sessionId) pending.sessionId = sessionId;
+      const rawId = sessionId || pending.sessionId || pending.id || ('ord_' + Date.now());
+      const orderDocId = String(rawId).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64) || ('ord_' + Date.now());
+
       try {
-        if (db) {
-          await addDoc(collection(db, 'artifacts', appId, 'orders'), {
+        await setDoc(
+          doc(db, 'artifacts', appId, 'orders', orderDocId),
+          {
             ...pending,
+            id: pending.id || orderDocId,
+            sessionId: sessionId || pending.sessionId || null,
             status: 'paid',
-            updatedAt: new Date().toISOString()
-          });
-        }
+            userId: pending.userId || (user && user.uid) || null,
+            customerEmail: String(pending.customerEmail || (user && user.email) || '').toLowerCase(),
+            updatedAt: new Date().toISOString(),
+            createdAt: pending.createdAt || new Date().toISOString()
+          },
+          { merge: true }
+        );
+
         try {
           await sendActualEmail(
             EMAILJS_ORDER_TEMPLATE_ID || EMAILJS_CONTACT_TEMPLATE_ID,
             pending.customerEmail,
-            pending.customerName || pending.customerEmail.split('@')[0],
-            pending.id,
+            pending.customerName || String(pending.customerEmail).split('@')[0],
+            pending.id || orderDocId,
             'PAID',
-            `Thanks for your order.\n\nOrder: ${pending.id}\nTotal: £${Number(pending.total || 0).toFixed(2)}\nStatus: Paid\n\nShip to:\n${pending.shippingAddress || ''}\n\nView Order History when signed in.\n\n— Zortius\n${SUPPORT_EMAIL}`
+            'Thanks for your order.\n\nOrder: ' + (pending.id || orderDocId) + '\nTotal: £' + Number(pending.total || 0).toFixed(2) + '\nStatus: Paid\n\nShip to:\n' + (pending.shippingAddress || '') + '\n\nOrder History: https://zortius.com/account/orders\n\n— Zortius\n' + SUPPORT_EMAIL
           );
         } catch (mailErr) {
-          console.warn(mailErr);
+          console.warn('order email', mailErr);
         }
+
         setCart([]);
+        clearPending();
         try {
-          localStorage.removeItem('zortius_pending_order');
+          if (sessionId) sessionStorage.setItem('zortius_paid_done_' + sessionId, '1');
         } catch (_) {}
+
         if (!cancelled) {
-          showNotification('Payment successful — confirmation email sent.');
+          showNotification('Payment successful — order is in your Order History.');
           setActiveTab('orders');
+          window.history.replaceState({}, '', '/account/orders');
         }
       } catch (err) {
-        console.error(err);
-        if (!cancelled) showNotification('Paid, but order save failed — email support.', 'error');
+        console.error('save order', err);
+        if (!cancelled) {
+          showNotification('Payment OK but order save failed. Contact support with your email.', 'error');
+          setActiveTab('orders');
+        }
       }
-      window.history.replaceState({}, '', '/account/orders');
     })();
-    return () => { cancelled = true; };
-  }, [db]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [db, user?.uid, user?.email]);
 
   // Non-admins must not open /admin — show 404, no "admin" label in UI for them
   useEffect(() => {
