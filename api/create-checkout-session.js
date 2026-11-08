@@ -1,13 +1,14 @@
 import Stripe from 'stripe';
 
 /**
- * Vercel serverless: POST /api/create-checkout-session
- * Env: STRIPE_SECRET_KEY (sk_test_... or sk_live_...)
- * Never expose the secret key to the browser.
+ * POST /api/create-checkout-session
+ * Env: STRIPE_SECRET_KEY, CHECKOUT_ORIGIN, UK_SHIPPING_GBP (optional, default 5.99)
  */
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
   apiVersion: '2024-11-20.acacia',
 });
+
+const UK_SHIPPING_GBP = Number(process.env.UK_SHIPPING_GBP ?? '5.99');
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', process.env.CHECKOUT_ORIGIN || 'https://zortius.com');
@@ -31,13 +32,13 @@ export default async function handler(req, res) {
     successUrl,
     cancelUrl,
     userId,
+    skipShipping,
   } = req.body || {};
 
   if (!items || !Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: 'No items provided' });
   }
 
-  // Basic validation — amounts in major units (pounds)
   for (const item of items) {
     const price = Number(item.price);
     const qty = Number(item.qty) || 1;
@@ -69,6 +70,21 @@ export default async function handler(req, res) {
       };
     });
 
+    // Flat UK shipping (change via env UK_SHIPPING_GBP, or set 0 for free)
+    if (!skipShipping && Number.isFinite(UK_SHIPPING_GBP) && UK_SHIPPING_GBP > 0) {
+      line_items.push({
+        price_data: {
+          currency: 'gbp',
+          product_data: {
+            name: 'UK shipping',
+            description: 'Flat rate · United Kingdom',
+          },
+          unit_amount: Math.round(UK_SHIPPING_GBP * 100),
+        },
+        quantity: 1,
+      });
+    }
+
     const origin = process.env.CHECKOUT_ORIGIN || 'https://zortius.com';
 
     const session = await stripe.checkout.sessions.create({
@@ -81,7 +97,6 @@ export default async function handler(req, res) {
         `${origin}/account/orders?paid=1&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: cancelUrl || `${origin}/cart`,
       shipping_address_collection: {
-        // UK-only for now (matches your policy)
         allowed_countries: ['GB'],
       },
       phone_number_collection: { enabled: true },
@@ -89,11 +104,16 @@ export default async function handler(req, res) {
         userId: userId || '',
         shippingAddress: (shippingAddress || '').slice(0, 500),
         shippingJson: shipping ? JSON.stringify(shipping).slice(0, 500) : '',
+        ukShippingGbp: String(UK_SHIPPING_GBP || 0),
       },
       locale: 'en-GB',
     });
 
-    return res.status(200).json({ url: session.url, id: session.id });
+    return res.status(200).json({
+      url: session.url,
+      id: session.id,
+      shippingGbp: UK_SHIPPING_GBP > 0 ? UK_SHIPPING_GBP : 0,
+    });
   } catch (err) {
     console.error('Stripe checkout error:', err?.message || err);
     return res.status(500).json({

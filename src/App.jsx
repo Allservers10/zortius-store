@@ -38,6 +38,8 @@ const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'ce23vL3yt
 const ADMIN_EMAIL = 'zortiusofficial@gmail.com';
 const LIMITED_ADMIN_EMAIL = 'gto.zortius@outlook.com';
 const SUPPORT_EMAIL = 'help@zortius.com';
+// Shown in cart/checkout — keep in sync with Vercel UK_SHIPPING_GBP (default 5.99)
+const UK_SHIPPING_DISPLAY = 5.99;
 // CAN-SPAM / marketing footer — set your real registered address
 const COMPANY_POSTAL = 'Zortius, United Kingdom'; // replace with full postal address when you have one
 const COMPANY_LEGAL_NAME = 'Zortius';
@@ -1018,26 +1020,29 @@ export default function App() {
     );
   };
 
-  const updateOrderStatus = async (order, nextStatus) => {
+  const updateOrderStatus = async (order, nextStatus, trackingNumber = '') => {
     if (!isAdmin || !db || !order?.docId) {
       showNotification('Cannot update order', 'error');
       return;
     }
     try {
+      const tracking = (trackingNumber || order.tracking || '').trim();
       await updateDoc(doc(db, 'artifacts', appId, 'orders', order.docId), {
         status: nextStatus,
+        ...(tracking ? { tracking } : {}),
         updatedAt: new Date().toISOString()
       });
       const em = (order.customerEmail || '').trim();
       if (em) {
         try {
+          const trackLine = tracking ? `\nTracking: ${tracking}` : '';
           await sendActualEmail(
             EMAILJS_ORDER_TEMPLATE_ID || EMAILJS_CONTACT_TEMPLATE_ID,
             em,
             order.customerName || em.split('@')[0],
             order.id || order.docId,
             String(nextStatus).toUpperCase(),
-            `Order update\n\nOrder: ${order.id || order.docId}\nStatus: ${nextStatus}\n\n— Zortius\n${SUPPORT_EMAIL}`
+            `Order update\n\nOrder: ${order.id || order.docId}\nStatus: ${nextStatus}${trackLine}\n\nOrder History: https://zortius.com/account/orders\n\n— Zortius\n${SUPPORT_EMAIL}`
           );
         } catch (_) {}
       }
@@ -1618,7 +1623,10 @@ export default function App() {
       }
       showNotification('Verified. You are signed in.');
     } catch (err) {
-      setAuthError(err.message || 'Verification failed.');
+      console.error(err);
+      const msg = err?.code === 'permission-denied' || /insufficient permissions/i.test(err?.message || '')
+        ? 'Database permission error. Publish Firestore rules for emailCodes + users (see firestore.rules).'
+        : (err.message || 'Verification failed.');
     } finally {
       setAuthSubmitting(false);
     }
@@ -4150,9 +4158,27 @@ return (
                         </div>
                         <p className="text-zinc-400">{o.customerEmail} · £{Number(o.total || 0).toFixed(2)} · {o.date}</p>
                         <p className="text-zinc-500 truncate">{o.shippingAddress}</p>
+                        <input
+                          type="text"
+                          placeholder="Tracking no. (optional)"
+                          defaultValue={o.tracking || ''}
+                          id={`track-${o.docId || o.id}`}
+                          className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-1.5 text-[11px] text-white"
+                        />
                         <div className="flex flex-wrap gap-1">
-                          {['paid', 'processing', 'shipped', 'delivered', 'cancelled'].map((st) => (
-                            <button key={st} type="button" onClick={() => updateOrderStatus(o, st)} className="px-2 py-1 rounded-lg border border-zinc-700 text-[10px] font-bold text-zinc-300 hover:bg-zinc-800 capitalize">{st}</button>
+                          {['paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'].map((st) => (
+                            <button
+                              key={st}
+                              type="button"
+                              onClick={() => {
+                                const el = document.getElementById(`track-${o.docId || o.id}`);
+                                const tr = el ? el.value : '';
+                                updateOrderStatus(o, st, tr);
+                              }}
+                              className="px-2 py-1 rounded-lg border border-zinc-700 text-[10px] font-bold text-zinc-300 hover:bg-zinc-800 capitalize"
+                            >
+                              {st}
+                            </button>
                           ))}
                         </div>
                       </div>
@@ -4769,10 +4795,20 @@ return (
                 </div>
               )}
               {activeTab === 'refunds' && (
-                <div className="mt-4 space-y-3 text-zinc-300 leading-relaxed text-sm">
-                  <p><strong className="text-white">Pre-order interest</strong> is not a paid order until checkout is enabled. Cancelling interest: contact {SUPPORT_EMAIL}.</p>
-                  <p><strong className="text-white">Paid orders</strong> (when Stripe is live): UK consumer cooling-off may apply to eligible distance sales; custom/built-to-order goods can differ. Full refund terms will be shown at checkout before you pay — no hidden fees.</p>
-                  <p>UK shipping only unless stated otherwise. Contact {SUPPORT_EMAIL} for any refund request.</p>
+                <div className="mt-4 space-y-4 text-zinc-300 leading-relaxed text-sm max-w-2xl">
+                  <p className="text-xs text-zinc-500">Last updated: November 2026 · UK only</p>
+                  <p><strong className="text-white">Shipping</strong><br />
+                  We ship within the United Kingdom. A flat UK shipping fee of £{UK_SHIPPING_DISPLAY.toFixed(2)} is added at checkout (unless a promotion says free shipping). Address is collected on the payment page.</p>
+                  <p><strong className="text-white">Pre-order interest</strong><br />
+                  Joining a pre-order list is not a paid order. To cancel interest, contact {SUPPORT_EMAIL}.</p>
+                  <p><strong className="text-white">Paid orders — faulty or not as described</strong><br />
+                  Contact {SUPPORT_EMAIL} with your order details. We will arrange a fair fix, replacement, or refund. Return postage for genuine faults is covered by us as appropriate.</p>
+                  <p><strong className="text-white">Change of mind</strong><br />
+                  If we accept a return for change of mind, you usually pay return postage. We refund the product price after we receive the item in good condition. Original outbound shipping is only refunded if required by law or we agree otherwise. There is no separate “refund fee”.</p>
+                  <p><strong className="text-white">How to request</strong><br />
+                  Email {SUPPORT_EMAIL} — do not pay extra on the site to get a refund. Refunds go back to the original payment method.</p>
+                  <p><strong className="text-white">Tracking</strong><br />
+                  When your order ships, status is updated in Order History and we email where possible, including tracking when available.</p>
                 </div>
               )}
               {activeTab === 'terms' && (
@@ -5955,6 +5991,7 @@ return (
                       </button>
                     </div>
                     {discountError && <p className="text-[11px] text-rose-400">{discountError}</p>}
+                    <p className="text-[11px] text-zinc-500">UK shipping £{UK_SHIPPING_DISPLAY.toFixed(2)} added at payment (flat rate).</p>
                     {appliedDiscount && (
                       <div className="flex items-center justify-between gap-2">
                         <p className="text-[11px] text-emerald-400 font-bold">
@@ -6199,11 +6236,12 @@ return (
               <form onSubmit={handleProcessPayment} className="space-y-4">
                 <h3 className="text-lg font-extrabold text-white pr-8">Checkout</h3>
                 <p className="text-xs text-zinc-400">
-                  Total <strong className="text-white">£{grandTotal.toFixed(2)}</strong>
+                  Items <strong className="text-white">£{grandTotal.toFixed(2)}</strong>
                   {appliedDiscount ? ` · promo ${appliedDiscount.code}` : ''}
+                  {' · '}UK shipping <strong className="text-white">£{UK_SHIPPING_DISPLAY.toFixed(2)}</strong>
                 </p>
                 <p className="text-[11px] text-zinc-500 leading-relaxed rounded-xl border border-zinc-800 bg-zinc-950/50 p-3">
-                  Address and card are entered once on the secure payment page (UK only). No need to type them here.
+                  Address and card are entered once on the payment page (UK only). Shipping is a flat UK rate; remote areas use the same rate for simplicity.
                 </p>
                 <input
                   placeholder="Full name (optional)"
