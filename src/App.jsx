@@ -39,7 +39,17 @@ const ADMIN_EMAIL = 'zortiusofficial@gmail.com';
 const LIMITED_ADMIN_EMAIL = 'gto.zortius@outlook.com';
 const SUPPORT_EMAIL = 'help@zortius.com';
 // Shown in cart/checkout — keep in sync with Vercel UK_SHIPPING_GBP (default 5.99)
-const UK_SHIPPING_DISPLAY = 5.99;
+const UK_SHIPPING_DISPLAY = 5.99; // fallback if product has no package
+const PACKAGE_PRESETS = [
+  { id: 'small_envelope', label: 'Small envelope', price: 1.95 },
+  { id: 'large_envelope', label: 'Large envelope', price: 2.95 },
+  { id: 'small_box', label: 'Small box', price: 3.95 },
+  { id: 'medium_box', label: 'Medium box', price: 5.99 },
+  { id: 'large_box', label: 'Large box', price: 8.99 },
+  { id: 'heavy_box', label: 'Heavy / oversized', price: 12.99 },
+  { id: 'free', label: 'Free shipping', price: 0 },
+  { id: 'custom', label: 'Custom price…', price: null }
+];
 // CAN-SPAM / marketing footer — set your real registered address
 const COMPANY_POSTAL = 'Zortius, United Kingdom'; // replace with full postal address when you have one
 const COMPANY_LEGAL_NAME = 'Zortius';
@@ -175,6 +185,8 @@ export default function App() {
   const [prodAllowPurchase, setProdAllowPurchase] = useState(false);
   const [prodStock, setProdStock] = useState('');
   const [prodSoldOut, setProdSoldOut] = useState(false);
+  const [prodPackageId, setProdPackageId] = useState('small_box');
+  const [prodShipPrice, setProdShipPrice] = useState('3.95');
   const [newDiscountCode, setNewDiscountCode] = useState('');
   const [newDiscountPercent, setNewDiscountPercent] = useState('10');
   const [newDiscountFixed, setNewDiscountFixed] = useState('');
@@ -1903,6 +1915,20 @@ export default function App() {
 
   const grandTotal = Math.max(0, subtotal - calculateDiscount());
 
+  const cartShippingGbp = () => {
+    if (!cart || cart.length === 0) return UK_SHIPPING_DISPLAY;
+    let max = 0;
+    let any = false;
+    cart.forEach((item) => {
+      const n = Number(item.shippingGbp);
+      if (Number.isFinite(n) && n >= 0) {
+        any = true;
+        if (n > max) max = n;
+      }
+    });
+    return any ? max : UK_SHIPPING_DISPLAY;
+  };
+
   const handleApplyDiscount = () => {
     setDiscountError('');
     const code = (appliedCode || '').trim().toUpperCase();
@@ -2029,6 +2055,7 @@ export default function App() {
           discountCode: appliedDiscount?.code || null,
           discountAmount: calculateDiscount(),
           userId: user.uid,
+          shippingGbp: cartShippingGbp(),
           successUrl: `${window.location.origin}/account/orders?paid=1&session_id={CHECKOUT_SESSION_ID}`,
           cancelUrl: `${window.location.origin}/cart`
         })
@@ -2227,7 +2254,7 @@ export default function App() {
       };
     }
     return {
-      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say 'human' to email the team.",
+      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say 'human'to email the team.",
       escalate: false
     };
   };
@@ -2856,7 +2883,13 @@ export default function App() {
       preorderOpensAt: opensAtIso,
       preorderAllowPurchase: !!prodIsPreorder && !!prodAllowPurchase,
       stock: prodStock === '' || prodStock == null ? null : parseInt(prodStock, 10),
-      soldOut: !!prodSoldOut
+      soldOut: !!prodSoldOut,
+      packageId: prodPackageId || 'small_box',
+      packageLabel: (PACKAGE_PRESETS.find((x) => x.id === prodPackageId) || {}).label || prodPackageId,
+      shippingGbp: (() => {
+        const n = parseFloat(prodShipPrice);
+        return Number.isFinite(n) && n >= 0 ? n : UK_SHIPPING_DISPLAY;
+      })()
     };
     try {
       if (editingProductId) {
@@ -2887,6 +2920,8 @@ export default function App() {
     setProdAllowPurchase(false);
     setProdStock('');
     setProdSoldOut(false);
+    setProdPackageId('small_box');
+    setProdShipPrice('3.95');
   };
 
   const togglePreorderStatus = async (p, nextStatus) => {
@@ -3914,6 +3949,39 @@ return (
                   <input type="checkbox" checked={prodSoldOut} onChange={(e) => setProdSoldOut(e.target.checked)} className="rounded border-zinc-600" />
                   <span><strong className="text-white">Sold out</strong> — customers see Sold out and cannot buy</span>
                 </label>
+                <div className="col-span-full space-y-2 rounded-xl border border-zinc-800 bg-zinc-950/50 p-3">
+                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Shipping package</p>
+                  <select
+                    value={prodPackageId}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      setProdPackageId(id);
+                      const preset = PACKAGE_PRESETS.find((x) => x.id === id);
+                      if (preset && preset.price != null) setProdShipPrice(String(preset.price));
+                    }}
+                    className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-xs text-white"
+                  >
+                    {PACKAGE_PRESETS.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.label}
+                        {p.price != null ? ` — £${Number(p.price).toFixed(2)}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={prodShipPrice}
+                    onChange={(e) => {
+                      setProdShipPrice(e.target.value);
+                      setProdPackageId('custom');
+                    }}
+                    placeholder="Shipping £"
+                    className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-xs text-white"
+                  />
+                  <p className="text-[10px] text-zinc-500">Cart uses the highest package price among items (one shipping charge per order).</p>
+                </div>
                 
                 <input type="text" placeholder="Category" value={prodCategory} onChange={(e) => setProdCategory(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none" />
                 <input type="url" placeholder="Image URL" value={prodImage} onChange={(e) => setProdImage(e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-white focus:border-cyan-500 outline-none md:col-span-2" />
@@ -4039,6 +4107,15 @@ return (
                           setProdAllowPurchase(!!p.preorderAllowPurchase);
                           setProdStock(p.stock != null && p.stock !== '' ? String(p.stock) : '');
                           setProdSoldOut(!!p.soldOut);
+                          setProdPackageId(p.packageId || 'small_box');
+                          setProdShipPrice(
+                            p.shippingGbp != null && p.shippingGbp !== ''
+                              ? String(p.shippingGbp)
+                              : String(
+                                  (PACKAGE_PRESETS.find((x) => x.id === (p.packageId || 'small_box')) || {}).price ??
+                                    UK_SHIPPING_DISPLAY
+                                )
+                          );
                         }}
                         className="text-zinc-400 hover:text-zinc-100 cursor-pointer"
                       >
@@ -4798,7 +4875,7 @@ return (
                 <div className="mt-4 space-y-4 text-zinc-300 leading-relaxed text-sm max-w-2xl">
                   <p className="text-xs text-zinc-500">Last updated: November 2026 · UK only</p>
                   <p><strong className="text-white">Shipping</strong><br />
-                  We ship within the United Kingdom. A flat UK shipping fee of £{UK_SHIPPING_DISPLAY.toFixed(2)} is added at checkout (unless a promotion says free shipping). Address is collected on the payment page.</p>
+                  We ship within the United Kingdom. UK shipping is based on package size set per product (envelope / box). If the basket has several items, the highest package rate is charged once. Address is collected on the payment page.</p>
                   <p><strong className="text-white">Pre-order interest</strong><br />
                   Joining a pre-order list is not a paid order. To cancel interest, contact {SUPPORT_EMAIL}.</p>
                   <p><strong className="text-white">Paid orders — faulty or not as described</strong><br />
@@ -5991,7 +6068,7 @@ return (
                       </button>
                     </div>
                     {discountError && <p className="text-[11px] text-rose-400">{discountError}</p>}
-                    <p className="text-[11px] text-zinc-500">UK shipping £{UK_SHIPPING_DISPLAY.toFixed(2)} added at payment (flat rate).</p>
+                    <p className="text-[11px] text-zinc-500">UK shipping ~£{cartShippingGbp().toFixed(2)} at payment (from package size; highest in basket).</p>
                     {appliedDiscount && (
                       <div className="flex items-center justify-between gap-2">
                         <p className="text-[11px] text-emerald-400 font-bold">
@@ -6238,7 +6315,7 @@ return (
                 <p className="text-xs text-zinc-400">
                   Items <strong className="text-white">£{grandTotal.toFixed(2)}</strong>
                   {appliedDiscount ? ` · promo ${appliedDiscount.code}` : ''}
-                  {' · '}UK shipping <strong className="text-white">£{UK_SHIPPING_DISPLAY.toFixed(2)}</strong>
+                  {' · '}UK shipping <strong className="text-white">£{cartShippingGbp().toFixed(2)}</strong>
                 </p>
                 <p className="text-[11px] text-zinc-500 leading-relaxed rounded-xl border border-zinc-800 bg-zinc-950/50 p-3">
                   Address and card are entered once on the payment page (UK only). Shipping is a flat UK rate; remote areas use the same rate for simplicity.
