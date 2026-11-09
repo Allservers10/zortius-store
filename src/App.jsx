@@ -55,16 +55,16 @@ const COMPANY_POSTAL = 'Zortius, United Kingdom'; // replace with full postal ad
 const COMPANY_LEGAL_NAME = 'Zortius';
 // Edit these to your real profiles
 const SOCIALS = [
-  { id: 'instagram', label: 'Instagram', handle: '@zortius', url: 'https://www.instagram.com/zortius' },
-  { id: 'youtube', label: 'YouTube', handle: 'Zortius', url: 'https://www.youtube.com/@zortius' },
+  { id: 'instagram', label: 'Instagram', handle: '@zortius', url: 'https://www.instagram.com/zortiusofficial' },
+  { id: 'youtube', label: 'YouTube', handle: 'Zortius', url: 'https://www.youtube.com/@zortiusofficial' },
   { id: 'x', label: 'X', handle: '@zortius', url: 'https://x.com/zortius' },
-  { id: 'tiktok', label: 'TikTok', handle: '@zortius', url: 'https://www.tiktok.com/@zortius' },
+  { id: 'tiktok', label: 'TikTok', handle: '@zortius', url: 'https://www.tiktok.com/@zortiusofficial' },
   { id: 'linkedin', label: 'LinkedIn', handle: 'Zortius', url: 'https://www.linkedin.com/company/zortius' },
   { id: 'discord', label: 'Discord', handle: 'Community', url: 'https://discord.gg/zortius' }
 ];
-const INSTAGRAM_URL = SOCIALS.find((s) => s.id === 'instagram')?.url || 'https://www.instagram.com/zortius';
-const INSTAGRAM_HANDLE = SOCIALS.find((s) => s.id === 'instagram')?.handle || '@zortius';
-const YOUTUBE_URL = SOCIALS.find((s) => s.id === 'youtube')?.url || 'https://www.youtube.com/@zortius';
+const INSTAGRAM_URL = SOCIALS.find((s) => s.id === 'instagram')?.url || 'https://www.instagram.com/zortiusofficial';
+const INSTAGRAM_HANDLE = SOCIALS.find((s) => s.id === 'instagram')?.handle || '@zortiusofficial';
+const YOUTUBE_URL = SOCIALS.find((s) => s.id === 'youtube')?.url || 'https://www.youtube.com/@zortiusofficial';
 
 const renderSafe = (val, fallback = '') => {
   if (val === null || val === undefined) return fallback;
@@ -808,8 +808,8 @@ export default function App() {
 
 
   // -------------------- EMAIL (EmailJS only) --------------------
-  const sendActualEmail = async (templateId, toEmail, customerName, orderId, statusVal, messageDetails) => {
-    // Client-side rate limit (server limits still needed on EmailJS / Resend)
+    const sendActualEmail = async (templateId, toEmail, customerName, orderId, statusVal, messageDetails) => {
+    // Rate limit
     try {
       const key = 'zortius_email_rl';
       const now = Date.now();
@@ -820,49 +820,103 @@ export default function App() {
     } catch (e) {
       if (e.message && e.message.startsWith('Too many')) throw e;
     }
-    const templateParams = {
-      to_email: toEmail,
-      name: customerName,
-      order_id: orderId || 'N/A',
-      status: statusVal ? String(statusVal).toUpperCase() : 'GENERAL',
-      time: new Date().toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }),
-      subject: (() => {
-        const oid = orderId != null ? String(orderId) : '';
-        const st = statusVal != null ? String(statusVal) : '';
-        if (oid === 'VERIFY' || oid.startsWith('VERIFY')) {
-          // Put code in subject so users see it even in notification preview / spam folder
-          const codeMatch = String(messageDetails || '').match(/\b(\d{6})\b/);
-          const code = codeMatch ? codeMatch[1] : st;
-          return `Zortius code ${code} — check inbox & junk`;
-        }
-        if (oid === 'SUPPORT-TICKET' || oid.startsWith('SUPPORT')) {
-          return `Zortius support [${oid}] ${st}`.trim();
-        }
-        if (oid === 'SUPPORT-REPLY') {
-          return `Re: your Zortius support request`;
-        }
-        if (oid === 'NEWSLETTER') {
-          return `Welcome to Zortius updates`;
-        }
-        if (oid === 'PREORDER-UPDATE') {
-          return `Zortius pre-order update`;
-        }
-        if (oid.startsWith('APPLICATION-')) {
-          return `Zortius application – ${st || 'Received'}`;
-        }
-        if (oid && oid !== 'N/A') {
-          return `Order #${oid} – Zortius`;
-        }
-        return 'Zortius — message';
-      })(),
-      message: messageDetails
-    };
 
+    const oid = orderId != null ? String(orderId) : '';
+    const st = statusVal != null ? String(statusVal) : '';
+    const name = customerName || (toEmail || '').split('@')[0] || 'there';
+    const bodyText = String(messageDetails || '').trim() || 'Message from Zortius.';
+    const time = new Date().toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+
+    let subject = 'Zortius — message';
+    if (oid === 'VERIFY' || oid.startsWith('VERIFY')) {
+      const codeMatch = bodyText.match(/\b(\d{6})\b/);
+      const code = codeMatch ? codeMatch[1] : st;
+      subject = `Zortius code ${code} — check inbox & junk`;
+    } else if (oid === 'SUPPORT-TICKET' || oid.startsWith('SUPPORT')) {
+      subject = `Zortius support [${oid}] ${st}`.trim();
+    } else if (oid === 'SUPPORT-REPLY') {
+      subject = 'Re: your Zortius support request';
+    } else if (oid === 'NEWSLETTER') {
+      subject = 'Welcome to Zortius updates';
+    } else if (oid === 'PREORDER-UPDATE') {
+      subject = 'Zortius pre-order update';
+    } else if (oid.startsWith('APPLICATION-')) {
+      subject = `Zortius application – ${st || 'Received'}`;
+    } else if (st === 'PAID' || (oid && oid !== 'N/A' && /paid|order/i.test(st + oid))) {
+      subject = `Order confirmed — ${oid || 'Zortius'}`;
+    } else if (oid && oid !== 'N/A') {
+      subject = `Order #${oid} – Zortius`;
+    }
+
+    const safeHtml = bodyText
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\n/g, '<br/>');
+
+    const html = `
+      <div style="font-family:system-ui,-apple-system,sans-serif;max-width:560px;margin:0 auto;color:#111">
+        <p style="font-size:16px">Hi ${name.replace(/</g, '')},</p>
+        <div style="font-size:15px;line-height:1.5;margin:16px 0">${safeHtml}</div>
+        <p style="font-size:12px;color:#666">Order/ref: ${oid || '—'} · Status: ${st || '—'} · ${time}</p>
+        <p style="font-size:12px;color:#666">— Zortius · <a href="https://www.zortius.com">www.zortius.com</a> · help@zortius.com</p>
+        <p style="font-size:11px;color:#999">If this is a marketing email, unsubscribe: https://www.zortius.com/unsubscribe</p>
+      </div>`;
+
+    // Prefer www (apex redirects and can drop POST)
+    const endpoints = [
+      `${window.location.origin}/api/send-email`,
+      'https://www.zortius.com/api/send-email',
+      'https://zortius.com/api/send-email'
+    ];
+    // unique
+    const urls = [...new Set(endpoints)];
+
+    let lastErr = null;
+    for (const url of urls) {
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: toEmail,
+            subject,
+            html,
+            text: bodyText + `\n\n— Zortius\nhttps://www.zortius.com`
+          })
+        });
+        if (response.ok) {
+          const data = await response.json().catch(() => ({}));
+          console.log('[Resend] sent →', toEmail, data.id || '');
+          return data;
+        }
+        lastErr = await response.text();
+      } catch (err) {
+        lastErr = err;
+      }
+    }
+    console.error('Resend send failed:', lastErr);
+    // Fallback EmailJS if still configured
     try {
-      await emailjs.send(EMAILJS_SERVICE_ID, templateId, templateParams, EMAILJS_PUBLIC_KEY);
-      console.log(`[EmailJS] Success → ${toEmail}`);
-    } catch (err) {
-      console.error('EmailJS failed:', err);
+      if (typeof emailjs !== 'undefined' && EMAILJS_SERVICE_ID && templateId) {
+        await emailjs.send(
+          EMAILJS_SERVICE_ID,
+          templateId,
+          {
+            to_email: toEmail,
+            name,
+            order_id: oid || 'N/A',
+            status: st || 'GENERAL',
+            time,
+            subject,
+            message: bodyText
+          },
+          EMAILJS_PUBLIC_KEY
+        );
+        console.log('[EmailJS fallback] →', toEmail);
+      }
+    } catch (err2) {
+      console.error('EmailJS fallback failed:', err2);
     }
   };
 
@@ -2254,7 +2308,7 @@ export default function App() {
       };
     }
     return {
-      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say 'human'to email the team.",
+      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say 'human' to email the team.",
       escalate: false
     };
   };
