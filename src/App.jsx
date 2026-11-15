@@ -35,6 +35,8 @@ const EMAIL_ORDER = 'order';
 const ADMIN_EMAIL = 'zortiusofficial@gmail.com';
 const LIMITED_ADMIN_EMAIL = 'gto.zortius@outlook.com';
 const SUPPORT_EMAIL = 'help@zortius.com';
+const API_BASE = 'https://www.zortius.com'; // apex redirects drop POSTs — always use www for APIs
+
 // Shown in cart/checkout — keep in sync with Vercel UK_SHIPPING_GBP (default 5.99)
 const UK_SHIPPING_DISPLAY = 5.99; // fallback if product has no package
 const PACKAGE_PRESETS = [
@@ -862,9 +864,8 @@ export default function App() {
 
     // Prefer www (apex redirects and can drop POST)
     const endpoints = [
-      `${window.location.origin}/api/send-email`,
-      'https://www.zortius.com/api/send-email',
-      'https://zortius.com/api/send-email'
+      `${API_BASE}/api/send-email`,
+      `${window.location.origin}/api/send-email`
     ];
     // unique
     const urls = [...new Set(endpoints)];
@@ -2066,7 +2067,7 @@ export default function App() {
 
     try {
       // Try real Stripe Checkout first
-      const response = await fetch('/api/create-checkout-session', {
+      const response = await fetch(`${API_BASE}/api/create-checkout-session`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -2086,8 +2087,8 @@ export default function App() {
           discountAmount: calculateDiscount(),
           userId: user.uid,
           shippingGbp: cartShippingGbp(),
-          successUrl: `${window.location.origin}/account/orders?paid=1&session_id={CHECKOUT_SESSION_ID}`,
-          cancelUrl: `${window.location.origin}/cart`
+          successUrl: `${API_BASE}/account/orders?paid=1&session_id={CHECKOUT_SESSION_ID}`,
+          cancelUrl: `${API_BASE}/cart`
         })
       });
 
@@ -2323,58 +2324,68 @@ export default function App() {
       escalate = reply.escalate;
     }
     if (/\b(human|agent|ticket|complaint|manager)\b/i.test(text)) escalate = true;
+    if (escalate && user?.email && !escalateEmail) setEscalateEmail(user.email);
     setChatMessages((m) => [...m, { role: 'bot', text: botText, escalate }]);
     setChatSending(false);
   };
 
-  const handleEscalateTicket = async () => {
-    const em = (escalateEmail || user?.email || '').trim();
-    const nm = (escalateName || userName || em.split('@')[0] || 'Guest').trim();
+    const handleEscalateTicket = async () => {
+    const em = (escalateEmail || user?.email || '').trim().toLowerCase();
+    const nm = (escalateName || userName || (em ? em.split('@')[0] : '') || 'Guest').trim();
     if (!em || !em.includes('@')) {
       showNotification('Enter a valid email so we can reach you.', 'error');
       return;
     }
     const lastUser = [...chatMessages].reverse().find((m) => m.role === 'user');
-    const summary = lastUser?.text || 'Support request from chatbot';
+    const summary = lastUser?.text || chatMessages.filter((m) => m.role === 'user').slice(-1)[0]?.text || 'Support request from chatbot';
+    const transcript = chatMessages.slice(-12).map((m) => `${m.role}: ${m.text}`).join('\n');
+    const adminBody =
+      `New support ticket from chatbot\n\nFrom: ${nm} <${em}>\nPage: ${typeof window !== 'undefined' ? window.location.href : ''}\n\nLatest message:\n${summary}\n\nTranscript:\n${transcript}`;
+    const userBody =
+      `Hi ${nm},\n\nWe received your support request. The Zortius team will reply by email to ${em}.\n\nYour message:\n${summary}\n\n— Zortius Support\n${SUPPORT_EMAIL}`;
+
+    let emailed = false;
+    try {
+      await sendActualEmail(EMAIL_CONTACT, SUPPORT_EMAIL, nm, 'SUPPORT-TICKET', 'OPEN', adminBody);
+      emailed = true;
+      try {
+        await sendActualEmail(EMAIL_CONTACT, em, nm, 'SUPPORT-TICKET', 'RECEIVED', userBody);
+      } catch (_) {}
+      if (ADMIN_EMAIL && ADMIN_EMAIL.toLowerCase() !== SUPPORT_EMAIL.toLowerCase()) {
+        try {
+          await sendActualEmail(EMAIL_CONTACT, ADMIN_EMAIL, nm, 'SUPPORT-TICKET', 'OPEN', adminBody);
+        } catch (_) {}
+      }
+    } catch (mailErr) {
+      console.error('ticket email', mailErr);
+      showNotification('Could not email admin. Check Resend / try Contact page.', 'error');
+    }
+
     try {
       if (db) {
         await addDoc(collection(db, 'artifacts', appId, 'supportTickets'), {
-          email: em.toLowerCase(),
+          email: em,
           name: nm,
           message: summary,
           transcript: chatMessages.slice(-12),
           status: 'Open',
           source: 'chatbot',
-          page: window.location.pathname,
+          page: typeof window !== 'undefined' ? window.location.pathname : '',
           createdAt: new Date().toISOString(),
           userId: user?.uid || null
         });
       }
-      await sendActualEmail(
-        EMAIL_CONTACT,
-        SUPPORT_EMAIL,
-        nm,
-        'SUPPORT-TICKET',
-        'OPEN',
-        `New support ticket from ${nm} <${em}>\n\nMessage:\n${summary}\n\nPage: ${window.location.pathname}`
-      );
-      await sendActualEmail(
-        EMAIL_CONTACT,
-        em,
-        nm,
-        'SUPPORT-TICKET',
-        'RECEIVED',
-        `Hi ${nm},\n\nWe received your support request and the Zortius team will reply by email.\n\nYour message:\n${summary}\n\n— Zortius Support`
-      );
+    } catch (dbErr) {
+      console.error('ticket firestore', dbErr);
+      // Email may still have worked
+    }
+
+    if (emailed) {
       setChatMessages((m) => [
         ...m,
-        { role: 'bot', text: 'Ticket created. The team has been emailed and you should get a confirmation. Check spam if needed.' }
+        { role: 'bot', text: 'Ticket sent to the team. Check your inbox (and junk) for a confirmation from us.' }
       ]);
-      showNotification('Support ticket sent to admin.');
-      setEscalateEmail('');
-    } catch (err) {
-      console.error(err);
-      showNotification('Could not create ticket. Try Contact form.', 'error');
+      showNotification('Support ticket emailed to admin.');
     }
   };
 
@@ -3590,20 +3601,35 @@ return (
 
       
       {!cookieConsent && (
-        <div className="cookie-consent-banner fixed bottom-0 inset-x-0 z-[100] border-t border-zinc-800 bg-zinc-950/95 backdrop-blur-md p-4 sm:p-5">
+        <div className="cookie-consent-banner fixed bottom-0 inset-x-0 z-[200] border-t border-zinc-700 bg-zinc-950/98 backdrop-blur-md p-4 sm:p-5 shadow-[0_-8px_30px_rgba(0,0,0,0.45)]">
           <div className="max-w-4xl mx-auto flex flex-col sm:flex-row gap-4 sm:items-center justify-between">
-            <p className="text-xs text-zinc-400 leading-relaxed">
-              We use essential cookies so the site and sign-in work. We do not use advertising trackers or session replay.
-              See <button type="button" className="text-sky-400 underline" onClick={() => navigateTo('privacy', '/privacy')}>Privacy</button>
-              {' & '}
-              <button type="button" className="text-sky-400 underline" onClick={() => navigateTo('cookies', '/cookies')}>Cookies</button>.
-            </p>
-            <div className="flex gap-2 shrink-0">
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-white">Cookies</p>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                We use <strong className="text-zinc-200">essential</strong> cookies and similar storage so sign-in, security, basket, and preferences work.
+                We do not use advertising trackers or session replay.
+                {' '}
+                <button type="button" className="text-sky-400 underline" onClick={() => navigateTo('cookies', '/cookies')}>Cookie policy</button>
+                {' · '}
+                <button type="button" className="text-sky-400 underline" onClick={() => navigateTo('privacy', '/privacy')}>Privacy</button>
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2 shrink-0">
               <button
                 type="button"
-                className="px-4 py-2 rounded-full bg-white text-zinc-950 text-xs font-bold"
+                className="px-4 py-2.5 rounded-full border border-zinc-600 text-zinc-200 text-xs font-semibold hover:bg-zinc-900"
+                onClick={() => navigateTo('cookies', '/cookies')}
+              >
+                Details
+              </button>
+              <button
+                type="button"
+                className="px-5 py-2.5 rounded-full bg-white text-zinc-950 text-xs font-bold hover:bg-zinc-200"
                 onClick={() => {
-                  try { localStorage.setItem('zortius_cookie_consent', 'essential'); } catch (_) {}
+                  try {
+                    localStorage.setItem('zortius_cookie_consent', 'essential');
+                    localStorage.setItem('zortius_cookie_consent_at', new Date().toISOString());
+                  } catch (_) {}
                   setCookieConsent('essential');
                 }}
               >
@@ -4249,6 +4275,21 @@ return (
               </section>
             )}
             
+            
+            {isAdmin && (
+              <section className="bg-zinc-900 border border-amber-500/30 rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-3">
+                <h3 className="text-sm font-mono font-bold text-amber-200 uppercase tracking-wider">Go-live checklist</h3>
+                <ul className="text-xs text-zinc-400 space-y-1.5 list-disc pl-4">
+                  <li>Stripe <strong className="text-zinc-200">live</strong> keys on Vercel (sk_live_) + webhook on www</li>
+                  <li>RESEND_API_KEY + hello@ domain verified — test code + order email</li>
+                  <li>Orders OPEN only when ready to take money</li>
+                  <li>Package shipping set on each product</li>
+                  <li>Refunds / Privacy / Terms readable; help@zortius.com receives mail</li>
+                  <li>One full test: cart → pay → order history → ship + tracking</li>
+                </ul>
+              </section>
+            )}
+
             {isAdmin && (
               <section className="bg-zinc-900 border border-emerald-500/20 rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-4">
                 <h3 className="text-sm font-mono font-bold text-zinc-100 uppercase tracking-wider">Orders management</h3>
@@ -4891,17 +4932,29 @@ return (
               {activeTab === 'cookies' && (
                 <div className="mt-4 space-y-4 text-zinc-300 leading-relaxed text-sm max-w-2xl">
                   <p className="text-xs text-zinc-500">Last updated: November 2026</p>
-                  <p><strong className="text-white">What we use</strong><br />
-                  We use essential cookies and similar storage so the website works: keeping you signed in, remembering basic preferences (for example cookie consent), security checks, and basket contents on your device.</p>
+                  <p><strong className="text-white">Essential cookies / storage</strong><br />
+                  Required for the site to work: sign-in session, security checks, basket, and your cookie consent choice.</p>
                   <p><strong className="text-white">What we do not use</strong><br />
-                  We do not use advertising cookies, social-media tracking pixels for ads, or session-replay tools that record your browsing or keystrokes.</p>
+                  No advertising cookies, no ad pixels, no session-replay or keystroke recording.</p>
                   <p><strong className="text-white">Your choice</strong><br />
-                  Essential storage is required for login and core features. You can clear site data in your browser settings at any time; you may need to sign in again.</p>
-                  <p><strong className="text-white">More detail</strong><br />
-                  See our Privacy Policy. Questions: {SUPPORT_EMAIL}</p>
+                  Tap Accept essential on the banner, or clear site data in your browser anytime. Questions: {SUPPORT_EMAIL}</p>
+                  <button
+                    type="button"
+                    className="text-sky-400 text-xs font-semibold underline"
+                    onClick={() => {
+                      try {
+                        localStorage.removeItem('zortius_cookie_consent');
+                        localStorage.removeItem('zortius_cookie_consent_at');
+                      } catch (_) {}
+                      setCookieConsent('');
+                      showNotification('Cookie preference cleared — banner will show again.');
+                    }}
+                  >
+                    Reset cookie preference (show banner again)
+                  </button>
                 </div>
               )}
-              {activeTab === 'refunds' && (
+{activeTab === 'refunds' && (
                 <div className="mt-4 space-y-4 text-zinc-300 leading-relaxed text-sm max-w-2xl">
                   <p className="text-xs text-zinc-500">Last updated: November 2026 · UK only</p>
                   <p><strong className="text-white">Shipping</strong><br />
@@ -6356,7 +6409,15 @@ return (
                   onChange={(e) => setShipFullName(e.target.value)}
                   className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2.5 text-sm text-white"
                 />
-                <p className="text-[11px] text-zinc-500">Refunds: see policy. You will be redirected to pay.</p>
+                <p className="text-[11px] text-zinc-500 leading-relaxed">
+                  UK only. Shipping shown above. By paying you agree to our{' '}
+                  <button type="button" className="text-sky-400 underline" onClick={() => { setCheckoutModalOpen(false); navigateTo('terms', '/terms'); }}>Terms</button>
+                  {' · '}
+                  <button type="button" className="text-sky-400 underline" onClick={() => { setCheckoutModalOpen(false); navigateTo('refunds', '/refunds'); }}>Refunds</button>
+                  {' · '}
+                  <button type="button" className="text-sky-400 underline" onClick={() => { setCheckoutModalOpen(false); navigateTo('privacy', '/privacy'); }}>Privacy</button>.
+                  Card details are entered on Stripe — not stored on this site.
+                </p>
                 <button type="submit" disabled={isProcessingPayment} className="w-full py-3.5 rounded-xl bg-sky-400 hover:bg-sky-300 text-zinc-950 font-bold text-sm disabled:opacity-50">
                   {isProcessingPayment ? 'Redirecting…' : 'Continue to payment'}
                 </button>

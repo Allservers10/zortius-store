@@ -12,7 +12,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
 const DEFAULT_SHIPPING = Number(process.env.UK_SHIPPING_GBP ?? '5.99');
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', process.env.CHECKOUT_ORIGIN || 'https://zortius.com');
+  res.setHeader('Access-Control-Allow-Origin', process.env.CHECKOUT_ORIGIN || 'https://www.zortius.com');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
@@ -96,7 +96,7 @@ export default async function handler(req, res) {
       });
     }
 
-    const origin = process.env.CHECKOUT_ORIGIN || 'https://zortius.com';
+    const origin = process.env.CHECKOUT_ORIGIN || 'https://www.zortius.com';
 
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',

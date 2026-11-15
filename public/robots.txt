@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://zortius.vercel.app/sitemap.xml
+Sitemap: https://www.zortius.com/sitemap.xml
