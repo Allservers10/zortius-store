@@ -25,15 +25,12 @@ import {
   getFirestore, doc, setDoc, collection, addDoc, updateDoc,
   deleteDoc, onSnapshot, query, where
 } from 'firebase/firestore';
-import emailjs from '@emailjs/browser';
-
 // =========================================================================
 // CONFIG
 // =========================================================================
-const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_0606epp';
-const EMAILJS_CONTACT_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_CONTACT_TEMPLATE || 'template_h7ffmct';
-const EMAILJS_ORDER_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_ORDER_TEMPLATE || 'template_pfqrr0l';
-const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'ce23vL3ytn68UIxsf';
+// Email via Resend (/api/send-email)
+const EMAIL_CONTACT = 'contact';
+const EMAIL_ORDER = 'order';
 
 const ADMIN_EMAIL = 'zortiusofficial@gmail.com';
 const LIMITED_ADMIN_EMAIL = 'gto.zortius@outlook.com';
@@ -55,16 +52,16 @@ const COMPANY_POSTAL = 'Zortius, United Kingdom'; // replace with full postal ad
 const COMPANY_LEGAL_NAME = 'Zortius';
 // Edit these to your real profiles
 const SOCIALS = [
-  { id: 'instagram', label: 'Instagram', handle: '@zortius', url: 'https://www.instagram.com/zortiusofficial' },
-  { id: 'youtube', label: 'YouTube', handle: 'Zortius', url: 'https://www.youtube.com/@zortiusofficial' },
+  { id: 'instagram', label: 'Instagram', handle: '@zortius', url: 'https://www.instagram.com/zortius' },
+  { id: 'youtube', label: 'YouTube', handle: 'Zortius', url: 'https://www.youtube.com/@zortius' },
   { id: 'x', label: 'X', handle: '@zortius', url: 'https://x.com/zortius' },
-  { id: 'tiktok', label: 'TikTok', handle: '@zortius', url: 'https://www.tiktok.com/@zortiusofficial' },
+  { id: 'tiktok', label: 'TikTok', handle: '@zortius', url: 'https://www.tiktok.com/@zortius' },
   { id: 'linkedin', label: 'LinkedIn', handle: 'Zortius', url: 'https://www.linkedin.com/company/zortius' },
   { id: 'discord', label: 'Discord', handle: 'Community', url: 'https://discord.gg/zortius' }
 ];
-const INSTAGRAM_URL = SOCIALS.find((s) => s.id === 'instagram')?.url || 'https://www.instagram.com/zortiusofficial';
-const INSTAGRAM_HANDLE = SOCIALS.find((s) => s.id === 'instagram')?.handle || '@zortiusofficial';
-const YOUTUBE_URL = SOCIALS.find((s) => s.id === 'youtube')?.url || 'https://www.youtube.com/@zortiusofficial';
+const INSTAGRAM_URL = SOCIALS.find((s) => s.id === 'instagram')?.url || 'https://www.instagram.com/zortius';
+const INSTAGRAM_HANDLE = SOCIALS.find((s) => s.id === 'instagram')?.handle || '@zortius';
+const YOUTUBE_URL = SOCIALS.find((s) => s.id === 'youtube')?.url || 'https://www.youtube.com/@zortius';
 
 const renderSafe = (val, fallback = '') => {
   if (val === null || val === undefined) return fallback;
@@ -755,7 +752,7 @@ export default function App() {
         }
       } catch (_) {}
       await sendActualEmail(
-        EMAILJS_CONTACT_TEMPLATE_ID,
+        EMAIL_CONTACT,
         em,
         em.split('@')[0],
         'PREORDER',
@@ -789,7 +786,7 @@ export default function App() {
         });
       }
       await sendActualEmail(
-        EMAILJS_CONTACT_TEMPLATE_ID,
+        EMAIL_CONTACT,
         em,
         em.split('@')[0],
         'WAITLIST',
@@ -807,7 +804,7 @@ export default function App() {
   };
 
 
-  // -------------------- EMAIL (EmailJS only) --------------------
+  // -------------------- EMAIL (Resend /api/send-email) --------------------
     const sendActualEmail = async (templateId, toEmail, customerName, orderId, statusVal, messageDetails) => {
     // Rate limit
     try {
@@ -896,28 +893,7 @@ export default function App() {
       }
     }
     console.error('Resend send failed:', lastErr);
-    // Fallback EmailJS if still configured
-    try {
-      if (typeof emailjs !== 'undefined' && EMAILJS_SERVICE_ID && templateId) {
-        await emailjs.send(
-          EMAILJS_SERVICE_ID,
-          templateId,
-          {
-            to_email: toEmail,
-            name,
-            order_id: oid || 'N/A',
-            status: st || 'GENERAL',
-            time,
-            subject,
-            message: bodyText
-          },
-          EMAILJS_PUBLIC_KEY
-        );
-        console.log('[EmailJS fallback] →', toEmail);
-      }
-    } catch (err2) {
-      console.error('EmailJS fallback failed:', err2);
-    }
+    throw lastErr instanceof Error ? lastErr : new Error(String(lastErr || 'Email send failed'));
   };
 
   // -------------------- CONTACT --------------------
@@ -929,7 +905,7 @@ export default function App() {
     }
     setIsSendingContact(true);
     const inquiryMessage = `Client Name: ${contactName}\nClient Email: ${contactEmail}\n\nMessage:\n${contactInquiry}`;
-    await sendActualEmail(EMAILJS_CONTACT_TEMPLATE_ID, contactEmail, contactName, 'SUPPORT-INQUIRY', 'RECEIVED', inquiryMessage);
+    await sendActualEmail(EMAIL_CONTACT, contactEmail, contactName, 'SUPPORT-INQUIRY', 'RECEIVED', inquiryMessage);
     setIsSendingContact(false);
     setContactModalOpen(false);
     setContactInquiry('');
@@ -976,7 +952,7 @@ export default function App() {
 
   const sendVerifyCodeEmail = async (toEmail, code, name) => {
     await sendActualEmail(
-      EMAILJS_CONTACT_TEMPLATE_ID,
+      EMAIL_CONTACT,
       toEmail,
       name || toEmail.split('@')[0],
       'VERIFY',
@@ -1077,7 +1053,7 @@ export default function App() {
     if (!em || !em.includes('@')) return;
     const unsubUrl = `https://zortius.com/unsubscribe?email=${encodeURIComponent(em.toLowerCase())}`;
     await sendActualEmail(
-      EMAILJS_CONTACT_TEMPLATE_ID,
+      EMAIL_CONTACT,
       em,
       order?.name || em.split('@')[0],
       'ORDER',
@@ -1103,7 +1079,7 @@ export default function App() {
         try {
           const trackLine = tracking ? `\nTracking: ${tracking}` : '';
           await sendActualEmail(
-            EMAILJS_ORDER_TEMPLATE_ID || EMAILJS_CONTACT_TEMPLATE_ID,
+            EMAIL_ORDER,
             em,
             order.customerName || em.split('@')[0],
             order.id || order.docId,
@@ -1164,7 +1140,7 @@ export default function App() {
       }
       const unsubUrl = `https://zortius.com/unsubscribe?email=${encodeURIComponent(em)}`;
       await sendActualEmail(
-        EMAILJS_CONTACT_TEMPLATE_ID,
+        EMAIL_CONTACT,
         em,
         em.split('@')[0],
         'NEWSLETTER',
@@ -1217,7 +1193,7 @@ export default function App() {
           const unsubUrl = `https://zortius.com/unsubscribe?email=${encodeURIComponent(em)}`;
           try {
             await sendActualEmail(
-              EMAILJS_CONTACT_TEMPLATE_ID,
+              EMAIL_CONTACT,
               em,
               em.split('@')[0],
               'NEWSLETTER',
@@ -1333,7 +1309,7 @@ export default function App() {
       if (!row.email) continue;
       try {
         await sendActualEmail(
-          EMAILJS_CONTACT_TEMPLATE_ID,
+          EMAIL_CONTACT,
           row.email,
           row.email.split('@')[0],
           'PREORDER-UPDATE',
@@ -1583,7 +1559,7 @@ export default function App() {
     }
     try {
       await sendActualEmail(
-        EMAILJS_CONTACT_TEMPLATE_ID,
+        EMAIL_CONTACT,
         ticket.email,
         ticket.name || 'Customer',
         'SUPPORT-REPLY',
@@ -2199,7 +2175,7 @@ export default function App() {
         .map((i) => `- ${i.name} (Qty: ${i.qty}) [Color: ${i.selectedColor || 'Standard'}] - £${(i.price * i.qty).toFixed(2)}`)
         .join('\n')}`;
 
-      await sendActualEmail(EMAILJS_ORDER_TEMPLATE_ID, user.email, userName, orderId, 'Processing', receiptMessage);
+      await sendActualEmail(EMAIL_ORDER, user.email, userName, orderId, 'Processing', receiptMessage);
 
       setCheckoutModalOpen(false);
       showNotification(`Order ${orderId} created. (Demo mode – connect Stripe API for live payments)`, 'info');
@@ -2375,7 +2351,7 @@ export default function App() {
         });
       }
       await sendActualEmail(
-        EMAILJS_CONTACT_TEMPLATE_ID,
+        EMAIL_CONTACT,
         SUPPORT_EMAIL,
         nm,
         'SUPPORT-TICKET',
@@ -2383,7 +2359,7 @@ export default function App() {
         `New support ticket from ${nm} <${em}>\n\nMessage:\n${summary}\n\nPage: ${window.location.pathname}`
       );
       await sendActualEmail(
-        EMAILJS_CONTACT_TEMPLATE_ID,
+        EMAIL_CONTACT,
         em,
         nm,
         'SUPPORT-TICKET',
@@ -2802,7 +2778,7 @@ export default function App() {
       const preliminaryMark = await getApplicationMark(submission);
       const ref = await addDoc(collection(db, 'artifacts', appId, 'applicationSubmissions'), { ...submission, preliminaryMark });
       await sendActualEmail(
-        EMAILJS_CONTACT_TEMPLATE_ID,
+        EMAIL_CONTACT,
         user.email,
         submission.applicantName,
         `APPLICATION-${ref.id}`,
@@ -2839,7 +2815,7 @@ export default function App() {
           ? `Hi ${submission.applicantName || 'there'},\n\nThank you for applying for ${submission.applicationTitle} at Zortius. Your application has been accepted. We will contact you further with the next steps.\n\nKind regards,\nZortius Team`
           : `Hi ${submission.applicantName || 'there'},\n\nThank you for taking the time to apply for ${submission.applicationTitle} at Zortius. Unfortunately, we will not be progressing your application at this time. We appreciate your interest and wish you the best.\n\nKind regards,\nZortius Team`;
       await sendActualEmail(
-        EMAILJS_CONTACT_TEMPLATE_ID,
+        EMAIL_CONTACT,
         toEmail,
         submission.applicantName || 'Applicant',
         `APPLICATION-${submission.id}`,
@@ -3086,7 +3062,7 @@ export default function App() {
       : 'Order item details logged in portal.';
 
     const statusMsg = `NOTICE OF FULFILLMENT UPDATE:\nYour ZORTIUS Order #${orderCode} status has been updated to: ${newStatus.toUpperCase()}.\n\nSHIPPING ADDRESS:\n${shippingAddr || 'On file'}\n\nORDER CONTENTS:\n${formattedItems}\n\nTrack your order history and live updates anytime in your ZORTIUS profile dashboard.`;
-    await sendActualEmail(EMAILJS_ORDER_TEMPLATE_ID, customerEmail, customerName || 'Valued Customer', orderCode, newStatus, statusMsg);
+    await sendActualEmail(EMAIL_ORDER, customerEmail, customerName || 'Valued Customer', orderCode, newStatus, statusMsg);
     showNotification(`Order #${orderCode} status updated to '${newStatus}' & email dispatched.`);
   };
 
@@ -3218,7 +3194,7 @@ export default function App() {
 
         try {
           await sendActualEmail(
-            EMAILJS_ORDER_TEMPLATE_ID || EMAILJS_CONTACT_TEMPLATE_ID,
+            EMAIL_ORDER,
             pending.customerEmail,
             pending.customerName || String(pending.customerEmail).split('@')[0],
             pending.id || orderDocId,
@@ -3593,7 +3569,7 @@ return (
                 <input value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Ask about pre-orders, products, careers…" className="flex-1 bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-cyan-500" />
                 <button type="submit" disabled={chatSending} className="px-4 py-2 rounded-xl bg-white text-zinc-950 font-bold text-xs disabled:opacity-50">Send</button>
               </div>
-              <p className="text-[10px] text-zinc-500">Say “human” to open a ticket · EmailJS notifies admin</p>
+              <p className="text-[10px] text-zinc-500">Say “human” to open a ticket · admin is notified by email</p>
             </form>
           </div>
         </div>
