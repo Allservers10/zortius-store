@@ -291,6 +291,7 @@ export default function App() {
   // Store control (admin)
   const [storeSettings, setStoreSettings] = useState({
     takingOrders: false,
+    hiringOpen: false,
     announcement: 'Pre-order interest is open. Full checkout launches soon.',
     statusLabel: 'Pre-order mode'
   });
@@ -3865,6 +3866,37 @@ return (
                 </div>
               </div>
             </div>
+
+            {/* GLOBAL HIRING TOGGLE — site-wide */}
+            <section className="bg-zinc-900 border-2 border-emerald-500/40 rounded-3xl p-6 sm:p-8 space-y-4">
+              <div>
+                <h3 className="text-lg font-black text-white">Careers · We&apos;re hiring</h3>
+                <p className="text-xs text-zinc-400 mt-1">
+                  This controls the home page and /careers for <strong className="text-zinc-200">every visitor</strong> (not only admin).
+                  Open = show &quot;We&apos;re hiring&quot; globally. Closed = hide it.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3 items-center">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const next = !storeSettings.hiringOpen;
+                    await saveStoreSettings({ hiringOpen: next });
+                    showNotification(next ? 'Hiring OPEN — visible on home for everyone' : 'Hiring CLOSED — hidden site-wide');
+                  }}
+                  className={`px-6 py-3 rounded-2xl text-sm font-black border-2 ${
+                    storeSettings.hiringOpen
+                      ? 'bg-emerald-500 text-zinc-950 border-emerald-400'
+                      : 'bg-zinc-950 text-zinc-300 border-zinc-600'
+                  }`}
+                >
+                  {storeSettings.hiringOpen ? 'HIRING: OPEN' : 'HIRING: CLOSED'}
+                </button>
+                <span className="text-xs text-zinc-500 font-mono">
+                  Current: {storeSettings.hiringOpen ? 'OPEN (public sees banner)' : 'CLOSED'}
+                </span>
+              </div>
+            </section>
 
             {/* Applications Studio */}
             <section className="bg-zinc-900 border border-zinc-700 rounded-3xl p-6 sm:p-8 space-y-7">
