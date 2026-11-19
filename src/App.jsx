@@ -4016,9 +4016,12 @@ return (
               <div className="space-y-3">
                 <h4 className="font-bold text-white">Published applications</h4>
                 {jobApplications.length === 0 ? (
-                  <p className="text-sm text-zinc-500">No applications published yet.</p>
+                  <div id="open-roles">
+                    <p className="text-sm text-zinc-500">We&apos;re not hiring right now. When roles open, they show here for anyone to apply.</p>
+                  </div>
                 ) : (
-                  jobApplications.map((application) => (
+                  <div id="open-roles" className="space-y-3">
+                  {jobApplications.map((application) => (
                     <div key={application.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl bg-zinc-950 border border-zinc-800 p-4">
                       <div>
                         <p className="font-bold text-white">{application.title}</p>
@@ -4058,7 +4061,8 @@ return (
                         </button>
                       </div>
                     </div>
-                  ))
+                  ))}
+                  </div>
                 )}
               </div>
 
@@ -4858,15 +4862,39 @@ return (
             <section className="relative overflow-hidden rounded-3xl border border-zinc-700 bg-gradient-to-br from-slate-900 via-slate-900 to-cyan-950/50 p-8 sm:p-12">
               <div className="absolute -right-12 -top-12 w-64 h-64 rounded-full border border-cyan-400/10" />
               <div className="relative max-w-3xl">
-                <span className="inline-flex items-center gap-2 rounded-full border border-zinc-600 bg-zinc-800 px-3 py-1.5 text-xs font-bold text-zinc-200">
-                  <Users className="w-4 h-4" /> JOIN THE TEAM
-                </span>
+                {jobApplications.length > 0 ? (
+                  <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-3 py-1.5 text-xs font-bold text-emerald-300">
+                    <Users className="w-4 h-4" /> WE&apos;RE HIRING · {jobApplications.length} open role{jobApplications.length === 1 ? '' : 's'}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-2 rounded-full border border-zinc-600 bg-zinc-800 px-3 py-1.5 text-xs font-bold text-zinc-300">
+                    <Users className="w-4 h-4" /> CAREERS
+                  </span>
+                )}
                 <h1 className="mt-5 text-4xl sm:text-5xl font-black tracking-tight text-white">
-                  Build what's next at <span className="text-zinc-100">Zortius.</span>
+                  {jobApplications.length > 0 ? (
+                    <>We&apos;re hiring at <span className="text-cyan-300">Zortius.</span></>
+                  ) : (
+                    <>Careers at <span className="text-zinc-100">Zortius.</span></>
+                  )}
                 </h1>
                 <p className="mt-4 max-w-2xl text-sm sm:text-base leading-relaxed text-zinc-300">
-                  Explore open roles, tell us what you bring to the team, and track the application process. Every application is reviewed by a member of our team.
+                  {jobApplications.length > 0
+                    ? 'Open roles are listed below. Apply straight on this site — no separate portal. Every application is reviewed by our team.'
+                    : 'No open roles right now. When we hire, roles appear here and anyone can apply on the website.'}
                 </p>
+                {jobApplications.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const el = document.getElementById('open-roles');
+                      if (el) el.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="mt-6 px-5 py-2.5 rounded-full bg-white text-zinc-950 text-sm font-bold"
+                  >
+                    View open roles
+                  </button>
+                )}
               </div>
             </section>
 
@@ -5206,6 +5234,17 @@ return (
         {/* ========== HOME (Apple-style) ========== */}
         {activeTab === 'home' && (
           <div className="space-y-16 sm:space-y-24 -mt-2">
+            {jobApplications.length > 0 && (
+              <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 sm:px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-bold text-emerald-300">We&apos;re hiring</p>
+                  <p className="text-xs text-zinc-400">{jobApplications.length} open role{jobApplications.length === 1 ? '' : 's'} — apply on the website.</p>
+                </div>
+                <button type="button" onClick={() => navigateTo('applications', '/careers')} className="px-4 py-2 rounded-full bg-white text-zinc-950 text-xs font-bold shrink-0">
+                  View careers
+                </button>
+              </div>
+            )}
             {/* Hero — Apple-style featured pre-orders */}
             <section className="space-y-6">
               {(() => {
