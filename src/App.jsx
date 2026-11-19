@@ -221,6 +221,33 @@ export default function App() {
   const [escalateEmail, setEscalateEmail] = useState('');
   const [escalateName, setEscalateName] = useState('');
 
+  // BLE devices (profiles from admin / Firestore — one UI for all products)
+  const [deviceProfiles, setDeviceProfiles] = useState([
+    {
+      id: 'deskbuddy',
+      name: 'Desk Buddy',
+      productHint: 'ESP32 desk companion',
+      serviceUUID: '0000fff0-0000-1000-8000-00805f9b34fb',
+      writeUUID: '0000fff1-0000-1000-8000-00805f9b34fb',
+      pairPrefix: 'ZORT',
+      controls: [
+        { id: 'led_on', label: 'LED on', cmd: 'LED:1' },
+        { id: 'led_off', label: 'LED off', cmd: 'LED:0' },
+        { id: 'ping', label: 'Ping', cmd: 'PING' }
+      ]
+    }
+  ]);
+  const [selectedDeviceProfileId, setSelectedDeviceProfileId] = useState('deskbuddy');
+  const [devicePairCode, setDevicePairCode] = useState('');
+  const [bleDevice, setBleDevice] = useState(null);
+  const [bleChar, setBleChar] = useState(null);
+  const [bleStatus, setBleStatus] = useState('disconnected');
+  const [bleLog, setBleLog] = useState([]);
+  const [newDevName, setNewDevName] = useState('');
+  const [newDevService, setNewDevService] = useState('0000fff0-0000-1000-8000-00805f9b34fb');
+  const [newDevWrite, setNewDevWrite] = useState('0000fff1-0000-1000-8000-00805f9b34fb');
+
+
   // Admin discount form
   const [discCode, setDiscCode] = useState('');
   const [discVal, setDiscVal] = useState('');
@@ -441,6 +468,16 @@ export default function App() {
     return () => unsub();
   }, []);
 
+
+  useEffect(() => {
+    if (!db) return;
+    const unsub = onSnapshot(collection(db, 'artifacts', appId, 'deviceProfiles'), (snap) => {
+      const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      if (rows.length) setDeviceProfiles(rows);
+    });
+    return () => unsub();
+  }, [db]);
+
   // Orders: admin sees all; customers query by userId + email (rules-friendly)
   useEffect(() => {
     if (!db || !user) {
@@ -637,6 +674,7 @@ export default function App() {
     if (clean === '/' || clean === '/home') return 'home';
     if (clean === '/admin') return 'admin';
     if (clean === '/shop' || clean.startsWith('/shop/')) return 'shop';
+    if (clean === '/devices' || clean.startsWith('/devices/')) return 'devices';
     if (clean === '/cart') return 'cart';
     if (clean === '/account/orders') return 'orders';
     if (clean === '/order-success') return 'order-success';
@@ -2329,7 +2367,121 @@ export default function App() {
     setChatSending(false);
   };
 
-    const handleEscalateTicket = async () => {
+  
+  const appendBleLog = (line) => setBleLog((L) => [`${new Date().toLocaleTimeString()} · ${line}`, ...L].slice(0, 40));
+
+  const connectBleDevice = async () => {
+    const profile = deviceProfiles.find((p) => p.id === selectedDeviceProfileId) || deviceProfiles[0];
+    if (!profile) {
+      showNotification('No device profile selected', 'error');
+      return;
+    }
+    if (!navigator.bluetooth) {
+      showNotification('Web Bluetooth needs Chrome/Edge on HTTPS (not all phones).', 'error');
+      return;
+    }
+    const code = (devicePairCode || '').trim().toUpperCase();
+    if (profile.requirePairCode !== false && code.length < 4) {
+      showNotification('Enter the pair code from your device / packaging.', 'error');
+      return;
+    }
+    try {
+      setBleStatus('connecting');
+      appendBleLog(`Requesting ${profile.name}…`);
+      const optionalServices = [profile.serviceUUID].filter(Boolean);
+      const device = await navigator.bluetooth.requestDevice({
+        acceptAllDevices: true,
+        optionalServices
+      });
+      device.addEventListener('gattserverdisconnected', () => {
+        setBleStatus('disconnected');
+        setBleChar(null);
+        appendBleLog('Disconnected');
+      });
+      const server = await device.gatt.connect();
+      const service = await server.getPrimaryService(profile.serviceUUID);
+      const characteristic = await service.getCharacteristic(profile.writeUUID);
+      setBleDevice(device);
+      setBleChar(characteristic);
+      setBleStatus('connected');
+      appendBleLog(`Connected · ${device.name || profile.name}`);
+      // Optional pair handshake
+      if (code) {
+        const pairCmd = `PAIR:${code}`;
+        const enc = new TextEncoder().encode(pairCmd);
+        await characteristic.writeValue(enc);
+        appendBleLog(`Sent ${pairCmd}`);
+      }
+      showNotification('Device connected');
+    } catch (err) {
+      console.error(err);
+      setBleStatus('disconnected');
+      appendBleLog(err?.message || 'Connect failed');
+      showNotification(err?.message || 'Bluetooth connect failed', 'error');
+    }
+  };
+
+  const sendBleCommand = async (cmd) => {
+    if (!bleChar) {
+      showNotification('Connect a device first', 'error');
+      return;
+    }
+    try {
+      const enc = new TextEncoder().encode(String(cmd));
+      await bleChar.writeValue(enc);
+      appendBleLog(`→ ${cmd}`);
+    } catch (err) {
+      console.error(err);
+      showNotification('Command failed', 'error');
+      appendBleLog(err?.message || 'Write failed');
+    }
+  };
+
+  const disconnectBle = () => {
+    try {
+      if (bleDevice?.gatt?.connected) bleDevice.gatt.disconnect();
+    } catch (_) {}
+    setBleDevice(null);
+    setBleChar(null);
+    setBleStatus('disconnected');
+    appendBleLog('Disconnected by user');
+  };
+
+  const saveDeviceProfile = async () => {
+    if (!isAdmin || !newDevName.trim()) {
+      showNotification('Name required', 'error');
+      return;
+    }
+    const id = newDevName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40);
+    const entry = {
+      id,
+      name: newDevName.trim(),
+      serviceUUID: (newDevService || '').trim(),
+      writeUUID: (newDevWrite || '').trim(),
+      requirePairCode: true,
+      controls: [
+        { id: 'led_on', label: 'LED on', cmd: 'LED:1' },
+        { id: 'led_off', label: 'LED off', cmd: 'LED:0' },
+        { id: 'ping', label: 'Ping', cmd: 'PING' }
+      ],
+      updatedAt: new Date().toISOString()
+    };
+    try {
+      if (db) await setDoc(doc(db, 'artifacts', appId, 'deviceProfiles', id), entry, { merge: true });
+      setDeviceProfiles((list) => {
+        const rest = list.filter((x) => x.id !== id);
+        return [...rest, entry];
+      });
+      setNewDevName('');
+      showNotification('Device profile saved');
+    } catch (err) {
+      console.error(err);
+      showNotification('Could not save profile', 'error');
+    }
+  };
+
+
+  const handleEscalateTicket = async () => {
     const em = (escalateEmail || user?.email || '').trim().toLowerCase();
     const nm = (escalateName || userName || (em ? em.split('@')[0] : '') || 'Guest').trim();
     if (!em || !em.includes('@')) {
@@ -4276,6 +4428,29 @@ return (
             )}
             
             
+            
+            {isAdmin && (
+              <section className="bg-zinc-900 border border-violet-500/25 rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-4">
+                <h3 className="text-sm font-mono font-bold text-zinc-100 uppercase tracking-wider">Device profiles (Bluetooth)</h3>
+                <p className="text-xs text-zinc-500">
+                  One shared /devices page. Add a profile per product type (ESP32 Desk Buddy, etc.).
+                  Firmware should accept text commands on the write characteristic (e.g. PAIR:CODE, LED:1).
+                  You do <strong className="text-zinc-300">not</strong> need new website code for each unit — only a profile + matching firmware.
+                </p>
+                <div className="grid sm:grid-cols-2 gap-2">
+                  <input value={newDevName} onChange={(e) => setNewDevName(e.target.value)} placeholder="Name e.g. Desk Buddy" className="bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-xs text-white" />
+                  <input value={newDevService} onChange={(e) => setNewDevService(e.target.value)} placeholder="Service UUID" className="bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-xs text-white font-mono" />
+                  <input value={newDevWrite} onChange={(e) => setNewDevWrite(e.target.value)} placeholder="Write characteristic UUID" className="bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-xs text-white font-mono sm:col-span-2" />
+                </div>
+                <button type="button" onClick={saveDeviceProfile} className="px-4 py-2 rounded-xl bg-white text-zinc-950 text-xs font-bold">Save profile</button>
+                <ul className="text-xs text-zinc-400 space-y-1">
+                  {deviceProfiles.map((p) => (
+                    <li key={p.id} className="font-mono text-[11px]">{p.name} · {p.id} · svc {String(p.serviceUUID || '').slice(0, 8)}…</li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
             {isAdmin && (
               <section className="bg-zinc-900 border border-amber-500/30 rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-3">
                 <h3 className="text-sm font-mono font-bold text-amber-200 uppercase tracking-wider">Go-live checklist</h3>
@@ -5913,6 +6088,7 @@ return (
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <button type="button" onClick={() => navigateTo('home', '/')} className="px-6 py-3 rounded-full bg-sky-400 text-zinc-950 text-sm font-semibold">Home</button>
               <button type="button" onClick={() => navigateTo('shop', '/shop')} className="px-6 py-3 rounded-full border border-zinc-700 text-white text-sm font-semibold">Shop</button>
+              <button type="button" onClick={() => navigateTo('devices', '/devices')} className="px-6 py-3 rounded-full border border-zinc-700 text-white text-sm font-semibold">Devices</button>
               <button type="button" onClick={() => navigateTo('contact', '/contact')} className="px-6 py-3 rounded-full border border-zinc-700 text-white text-sm font-semibold">Contact</button>
             </div>
           </div>
@@ -6190,6 +6366,84 @@ return (
 
         {/* ORDERS HISTORY (customer) */}
         
+        
+        {activeTab === 'devices' && (
+          <div className="max-w-2xl mx-auto space-y-6">
+            <div>
+              <h1 className="text-3xl font-semibold text-white tracking-tight">Devices</h1>
+              <p className="text-sm text-zinc-400 mt-2">
+                Connect Zortius hardware over Bluetooth (e.g. ESP32 Desk Buddy). Use Chrome or Edge on HTTPS.
+                Pair code is on the device or in the box — one control app for every product profile.
+              </p>
+            </div>
+            {typeof navigator !== "undefined" && !navigator.bluetooth && (
+              <p className="text-xs text-amber-300/90 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3">
+                Web Bluetooth is not available in this browser. Try Chrome/Edge on desktop, or a supported Android Chrome build.
+              </p>
+            )}
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-5 space-y-4">
+              <label className="block text-xs text-zinc-500">Device</label>
+              <select
+                value={selectedDeviceProfileId}
+                onChange={(e) => setSelectedDeviceProfileId(e.target.value)}
+                className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2.5 text-sm text-white"
+              >
+                {deviceProfiles.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}{p.productHint ? ` — ${p.productHint}` : ''}</option>
+                ))}
+              </select>
+              <label className="block text-xs text-zinc-500">Pair code</label>
+              <input
+                value={devicePairCode}
+                onChange={(e) => setDevicePairCode(e.target.value)}
+                placeholder="e.g. ZORT-AB12"
+                className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2.5 text-sm text-white uppercase"
+              />
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={connectBleDevice}
+                  disabled={bleStatus === 'connecting'}
+                  className="px-5 py-2.5 rounded-full bg-sky-400 text-zinc-950 text-sm font-bold disabled:opacity-50"
+                >
+                  {bleStatus === 'connecting' ? 'Connecting…' : bleStatus === 'connected' ? 'Reconnect' : 'Connect Bluetooth'}
+                </button>
+                {bleStatus === 'connected' && (
+                  <button type="button" onClick={disconnectBle} className="px-5 py-2.5 rounded-full border border-zinc-600 text-sm text-zinc-200">
+                    Disconnect
+                  </button>
+                )}
+              </div>
+              <p className="text-[11px] text-zinc-500">Status: <span className="text-zinc-300 font-mono">{bleStatus}</span>
+                {bleDevice?.name ? ` · ${bleDevice.name}` : ''}
+              </p>
+            </div>
+            {bleStatus === 'connected' && (
+              <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-5 space-y-3">
+                <h2 className="text-sm font-bold text-white">Controls</h2>
+                <div className="flex flex-wrap gap-2">
+                  {(deviceProfiles.find((p) => p.id === selectedDeviceProfileId)?.controls || []).map((ctrl) => (
+                    <button
+                      key={ctrl.id}
+                      type="button"
+                      onClick={() => sendBleCommand(ctrl.cmd)}
+                      className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-white"
+                    >
+                      {ctrl.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-950/50 p-4">
+              <p className="text-[10px] font-bold text-zinc-500 uppercase mb-2">Log</p>
+              <div className="font-mono text-[11px] text-zinc-400 space-y-1 max-h-40 overflow-y-auto">
+                {bleLog.length === 0 ? <p>No activity yet.</p> : bleLog.map((line, i) => <p key={i}>{line}</p>)}
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'order-success' && orderSuccess && (
           <div className="max-w-lg mx-auto py-12 sm:py-16 text-center space-y-8">
             <div className="mx-auto w-24 h-24 rounded-full bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center animate-pulse">
