@@ -1081,6 +1081,22 @@ export default function App() {
   };
 
 
+  const toggleJobRoleOpen = async (application) => {
+    if (!db || !isAdmin || !application?.id) return;
+    const next = application.roleOpen === false;
+    try {
+      await setDoc(
+        doc(db, 'artifacts', appId, 'jobApplications', application.id),
+        { roleOpen: next, updatedAt: new Date().toISOString() },
+        { merge: true }
+      );
+      showNotification(next ? `"${application.title}" is OPEN` : `"${application.title}" is CLOSED`);
+    } catch (err) {
+      console.error(err);
+      showNotification('Could not update role', 'error');
+    }
+  };
+
   const saveStoreSettings = async (patch) => {
     if (!db || !isAdmin) return;
     const next = { ...storeSettings, ...patch, updatedAt: new Date().toISOString() };
@@ -1986,6 +2002,11 @@ export default function App() {
 
   const grandTotal = Math.max(0, subtotal - calculateDiscount());
 
+  // Careers: global hiringOpen + per-role roleOpen (default open if missing)
+  const openJobApplications = () =>
+    (jobApplications || []).filter((a) => a && a.roleOpen !== false && a.published !== false);
+
+
   const cartShippingGbp = () => {
     if (!cart || cart.length === 0) return UK_SHIPPING_DISPLAY;
     let max = 0;
@@ -2845,6 +2866,7 @@ export default function App() {
       description: appDescription.trim(),
       questions: appQuestions,
       published: true,
+      roleOpen: true,
       updatedAt: new Date().toISOString(),
       createdBy: user?.uid || null
     };
@@ -2910,6 +2932,15 @@ export default function App() {
   };
 
   const handleSubmitApplication = async (e) => {
+    if (!storeSettings.hiringOpen) {
+      showNotification('Hiring is closed right now.', 'error');
+      return;
+    }
+    if (selectedApplication && selectedApplication.roleOpen === false) {
+      showNotification('This role is closed.', 'error');
+      return;
+    }
+
     e.preventDefault();
     if (!user) {
       showNotification('Please sign in before submitting an application.', 'error');
@@ -4057,7 +4088,12 @@ return (
                   {jobApplications.map((application) => (
                     <div key={application.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl bg-zinc-950 border border-zinc-800 p-4">
                       <div>
-                        <p className="font-bold text-white">{application.title}</p>
+                        <p className="font-bold text-white">
+                          {application.title}{' '}
+                          <span className={`text-[10px] font-bold uppercase ${application.roleOpen === false ? 'text-zinc-500' : 'text-emerald-400'}`}>
+                            · {application.roleOpen === false ? 'closed' : 'open'}
+                          </span>
+                        </p>
                         <p className="text-xs text-zinc-500">
                           {application.section} · {(application.questions || []).length} questions · {(application.questions || []).reduce((sum, q) => sum + (Number(q.marks) || 0), 0)} marks
                         </p>
@@ -4075,6 +4111,17 @@ return (
                           className="rounded-lg border border-zinc-700 px-3 py-2 text-xs text-zinc-200 hover:border-cyan-400"
                         >
                           Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => toggleJobRoleOpen(application)}
+                          className={`rounded-lg border px-3 py-2 text-xs font-bold ${
+                            application.roleOpen === false
+                              ? 'border-zinc-600 text-zinc-400'
+                              : 'border-emerald-500/40 text-emerald-300 bg-emerald-500/10'
+                          }`}
+                        >
+                          {application.roleOpen === false ? 'Role CLOSED' : 'Role OPEN'}
                         </button>
                         <button
                           type="button"
@@ -4905,7 +4952,7 @@ return (
                 {storeSettings.hiringOpen ? (
                   <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-3 py-1.5 text-xs font-bold text-emerald-300">
                     <Users className="w-4 h-4" /> WE&apos;RE HIRING
-                    {jobApplications.length > 0 ? ` · ${jobApplications.length} open role${jobApplications.length === 1 ? '' : 's'}` : ''}
+                    {openJobApplications().length > 0 ? ` · ${openJobApplications().length} open role${openJobApplications().length === 1 ? '' : 's'}` : ''}
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-2 rounded-full border border-zinc-600 bg-zinc-800 px-3 py-1.5 text-xs font-bold text-zinc-300">
@@ -4921,16 +4968,16 @@ return (
                 </h1>
                 <p className="mt-4 max-w-2xl text-sm sm:text-base leading-relaxed text-zinc-300">
                   {storeSettings.hiringOpen
-                    ? (jobApplications.length > 0
+                    ? (openJobApplications().length > 0
                       ? 'Open roles are listed below. Apply straight on this site — no separate portal. Every application is reviewed by our team.'
-                      : 'We are hiring. Check back for listed roles, or contact us via the careers page.')
+                      : 'We are hiring. Open individual roles in Admin, or check back soon.')
                     : 'We are not hiring right now. When hiring is open, it will show on the home page and here for everyone.'}
                 </p>
-                {storeSettings.hiringOpen && jobApplications.length > 0 && (
+                {storeSettings.hiringOpen && openJobApplications().length > 0 && (
                   <button
                     type="button"
                     onClick={() => {
-                      const el = document.getElementById('open-roles');
+                      const el = document.getElementById('open-roles-public') || document.getElementById('open-roles');
                       if (el) el.scrollIntoView({ behavior: 'smooth' });
                     }}
                     className="mt-6 px-5 py-2.5 rounded-full bg-white text-zinc-950 text-sm font-bold"
@@ -4940,6 +4987,42 @@ return (
                 )}
               </div>
             </section>
+
+            {!selectedApplication && (
+              <section id="open-roles-public" className="space-y-4">
+                <h2 className="text-lg font-bold text-white">
+                  {storeSettings.hiringOpen ? 'Open roles' : 'Roles'}
+                </h2>
+                {!storeSettings.hiringOpen ? (
+                  <p className="text-sm text-zinc-500 rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
+                    Hiring is closed site-wide right now. Check back later.
+                  </p>
+                ) : openJobApplications().length === 0 ? (
+                  <p className="text-sm text-zinc-500 rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
+                    No roles are open at the moment. Global hiring is on — individual roles can be opened in Admin.
+                  </p>
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {openJobApplications().map((application) => (
+                      <button
+                        key={application.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedApplication(application);
+                          navigateTo('applications', `/careers/${application.slug || application.id}`);
+                        }}
+                        className="text-left rounded-2xl border border-zinc-700 bg-zinc-900/70 p-5 hover:border-cyan-500/40 transition"
+                      >
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-cyan-400/90">{application.section || 'Role'}</p>
+                        <p className="mt-1 font-bold text-white text-lg">{application.title}</p>
+                        <p className="mt-2 text-xs text-zinc-400 line-clamp-2">{application.description || 'Click to apply'}</p>
+                        <p className="mt-3 text-xs font-semibold text-emerald-400">Apply →</p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
 
             {selectedApplication ? (
               <section className="max-w-3xl mx-auto rounded-3xl border border-zinc-800 bg-zinc-900/70 p-6 sm:p-9 space-y-6">
@@ -5282,9 +5365,9 @@ return (
                 <div>
                   <p className="text-sm font-bold text-emerald-300">We&apos;re hiring</p>
                   <p className="text-xs text-zinc-400">
-                    {jobApplications.length > 0
-                      ? `${jobApplications.length} open role${jobApplications.length === 1 ? '' : 's'} — apply on the website.`
-                      : 'Join the team — view open roles on Careers.'}
+                    {openJobApplications().length > 0
+                      ? `${openJobApplications().length} open role${openJobApplications().length === 1 ? '' : 's'} — apply on the website.`
+                      : 'Join the team — view roles on Careers.'}
                   </p>
                 </div>
                 <button type="button" onClick={() => navigateTo('applications', '/careers')} className="px-4 py-2 rounded-full bg-white text-zinc-950 text-xs font-bold shrink-0">
