@@ -559,6 +559,7 @@ export default function App() {
         const d = snap.data();
         setStoreSettings({
           takingOrders: !!d.takingOrders,
+          hiringOpen: !!d.hiringOpen,
           announcement: d.announcement || 'Pre-order interest is open. Full checkout launches soon.',
           statusLabel: d.statusLabel || (d.takingOrders ? 'Orders open' : 'Pre-order mode')
         });
@@ -1080,7 +1081,7 @@ export default function App() {
 
 
   const saveStoreSettings = async (patch) => {
-    if (!db || !isFullAdmin) return;
+    if (!db || !isAdmin) return;
     const next = { ...storeSettings, ...patch, updatedAt: new Date().toISOString() };
     await setDoc(doc(db, 'artifacts', appId, 'public_data', 'settings'), next, { merge: true });
     setStoreSettings(next);
@@ -4408,6 +4409,13 @@ return (
                 >
                   {storeSettings.takingOrders ? 'Orders OPEN — click to switch to pre-order' : 'Pre-order only — click to open orders'}
                 </button>
+                <button
+                  type="button"
+                  onClick={() => saveStoreSettings({ hiringOpen: !storeSettings.hiringOpen })}
+                  className={`px-4 py-2.5 rounded-xl text-xs font-bold border ${storeSettings.hiringOpen ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300' : 'bg-zinc-800 border-zinc-600 text-zinc-300'}`}
+                >
+                  {storeSettings.hiringOpen ? 'Hiring OPEN — click to close careers' : 'Hiring CLOSED — click to show we are hiring'}
+                </button>
                 <textarea
                   rows={2}
                   value={announcementDraft}
@@ -4862,28 +4870,31 @@ return (
             <section className="relative overflow-hidden rounded-3xl border border-zinc-700 bg-gradient-to-br from-slate-900 via-slate-900 to-cyan-950/50 p-8 sm:p-12">
               <div className="absolute -right-12 -top-12 w-64 h-64 rounded-full border border-cyan-400/10" />
               <div className="relative max-w-3xl">
-                {jobApplications.length > 0 ? (
+                {storeSettings.hiringOpen ? (
                   <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-3 py-1.5 text-xs font-bold text-emerald-300">
-                    <Users className="w-4 h-4" /> WE&apos;RE HIRING · {jobApplications.length} open role{jobApplications.length === 1 ? '' : 's'}
+                    <Users className="w-4 h-4" /> WE&apos;RE HIRING
+                    {jobApplications.length > 0 ? ` · ${jobApplications.length} open role${jobApplications.length === 1 ? '' : 's'}` : ''}
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-2 rounded-full border border-zinc-600 bg-zinc-800 px-3 py-1.5 text-xs font-bold text-zinc-300">
-                    <Users className="w-4 h-4" /> CAREERS
+                    <Users className="w-4 h-4" /> CAREERS · NOT HIRING
                   </span>
                 )}
                 <h1 className="mt-5 text-4xl sm:text-5xl font-black tracking-tight text-white">
-                  {jobApplications.length > 0 ? (
+                  {storeSettings.hiringOpen ? (
                     <>We&apos;re hiring at <span className="text-cyan-300">Zortius.</span></>
                   ) : (
                     <>Careers at <span className="text-zinc-100">Zortius.</span></>
                   )}
                 </h1>
                 <p className="mt-4 max-w-2xl text-sm sm:text-base leading-relaxed text-zinc-300">
-                  {jobApplications.length > 0
-                    ? 'Open roles are listed below. Apply straight on this site — no separate portal. Every application is reviewed by our team.'
-                    : 'No open roles right now. When we hire, roles appear here and anyone can apply on the website.'}
+                  {storeSettings.hiringOpen
+                    ? (jobApplications.length > 0
+                      ? 'Open roles are listed below. Apply straight on this site — no separate portal. Every application is reviewed by our team.'
+                      : 'We are hiring. Check back for listed roles, or contact us via the careers page.')
+                    : 'We are not hiring right now. When hiring is open, it will show on the home page and here for everyone.'}
                 </p>
-                {jobApplications.length > 0 && (
+                {storeSettings.hiringOpen && jobApplications.length > 0 && (
                   <button
                     type="button"
                     onClick={() => {
@@ -5234,11 +5245,15 @@ return (
         {/* ========== HOME (Apple-style) ========== */}
         {activeTab === 'home' && (
           <div className="space-y-16 sm:space-y-24 -mt-2">
-            {jobApplications.length > 0 && (
+            {storeSettings.hiringOpen && (
               <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 sm:px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-bold text-emerald-300">We&apos;re hiring</p>
-                  <p className="text-xs text-zinc-400">{jobApplications.length} open role{jobApplications.length === 1 ? '' : 's'} — apply on the website.</p>
+                  <p className="text-xs text-zinc-400">
+                    {jobApplications.length > 0
+                      ? `${jobApplications.length} open role${jobApplications.length === 1 ? '' : 's'} — apply on the website.`
+                      : 'Join the team — view open roles on Careers.'}
+                  </p>
                 </div>
                 <button type="button" onClick={() => navigateTo('applications', '/careers')} className="px-4 py-2 rounded-full bg-white text-zinc-950 text-xs font-bold shrink-0">
                   View careers
