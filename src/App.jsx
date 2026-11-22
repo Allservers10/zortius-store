@@ -290,10 +290,14 @@ export default function App() {
 
   // Store control (admin)
   const [storeSettings, setStoreSettings] = useState({
-    takingOrders: false,
+    takingOrders: true,
     hiringOpen: false,
-    announcement: 'Pre-order interest is open. Full checkout launches soon.',
-    statusLabel: 'Pre-order mode'
+    blogOpen: true,
+    forumOpen: true,
+    commentsOpen: true,
+    likesOpen: true,
+    announcement: 'Welcome to Zortius.',
+    statusLabel: 'Shop live'
   });
   const [announcementDraft, setAnnouncementDraft] = useState('');
   const [ticketReply, setTicketReply] = useState({});
@@ -559,10 +563,14 @@ export default function App() {
       if (snap.exists()) {
         const d = snap.data();
         setStoreSettings({
-          takingOrders: !!d.takingOrders,
+          takingOrders: d.takingOrders !== false,
           hiringOpen: !!d.hiringOpen,
-          announcement: d.announcement || 'Pre-order interest is open. Full checkout launches soon.',
-          statusLabel: d.statusLabel || (d.takingOrders ? 'Orders open' : 'Pre-order mode')
+          blogOpen: d.blogOpen !== false,
+          forumOpen: d.forumOpen !== false,
+          commentsOpen: d.commentsOpen !== false,
+          likesOpen: d.likesOpen !== false,
+          announcement: d.announcement || 'Welcome to Zortius.',
+          statusLabel: d.statusLabel || (d.takingOrders === false ? 'Browse only' : 'Shop live')
         });
         setAnnouncementDraft(d.announcement || '');
       }
@@ -614,6 +622,16 @@ export default function App() {
     });
     return () => unsub();
   }, []);
+
+  // Unlock updates hub if signed-in email is on newsletter list
+  useEffect(() => {
+    const em = (user?.email || '').toLowerCase().trim();
+    if (!em) return;
+    if (newsletters.some((n) => (n.email || '').toLowerCase() === em)) {
+      setNewsletterSubscribed(true);
+      try { localStorage.setItem('zortius_newsletter_' + em, '1'); } catch (_) {}
+    }
+  }, [user, newsletters]);
 
   // Pre-orders list (admin)
   useEffect(() => {
@@ -938,10 +956,28 @@ export default function App() {
   };
 
   // -------------------- CONTACT --------------------
+  const rateLimitAction = (key, maxPerHour = 3) => {
+    try {
+      const storageKey = 'zortius_rl_' + key;
+      const now = Date.now();
+      const arr = JSON.parse(localStorage.getItem(storageKey) || '[]').filter((t) => now - t < 60 * 60 * 1000);
+      if (arr.length >= maxPerHour) return { ok: false };
+      arr.push(now);
+      localStorage.setItem(storageKey, JSON.stringify(arr));
+      return { ok: true };
+    } catch {
+      return { ok: true };
+    }
+  };
+
   const handleSendContactInquiry = async (e) => {
     e.preventDefault();
     if (!contactName || !contactEmail || !contactInquiry) {
       showNotification('Please complete all contact fields.', 'error');
+      return;
+    }
+    if (!rateLimitAction('contact', 3).ok) {
+      showNotification('Limit: 3 contact messages per hour. Email ' + SUPPORT_EMAIL + ' if urgent.', 'error');
       return;
     }
     setIsSendingContact(true);
@@ -2511,6 +2547,10 @@ export default function App() {
       showNotification('Enter a valid email so we can reach you.', 'error');
       return;
     }
+    if (!rateLimitAction('support_ticket', 3).ok) {
+      showNotification('Limit: 3 support tickets per hour. Email ' + SUPPORT_EMAIL + ' if urgent.', 'error');
+      return;
+    }
     const lastUser = [...chatMessages].reverse().find((m) => m.role === 'user');
     const summary = lastUser?.text || chatMessages.filter((m) => m.role === 'user').slice(-1)[0]?.text || 'Support request from chatbot';
     const transcript = chatMessages.slice(-12).map((m) => `${m.role}: ${m.text}`).join('\n');
@@ -2558,7 +2598,7 @@ export default function App() {
     if (emailed) {
       setChatMessages((m) => [
         ...m,
-        { role: 'bot', text: 'Ticket sent to the team. Check your inbox (and junk) for a confirmation from us.' }
+        { role: 'bot', text: 'Support ticket emailed to the team. You may get a confirmation email. Check your inbox (and junk) for a confirmation from us.' }
       ]);
       showNotification('Support ticket emailed to admin.');
     }
@@ -2624,28 +2664,41 @@ export default function App() {
       return;
     }
     if (!db || !forumTitle.trim() || !forumBody.trim()) return;
-    await addDoc(collection(db, 'artifacts', appId, 'forumThreads'), {
-      title: forumTitle.trim(),
-      body: forumBody.trim(),
-      authorId: user.uid,
-      authorName: userName || user.email,
-      authorEmail: user.email,
-      replies: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    });
-    setForumTitle('');
-    setForumBody('');
-    showNotification('Thread posted.');
+    if (storeSettings.forumOpen === false) {
+      showNotification('Forum is closed for new posts right now.', 'error');
+      return;
+    }
+    try {
+      await addDoc(collection(db, 'artifacts', appId, 'forumThreads'), {
+        title: forumTitle.trim(),
+        body: forumBody.trim(),
+        authorId: user.uid,
+        authorName: userName || user.email,
+        authorEmail: user.email,
+        replies: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+      setForumTitle('');
+      setForumBody('');
+      showNotification('Thread posted — others can read it now.');
+    } catch (err) {
+      console.error(err);
+      showNotification('Could not post (permissions or network). Try again or contact support.', 'error');
+    }
   };
 
   const handleForumReply = async (thread) => {
     if (!user) {
-      showNotification('Sign in to reply.', 'error');
+      showNotification('Sign in to reply on the forum.', 'error');
       setProfileModalOpen(true);
       return;
     }
     if (!db || !forumReply.trim()) return;
+    if (storeSettings.forumOpen === false) {
+      showNotification('Forum replies are turned off right now.', 'error');
+      return;
+    }
     const replies = Array.isArray(thread.replies) ? [...thread.replies] : [];
     replies.push({
       id: Date.now().toString(36),
@@ -2654,12 +2707,17 @@ export default function App() {
       text: forumReply.trim(),
       createdAt: new Date().toISOString()
     });
-    await updateDoc(doc(db, 'artifacts', appId, 'forumThreads', thread.id), {
-      replies,
-      updatedAt: new Date().toISOString()
-    });
-    setForumReply('');
-    showNotification('Reply posted.');
+    try {
+      await updateDoc(doc(db, 'artifacts', appId, 'forumThreads', thread.id), {
+        replies,
+        updatedAt: new Date().toISOString()
+      });
+      setForumReply('');
+      showNotification('Reply posted.');
+    } catch (err) {
+      console.error(err);
+      showNotification('Could not reply. Check you are signed in.', 'error');
+    }
   };
 
   const handleDeleteThread = async (id) => {
@@ -3753,7 +3811,7 @@ return (
                     <div className="mt-3 space-y-2 border-t border-zinc-800 pt-2">
                       <input type="text" placeholder="Your name" value={escalateName} onChange={(e) => setEscalateName(e.target.value)} className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-white" />
                       <input type="email" placeholder="Your email" value={escalateEmail || user?.email || ''} onChange={(e) => setEscalateEmail(e.target.value)} className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-white" />
-                      <button type="button" onClick={handleEscalateTicket} className="w-full py-2 rounded-lg bg-white text-zinc-950 font-bold text-xs">Send to admin</button>
+                      <button type="button" onClick={handleEscalateTicket} className="w-full py-2 rounded-lg bg-white text-zinc-950 font-bold text-xs">Send support ticket to team (max 3/hour)</button>
                     </div>
                   )}
                 </div>
@@ -3927,6 +3985,30 @@ return (
                   Current: {storeSettings.hiringOpen ? 'OPEN (public sees banner)' : 'CLOSED'}
                 </span>
               </div>
+              <p className="text-xs font-bold text-zinc-300 uppercase tracking-wider pt-2">Site features (global)</p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { key: 'blogOpen', on: 'Blog ON', off: 'Blog OFF' },
+                  { key: 'forumOpen', on: 'Forum ON', off: 'Forum OFF' },
+                  { key: 'commentsOpen', on: 'Comments ON', off: 'Comments OFF' },
+                  { key: 'likesOpen', on: 'Likes ON', off: 'Likes OFF' },
+                  { key: 'takingOrders', on: 'Checkout ON', off: 'Checkout OFF' }
+                ].map((f) => (
+                  <button
+                    key={f.key}
+                    type="button"
+                    onClick={() => saveStoreSettings({ [f.key]: !storeSettings[f.key] })}
+                    className={`px-3 py-2 rounded-xl text-[11px] font-bold border ${
+                      storeSettings[f.key]
+                        ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
+                        : 'bg-zinc-950 border-zinc-600 text-zinc-400'
+                    }`}
+                  >
+                    {storeSettings[f.key] ? f.on : f.off}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-zinc-500">OFF hides that area for everyone until you turn it back on.</p>
             </section>
 
             {/* Applications Studio */}
@@ -4482,11 +4564,11 @@ return (
                   type="button"
                   onClick={() => saveStoreSettings({
                     takingOrders: !storeSettings.takingOrders,
-                    statusLabel: !storeSettings.takingOrders ? 'Orders open' : 'Pre-order mode'
+                    statusLabel: !storeSettings.takingOrders ? 'Shop live' : 'Browse only'
                   })}
                   className={`px-4 py-2.5 rounded-xl text-xs font-bold border ${storeSettings.takingOrders ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300' : 'bg-amber-500/20 border-amber-500/40 text-amber-200'}`}
                 >
-                  {storeSettings.takingOrders ? 'Orders OPEN — click to switch to pre-order' : 'Pre-order only — click to open orders'}
+                  {storeSettings.takingOrders ? 'Checkout ON — customers can pay' : 'Checkout OFF — browse / waitlist only'}
                 </button>
                 <button
                   type="button"
@@ -6054,6 +6136,11 @@ return (
         {/* MEDIA / BLOG */}
         {activeTab === 'blog' && (
           <div className="max-w-3xl mx-auto space-y-8">
+            {storeSettings.blogOpen === false && (
+              <p className="text-sm text-amber-200/90 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">Blog is offline for the public right now{isAdmin ? ' (you still see posts as admin)' : ''}.</p>
+            )}
+            {(storeSettings.blogOpen !== false || isAdmin) && (
+            <>
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-zinc-100/90">Official media</p>
               <h1 className="text-3xl sm:text-4xl font-semibold text-white tracking-tight mt-1">News & engineering notes</h1>
@@ -6107,6 +6194,8 @@ return (
                 ))}
               </div>
             )}
+            </>
+            )}
           </div>
         )}
 
@@ -6116,8 +6205,11 @@ return (
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-zinc-100/90">Community</p>
               <h1 className="text-3xl font-semibold text-white tracking-tight mt-1">Forum</h1>
-              <p className="text-sm text-zinc-400 mt-2">Anyone can read. Posting requires sign-in.</p>
+              <p className="text-sm text-zinc-400 mt-2">Anyone can read. Posting requires sign-in. Sign in → write title & message → Post thread.</p>
             </div>
+            {storeSettings.forumOpen === false && (
+              <p className="text-sm text-amber-200/90 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">Forum is temporarily closed by admin. Reading may still work; new posts are off.</p>
+            )}
             {selectedThread ? (
               <div className="space-y-6">
                 {(() => { const thread = forumThreads.find((x) => x.id === selectedThread.id) || selectedThread; return (
@@ -6157,8 +6249,8 @@ return (
                   <h3 className="text-sm font-bold text-white">New thread</h3>
                   {!user && <p className="text-xs text-amber-200">You must be signed in to post.</p>}
                   <input value={forumTitle} onChange={(e) => setForumTitle(e.target.value)} placeholder="Title" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white" disabled={!user} />
-                  <textarea rows={4} value={forumBody} onChange={(e) => setForumBody(e.target.value)} placeholder="What's on your mind?" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white" disabled={!user} />
-                  <button type="submit" disabled={!user} className="px-5 py-2.5 rounded-xl bg-white text-zinc-950 font-bold text-sm disabled:opacity-50">Post thread</button>
+                  <textarea rows={4} value={forumBody} onChange={(e) => setForumBody(e.target.value)} placeholder="Write your post (signed-in users only)" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white" disabled={!user} />
+                  <button type="submit" disabled={!user} className="px-5 py-2.5 rounded-xl bg-white text-zinc-950 font-bold text-sm disabled:opacity-50">Post thread to forum</button>
                 </form>
                 <div className="space-y-3">
                   {forumThreads.length === 0 ? (
@@ -6299,6 +6391,29 @@ return (
 
         {activeTab === 'newsletter' && (
           <div className="max-w-3xl mx-auto space-y-10">
+            {!(newsletterSubscribed || isAdmin || (user?.email && newsletters.some((n) => (n.email || '').toLowerCase() === user.email.toLowerCase()))) ? (
+              <div className="rounded-3xl border border-zinc-800 bg-zinc-900/60 p-8 space-y-5">
+                <h1 className="text-2xl font-semibold text-white">Updates — members only</h1>
+                <p className="text-sm text-zinc-400">Subscribe with your email to unlock the updates feed. Already joined? Sign in with the same email.</p>
+                <form onSubmit={handleNewsletterSignup} className="flex flex-col sm:flex-row gap-2">
+                  <input type="email" required value={newsletterEmail} onChange={(e) => setNewsletterEmail(e.target.value)} placeholder="you@email.com" className="flex-1 bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2.5 text-sm text-white" />
+                  <button type="submit" disabled={newsletterBusy} className="px-5 py-2.5 rounded-xl bg-white text-zinc-950 text-sm font-bold disabled:opacity-50">{newsletterBusy ? 'Joining…' : 'Join updates'}</button>
+                </form>
+                {user && (
+                  <button type="button" className="text-xs text-sky-400 underline" onClick={() => {
+                    const em = (user.email || '').toLowerCase();
+                    if (newsletters.some((n) => (n.email || '').toLowerCase() === em)) {
+                      setNewsletterSubscribed(true);
+                      try { localStorage.setItem('zortius_newsletter_' + em, '1'); } catch (_) {}
+                      showNotification('Welcome back — updates unlocked.');
+                    } else {
+                      showNotification('This account email is not on the list yet. Join above.', 'error');
+                    }
+                  }}>I already subscribed with this account</button>
+                )}
+              </div>
+            ) : (
+            <>
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
               <div>
                 <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500">Subscriber hub</p>
@@ -6357,6 +6472,8 @@ return (
                 </article>
               ))}
             </div>
+            </>
+            )}
           </div>
         )}
 
