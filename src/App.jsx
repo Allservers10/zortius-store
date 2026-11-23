@@ -2623,14 +2623,62 @@ export default function App() {
     showNotification('Blog post published.');
   };
 
-  const handleLikeBlog = async (post) => {
-    if (!user || !db || post.allowLikes === false) return;
-    const likes = Array.isArray(post.likes) ? [...post.likes] : [];
+  const userLikedPost = (post) => {
+    if (!user || !post) return false;
+    const likes = Array.isArray(post.likes) ? post.likes : [];
     const uid = user.uid;
-    const idx = likes.indexOf(uid);
-    if (idx >= 0) likes.splice(idx, 1);
-    else likes.push(uid);
-    await updateDoc(doc(db, 'artifacts', appId, 'blogPosts', post.id), { likes });
+    const em = (user.email || '').toLowerCase();
+    return likes.some((x) => {
+      if (x == null) return false;
+      if (typeof x === 'string') return x === uid || x.toLowerCase() === em;
+      return x.userId === uid || (x.email || '').toLowerCase() === em;
+    });
+  };
+
+  const handleLikeBlog = async (post) => {
+    if (!user) {
+      showNotification('Sign in to like posts.', 'error');
+      setProfileModalOpen(true);
+      return;
+    }
+    if (!db || post.allowLikes === false) return;
+    if (storeSettings.likesOpen === false) {
+      showNotification('Likes are turned off right now.', 'error');
+      return;
+    }
+    const uid = user.uid;
+    const em = (user.email || '').toLowerCase();
+    const raw = Array.isArray(post.likes) ? post.likes : [];
+    // Normalize to uid strings only
+    let likes = raw
+      .map((x) => {
+        if (x == null) return null;
+        if (typeof x === 'string') return x;
+        return x.userId || x.uid || null;
+      })
+      .filter(Boolean);
+
+    const already = likes.includes(uid) || raw.some((x) => {
+      if (typeof x === 'string') return x === uid || x.toLowerCase() === em;
+      return x && (x.userId === uid || (x.email || '').toLowerCase() === em);
+    });
+
+    if (already) {
+      likes = likes.filter((id) => id !== uid);
+      // also drop email-string leftovers
+      likes = likes.filter((id) => id.toLowerCase() !== em);
+      showNotification('Like removed');
+    } else {
+      if (!likes.includes(uid)) likes.push(uid);
+      showNotification('Liked');
+    }
+
+    try {
+      await updateDoc(doc(db, 'artifacts', appId, 'blogPosts', post.id), { likes });
+    } catch (err) {
+      console.error(err);
+      showNotification('Could not update like. Try again.', 'error');
+    }
   };
 
   const handleBlogComment = async (post) => {
@@ -6154,9 +6202,19 @@ return (
                 <h2 className="text-2xl font-bold text-white">{post.title}</h2>
                 <p className="text-xs text-zinc-500">{post.authorName} · {post.createdAt ? new Date(post.createdAt).toLocaleDateString('en-GB') : ''}</p>
                 <div className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap">{post.body}</div>
-                {post.allowLikes !== false && (
-                  <button type="button" onClick={() => handleLikeBlog(post)} className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-zinc-700 text-xs text-zinc-200 hover:border-cyan-500/50">
-                    <ThumbsUp className="w-3.5 h-3.5 text-zinc-100" /> {(post.likes || []).length} likes {sessionUser ? '' : '(sign in)'}
+                {post.allowLikes !== false && storeSettings.likesOpen !== false && (
+                  <button
+                    type="button"
+                    onClick={() => handleLikeBlog(post)}
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border text-xs font-semibold transition ${
+                      userLikedPost(post)
+                        ? 'border-cyan-400/60 bg-cyan-500/15 text-cyan-200'
+                        : 'border-zinc-700 text-zinc-200 hover:border-cyan-500/50'
+                    }`}
+                  >
+                    <ThumbsUp className={`w-3.5 h-3.5 ${userLikedPost(post) ? 'text-cyan-300 fill-cyan-300/30' : 'text-zinc-100'}`} />
+                    {userLikedPost(post) ? 'Liked' : 'Like'} · {(post.likes || []).length}
+                    {!user ? ' (sign in)' : ''}
                   </button>
                 )}
                 {post.allowComments !== false && (
