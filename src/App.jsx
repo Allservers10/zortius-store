@@ -34,6 +34,10 @@ const EMAIL_ORDER = 'order';
 
 const ADMIN_EMAIL = 'zortiusofficial@gmail.com';
 const LIMITED_ADMIN_EMAIL = 'gto.zortius@outlook.com';
+const isAdminEmail = (email) => {
+  const e = (email || '').toLowerCase().trim();
+  return e === ADMIN_EMAIL.toLowerCase() || e === LIMITED_ADMIN_EMAIL.toLowerCase();
+};
 const SUPPORT_EMAIL = 'help@zortius.com';
 const API_BASE = 'https://www.zortius.com'; // apex redirects drop POSTs — always use www for APIs
 
@@ -350,7 +354,7 @@ export default function App() {
         setContactName(currentUser.displayName || currentUser.email?.split('@')[0] || '');
         setShipFullName(currentUser.displayName || currentUser.email?.split('@')[0] || '');
         if (isOtpUnlocked(currentUser.uid)) {
-          setIsAdmin(em === ADMIN_EMAIL.toLowerCase() || em === LIMITED_ADMIN_EMAIL.toLowerCase());
+          setIsAdmin(isAdminEmail(em));
           setIsFullAdmin(em === ADMIN_EMAIL.toLowerCase());
           setOtpGateActive(false);
           setVerifyMode(false);
@@ -1755,7 +1759,7 @@ export default function App() {
       if (user || uid) {
         const u = user;
         const emailAddr = (em || u?.email || '').toLowerCase().trim();
-        setIsAdmin(emailAddr === ADMIN_EMAIL.toLowerCase() || emailAddr === LIMITED_ADMIN_EMAIL.toLowerCase());
+        setIsAdmin(isAdminEmail(emailAddr));
         setIsFullAdmin(emailAddr === ADMIN_EMAIL.toLowerCase());
       }
       showNotification('Verified. You are signed in.');
@@ -3740,7 +3744,7 @@ export default function App() {
   const sessionUser = authReady ? user : null;
 
 return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans antialiased selection:bg-sky-400 selection:text-zinc-950">
+    <div className="min-h-[100dvh] max-w-[100vw] overflow-x-clip bg-zinc-950 text-zinc-100 font-sans antialiased selection:bg-sky-400 selection:text-zinc-950">
       {/* Toast */}
       {notification && (
         <div
@@ -3756,7 +3760,7 @@ return (
       )}
 
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-zinc-950/90 backdrop-blur-md border-b border-zinc-800/60">
+      <header className="sticky top-0 z-40 max-w-[100vw] overflow-x-clip bg-zinc-950/90 backdrop-blur-md border-b border-zinc-800/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-24 sm:h-28">
             <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigateTo('home', '/')}>
@@ -3865,7 +3869,17 @@ return (
                 )}
               </button>
 
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => navigateTo('admin', '/admin')}
+                  className="md:hidden px-2.5 py-1.5 rounded-lg bg-cyan-500/15 border border-cyan-500/40 text-[10px] font-black uppercase tracking-wide text-cyan-300"
+                >
+                  Admin
+                </button>
+              )}
               <button
+                type="button"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="md:hidden p-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-zinc-300 hover:text-white"
               >
@@ -3895,7 +3909,22 @@ return (
                 <button key={item.tab} type="button" onClick={() => navigateTo(item.tab, item.path)} className={`text-left px-4 py-3.5 rounded-xl text-sm font-medium ${activeTab === item.tab ? 'bg-white/5 text-white' : 'text-zinc-300'}`}>{item.label}</button>
               ))}
               <button type="button" onClick={() => { setContactModalOpen(true); setMobileMenuOpen(false); }} className="text-left px-4 py-3.5 rounded-xl text-sm font-medium text-zinc-300">Contact Support</button>
-              {isAdmin && <button type="button" onClick={() => navigateTo('admin', '/admin')} className={`text-left px-4 py-3.5 rounded-xl text-sm font-bold ${activeTab === 'admin' ? 'text-zinc-100' : 'text-cyan-500'}`}>Admin</button>}
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    navigateTo('admin', '/admin');
+                  }}
+                  className={`text-left px-4 py-3.5 rounded-xl text-sm font-black border ${
+                    activeTab === 'admin'
+                      ? 'bg-cyan-500/20 border-cyan-400/50 text-cyan-200'
+                      : 'bg-cyan-500/10 border-cyan-500/30 text-cyan-300'
+                  }`}
+                >
+                  {isFullAdmin ? 'Admin panel' : 'Admin panel (limited)'}
+                </button>
+              )}
               <button type="button" onClick={() => { setProfileModalOpen(true); setMobileMenuOpen(false); }} className="text-left px-4 py-3.5 rounded-xl text-sm font-medium text-zinc-300">{sessionUser ? 'Account' : 'Sign In'}</button>
             </nav>
           </div>
@@ -5873,7 +5902,7 @@ return (
                 <h2 className="text-xl sm:text-2xl font-semibold text-white tracking-tight">Pre-order interest</h2>
                 <p className="mt-2 text-sm sm:text-base text-zinc-400 leading-relaxed">We are not processing payments yet. Register your interest and we will notify you when pre-orders open.</p>
               </div>
-              <form onSubmit={(e) => { e.preventDefault(); handlePreorder(null); }} className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto lg:min-w-[360px]">
+              <form onSubmit={(e) => { e.preventDefault(); handlePreorder(null); }} className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto lg:min-w-0 lg:max-w-md w-full">
                 <input type="email" required value={waitlistEmail} onChange={(e) => setWaitlistEmail(e.target.value)} placeholder="Email address" className="flex-1 rounded-full bg-zinc-950 border border-zinc-700 px-5 py-3 text-sm text-white outline-none focus:border-cyan-500" />
                 <button type="submit" disabled={waitlistSubmitting} className="rounded-full bg-white text-zinc-950 font-semibold text-sm px-6 py-3 hover:bg-slate-100 disabled:opacity-60 whitespace-nowrap">
                   {waitlistSubmitting ? 'Saving…' : 'Notify me'}
@@ -5955,7 +5984,7 @@ return (
                   <p className="text-sm font-bold text-white">Pre-order interest — get notified at launch</p>
                   <p className="text-xs text-zinc-300 mt-1 leading-relaxed">Payments are not open yet. Join the pre-order list and we will email you when you can complete a purchase.</p>
                 </div>
-                <form onSubmit={(e) => { e.preventDefault(); handlePreorder(null); }} className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto sm:min-w-[320px]">
+                <form onSubmit={(e) => { e.preventDefault(); handlePreorder(null); }} className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto sm:min-w-0 w-full sm:max-w-sm">
                   <input
                     type="email"
                     required
@@ -6493,7 +6522,7 @@ return (
               <h1 className="text-3xl font-semibold text-white tracking-tight mt-1">Compare systems</h1>
             </div>
             <div className="overflow-x-auto rounded-2xl border border-zinc-800">
-              <table className="w-full text-left text-xs min-w-[640px]">
+              <table className="w-full text-left text-xs min-w-0 sm:min-w-[640px]">
                 <thead className="bg-zinc-950 text-zinc-400">
                   <tr>
                     <th className="px-4 py-3">Feature</th>
@@ -7276,9 +7305,9 @@ return (
                     <button
                       type="button"
                       onClick={() => { setProfileModalOpen(false); navigateTo('admin', '/admin'); }}
-                      className="w-full text-left px-4 py-3 rounded-xl bg-zinc-800 border border-zinc-600 text-sm text-zinc-200 font-bold"
+                      className="w-full text-left px-4 py-3 rounded-xl bg-cyan-500/10 border border-cyan-500/40 text-sm text-cyan-200 font-bold"
                     >
-                      Admin panel
+                      {isFullAdmin ? 'Open admin panel' : 'Open admin (limited)'}
                     </button>
                   )}
                 </div>
