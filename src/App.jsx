@@ -1447,7 +1447,9 @@ export default function App() {
   const getProductAvailability = (p) => {
     void scheduleTick;
     if (!p) return { mode: 'unknown', label: '', canBuy: false, canPreorder: false, badge: null, showInShop: false };
-    if (p.soldOut) {
+    const stockNum = p.stock === '' || p.stock == null ? null : parseInt(p.stock, 10);
+    const outOfStock = p.soldOut || (stockNum !== null && Number.isFinite(stockNum) && stockNum <= 0);
+    if (outOfStock) {
       return {
         mode: 'sold_out',
         label: 'Sold out',
@@ -1955,6 +1957,18 @@ export default function App() {
       showNotification(product.soldOut || av.mode === 'sold_out' ? 'Sold out' : 'This item is not available to buy yet.', 'error');
       return;
     }
+    const stock = getAvailableStock(product);
+    const inCart = cartQtyForProduct(product.id);
+    if (stock !== null) {
+      if (stock <= 0) {
+        showNotification('Sold out — no stock left.', 'error');
+        return;
+      }
+      if (inCart >= stock) {
+        showNotification(`Only ${stock} in stock. You already have ${inCart} in your basket.`, 'error');
+        return;
+      }
+    }
     const color = selectedColor || product.options?.colors?.[0] || 'Standard';
     const typeMap = { ...selectedTypeMap };
     (product.options?.types || []).forEach((g) => {
@@ -1970,13 +1984,18 @@ export default function App() {
       selectedType: Object.values(typeMap)[0] || null,
       typeKey,
       price: unitPrice,
-      basePrice: product.price
+      basePrice: product.price,
+      stock: product.stock
     };
     const existing = cart.find(
       (item) => item.id === product.id && item.selectedColor === color && (item.typeKey || '') === typeKey
     );
     let updated;
     if (existing) {
+      if (stock !== null && inCart + 1 > stock) {
+        showNotification(`Only ${stock} in stock.`, 'error');
+        return;
+      }
       updated = cart.map((item) =>
         item.id === product.id && item.selectedColor === color && (item.typeKey || '') === typeKey
           ? { ...item, qty: item.qty + 1 }
@@ -1987,17 +2006,36 @@ export default function App() {
     }
     setCart(updated);
     saveUserDataToFirestore(updated);
-    showNotification(`Added ${product.name} (${color}) to your basket.`);
+    const left = stock !== null ? stock - (inCart + 1) : null;
+    showNotification(
+      left !== null
+        ? `Added ${product.name} (${color}). ${left} left in stock.`
+        : `Added ${product.name} (${color}) to your basket.`
+    );
   };
 
-  const updateCartQty = (productId, color, delta) => {
+  const updateCartQty = (productId, color, delta, typeKey = '') => {
+    const product = products.find((p) => p.id === productId);
+    const stock = getAvailableStock(product) ?? getAvailableStock(cart.find((i) => i.id === productId));
     const updated = cart
       .map((item) => {
-        if (item.id === productId && item.selectedColor === color) {
-          const newQty = item.qty + delta;
-          return newQty > 0 ? { ...item, qty: newQty } : null;
+        const same =
+          item.id === productId &&
+          item.selectedColor === color &&
+          (typeKey ? (item.typeKey || '') === typeKey : true);
+        if (!same) return item;
+        const newQty = (Number(item.qty) || 0) + delta;
+        if (newQty <= 0) return null;
+        if (delta > 0 && stock !== null) {
+          const others = cart
+            .filter((i) => i.id === productId && !(i.selectedColor === color && (typeKey ? (i.typeKey || '') === typeKey : true)))
+            .reduce((s, i) => s + (Number(i.qty) || 0), 0);
+          if (others + newQty > stock) {
+            showNotification(`Only ${stock} in stock for this product.`, 'error');
+            return item;
+          }
         }
-        return item;
+        return { ...item, qty: newQty };
       })
       .filter(Boolean);
     setCart(updated);
@@ -2037,6 +2075,18 @@ export default function App() {
   };
 
   const grandTotal = Math.max(0, subtotal - calculateDiscount());
+
+  const getAvailableStock = (product) => {
+    if (!product) return null;
+    if (product.soldOut) return 0;
+    if (product.stock === '' || product.stock == null) return null; // unlimited
+    const n = parseInt(product.stock, 10);
+    return Number.isFinite(n) ? Math.max(0, n) : null;
+  };
+
+  const cartQtyForProduct = (productId) =>
+    cart.filter((i) => i.id === productId).reduce((s, i) => s + (Number(i.qty) || 0), 0);
+
 
   // Careers: global hiringOpen + per-role roleOpen (default open if missing)
   const openJobApplications = () =>
@@ -2161,6 +2211,23 @@ export default function App() {
       note: 'Address collected via Stripe Checkout',
       country: 'GB'
     };
+
+    // Stock check before payment
+    for (const item of cart) {
+      const p = products.find((x) => x.id === item.id) || item;
+      const stock = getAvailableStock(p);
+      const need = cartQtyForProduct(item.id);
+      if (stock !== null && need > stock) {
+        showNotification(`Not enough stock for ${p.name || 'item'}: only ${stock} left, you have ${need} in basket.`, 'error');
+        setIsProcessingPayment(false);
+        return;
+      }
+      if (p.soldOut || stock === 0) {
+        showNotification(`${p.name || 'Item'} is sold out.`, 'error');
+        setIsProcessingPayment(false);
+        return;
+      }
+    }
 
     try {
       // Try real Stripe Checkout first
@@ -2308,9 +2375,31 @@ export default function App() {
   };
 
   // Support assistant (AI when configured) (no paid API)
+  const describeProductForBot = (p) => {
+    if (!p) return '';
+    const av = getProductAvailability(p);
+    const stock = getAvailableStock(p);
+    const stockTxt =
+      stock === null ? 'stock not limited on site' :
+      stock <= 0 ? '0 left (sold out)' :
+      `${stock} left in stock`;
+    const bits = [
+      p.name,
+      `£${Number(p.price || 0).toLocaleString('en-GB')}`,
+      p.category || '',
+      `status: ${av.label || av.mode || 'unknown'}`,
+      av.canBuy ? 'can buy now' : 'cannot buy yet',
+      av.canPreorder ? 'can join pre-order list' : '',
+      av.showInShop === false ? 'hidden from shop (closed)' : 'listed in shop',
+      stockTxt,
+      p.soldOut ? 'marked sold out' : ''
+    ].filter(Boolean);
+    return bits.join(' · ');
+  };
+
   const getBotReply = (raw) => {
     const q = (raw || '').toLowerCase().trim();
-    if (!q) return { text: 'Type a question about products, orders, careers, or accounts.', escalate: false };
+    if (!q) return { text: 'Type a question about products, stock, pre-orders, careers, or accounts.', escalate: false };
 
     const wantsHuman = /\b(human|agent|staff|person|manager|real person|talk to|speak to|support ticket|complaint)\b/.test(q);
     if (wantsHuman) {
@@ -2319,70 +2408,129 @@ export default function App() {
         escalate: true
       };
     }
-    if (/pre-?order|waitlist|when.*order|taking orders|buy now|checkout|stripe|payment/.test(q)) {
+
+    // Match product by name tokens
+    const matched = products.find((p) => {
+      const name = (p.name || '').toLowerCase();
+      if (!name) return false;
+      if (q.includes(name) || name.includes(q)) return true;
+      return name.split(/\s+/).filter((w) => w.length > 2).some((w) => q.includes(w));
+    });
+
+    if (matched) {
+      const av = getProductAvailability(matched);
+      const stock = getAvailableStock(matched);
+      let statusLine = av.label || av.mode;
+      if (av.mode === 'sold_out' || matched.soldOut || stock === 0) {
+        statusLine = 'Sold out / closed for purchase';
+      } else if (av.mode === 'preorder_closed' || av.showInShop === false) {
+        statusLine = 'Closed — not shown in the shop and not available to buy or pre-order';
+      } else if (av.mode === 'preorder_scheduled') {
+        statusLine = av.label || 'Pre-orders scheduled (not open yet)';
+      } else if (av.mode === 'preorder_open' || av.mode === 'preorder_buy') {
+        statusLine = av.label || 'Pre-order related';
+      } else if (av.mode === 'retail_open') {
+        statusLine = 'Available to buy';
+      } else if (av.mode === 'retail_wait') {
+        statusLine = 'Listed but checkout is not open for this item yet';
+      }
+      const stockLine =
+        stock === null ? 'Stock is not limited on the site.' :
+        stock <= 0 ? 'No units left in stock.' :
+        stock <= 3 ? `Only ${stock} left in stock.` :
+        `${stock} currently in stock.`;
       return {
-        text: 'Most Zortius systems are on pre-order interest right now. Join the list from Shop or a product page — we email you when ordering opens. Payments are not open yet.',
+        text: `${matched.name} — £${Number(matched.price || 0).toLocaleString('en-GB')}. ${statusLine}. ${stockLine} ${av.canBuy ? 'You can add it to the basket when signed in and checkout is on.' : av.canPreorder ? 'You can join the pre-order list on the product page.' : 'It is not available to buy right now.'} ${(matched.description || '').slice(0, 140)}`,
+        escalate: false
+      };
+    }
+
+    if (/closed|unavailable|not available|hidden|can't buy|cannot buy|sold out|out of stock|stock/.test(q)) {
+      const closed = products.filter((p) => {
+        const av = getProductAvailability(p);
+        return av.mode === 'sold_out' || av.mode === 'preorder_closed' || av.showInShop === false || getAvailableStock(p) === 0;
+      }).slice(0, 8);
+      const openBuy = products.filter((p) => getProductAvailability(p).canBuy).slice(0, 6);
+      if (/sold out|out of stock|stock/.test(q) && closed.length) {
+        return {
+          text: `Unavailable / closed examples: ${closed.map((p) => p.name).join(', ') || 'none listed'}. Buyable now: ${openBuy.map((p) => p.name).join(', ') || 'none'}. Ask me a product name for details.`,
+          escalate: false
+        };
+      }
+      return {
+        text: closed.length
+          ? `Some items are closed, hidden, or sold out (e.g. ${closed.map((p) => p.name).join(', ')}). Ask a product name to check that one.`
+          : 'I do not see closed items in the current catalogue. Ask a product name and I will check its status.',
+        escalate: false
+      };
+    }
+
+    if (/pre-?order|waitlist|when.*order|taking orders|buy now|checkout|stripe|payment/.test(q)) {
+      const checkoutOn = storeSettings.takingOrders !== false;
+      const scheduled = products.filter((p) => getProductAvailability(p).mode === 'preorder_scheduled').slice(0, 5);
+      const preOpen = products.filter((p) => {
+        const m = getProductAvailability(p).mode;
+        return m === 'preorder_open' || m === 'preorder_buy';
+      }).slice(0, 5);
+      const closedPre = products.filter((p) => getProductAvailability(p).mode === 'preorder_closed').slice(0, 5);
+      return {
+        text: `Checkout is ${checkoutOn ? 'ON (payments can run when an item is buyable)' : 'OFF (browse / waitlist only)'}. Pre-order open: ${preOpen.map((p) => p.name).join(', ') || 'none'}. Scheduled: ${scheduled.map((p) => p.name).join(', ') || 'none'}. Closed pre-orders: ${closedPre.map((p) => p.name).join(', ') || 'none'}. Ask a product name for exact status.`,
         escalate: false
       };
     }
     if (/shipping|delivery|ship|uk|international/.test(q)) {
       return {
-        text: 'Shipping details will be confirmed at launch. We plan UK-first fulfilment with tracked delivery. Join pre-order to get launch updates.',
+        text: 'UK shipping is calculated in checkout (package type per product). We fulfil UK-first with tracking when an order ships. See Shipping / Refunds pages for policy.',
         escalate: false
       };
     }
     if (/career|job|apply|application|hire|intern/.test(q)) {
       return {
-        text: 'Open roles are under Careers. Submit an application online — you get email confirmation, then Accept/Deny updates from the team.',
+        text: storeSettings.hiringOpen
+          ? 'We are hiring. Open roles are on Careers — apply on the website.'
+          : 'Hiring is closed site-wide right now. Check Careers later or ask for a human ticket.',
         escalate: false
       };
     }
     if (/password|login|sign in|google|account|forgot/.test(q)) {
       return {
-        text: 'Use Sign in → Forgot password for a reset email. Google sign-in works best in the same browser (not private mode). Authorized domain must include zortius.vercel.app.',
+        text: 'Sign in from Account. Forgot password sends a reset email. Google works best in the same browser (not private mode) on www.zortius.com.',
         escalate: false
       };
     }
     if (/review|rating/.test(q)) {
+      return { text: 'Only verified buyers with an order marked Delivered can leave a product review.', escalate: false };
+    }
+    if (/forum|community|discuss/.test(q)) {
       return {
-        text: 'Only verified buyers with an order marked Delivered can leave a product review.',
+        text: storeSettings.forumOpen === false
+          ? 'Forum posting is turned off right now.'
+          : 'Forum is open — anyone can read; sign in to post.',
         escalate: false
       };
     }
-    if (/forum|community|discuss/.test(q)) {
-      return { text: 'Join the Forum (login required to post). Read threads anytime.', escalate: false };
-    }
     if (/blog|media|news|article/.test(q)) {
-      return { text: 'Official updates are on Blog. Admins publish posts; likes/comments depend on post settings.', escalate: false };
+      return {
+        text: storeSettings.blogOpen === false
+          ? 'Blog is offline right now.'
+          : 'Official updates are on Blog.',
+        escalate: false
+      };
     }
     if (/contact|email|help@|support@/.test(q)) {
       return {
-        text: `Support email: ${SUPPORT_EMAIL}. You can also open Contact or escalate here for a ticket in the admin panel.`,
-        escalate: false
-      };
-    }
-    // product match
-    const matched = products.find(
-      (p) =>
-        q.includes((p.name || '').toLowerCase().split(' ').slice(-1)[0]) ||
-        (p.name || '').toLowerCase().includes(q) ||
-        (p.category || '').toLowerCase().includes(q)
-    );
-    if (matched) {
-      const mode = matched.isPreorder !== false ? 'Pre-order interest' : 'Standard order';
-      return {
-        text: `${matched.name} — £${Number(matched.price).toLocaleString('en-GB')} · ${matched.category}. Mode: ${mode}. ${matched.description?.slice(0, 160) || ''}… Open it in Shop for colours, gallery and specs.`,
+        text: `Support: ${SUPPORT_EMAIL}. Or say "human" here to open a ticket (limited per hour).`,
         escalate: false
       };
     }
     if (/spec|compare|workstation|monitor|keyboard|desktop/.test(q)) {
       return {
-        text: 'See Shop for full specs, or open Compare for a side-by-side view. Tell me a product name for a short summary.',
+        text: 'Open Shop for specs, or Compare for side-by-side. Tell me a product name for live availability (open / closed / stock).',
         escalate: false
       };
     }
     return {
-      text: "I'm not sure. Try: pre-orders, a product name, careers, password, or say 'human' to email the team.",
+      text: "Try a product name, stock, pre-order, careers, password, or say 'human' for the team.",
       escalate: false
     };
   };
@@ -2398,10 +2546,10 @@ export default function App() {
     let escalate = false;
     try {
       const productCtx = products
-        .slice(0, 12)
-        .map((p) => `${p.name} (£${p.price}) ${p.isPreorder !== false ? '[pre-order]' : ''} — ${(p.description || '').slice(0, 80)}`)
+        .slice(0, 20)
+        .map((p) => describeProductForBot(p))
         .join('\n');
-      const context = `Store mode: ${storeSettings.statusLabel}. Announcement: ${storeSettings.announcement}. Taking orders: ${storeSettings.takingOrders}.\nProducts:\n${productCtx}`;
+      const context = `Store: ${storeSettings.statusLabel}. Announcement: ${storeSettings.announcement}. Checkout ON: ${storeSettings.takingOrders !== false}. Hiring: ${!!storeSettings.hiringOpen}. Forum: ${storeSettings.forumOpen !== false}. Blog: ${storeSettings.blogOpen !== false}.\nProducts (include closed/sold out):\n${productCtx}`;
       const res = await fetch('/api/ai-support', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -3881,14 +4029,16 @@ return (
       
       {/* Mobile quick actions */}
       {/* Floating AI support — bottom right */}
+      {!aiDrawerOpen && (
       <button
         type="button"
         onClick={() => setAiDrawerOpen(true)}
         className="fixed bottom-5 right-5 z-50 w-14 h-14 rounded-full bg-gradient-to-br from-sky-400 to-indigo-500 text-white shadow-lg shadow-sky-500/30 flex items-center justify-center hover:scale-105 active:scale-95 transition border border-white/20"
-        aria-label="Support AI"
+        aria-label="Open support chat"
       >
         <Bot className="w-6 h-6" />
       </button>
+      )}
 
       
       {!cookieConsent && (
@@ -6092,10 +6242,20 @@ return (
                         );
                       }
                       if (av.canBuy) {
+                        const st = getAvailableStock(selectedProduct);
+                        const inBasket = cartQtyForProduct(selectedProduct.id);
                         return (
-                          <button type="button" onClick={() => addToCart(selectedProduct)} className="px-8 py-3.5 rounded-full bg-sky-400 hover:bg-sky-300 text-zinc-950 font-semibold text-sm flex items-center justify-center gap-2 cursor-pointer">
-                            <ShoppingCart className="w-5 h-5" /> Add to Basket
+                          <>
+                          {st !== null && (
+                            <p className={`text-xs font-semibold mb-2 ${st <= 3 ? 'text-amber-300' : 'text-zinc-400'}`}>
+                              {st <= 0 ? 'Out of stock' : st <= 3 ? `Only ${st} left` : `${st} in stock`}
+                              {inBasket > 0 ? ` · ${inBasket} in basket` : ''}
+                            </p>
+                          )}
+                          <button type="button" onClick={() => addToCart(selectedProduct)} disabled={st !== null && inBasket >= st} className="px-8 py-3.5 rounded-full bg-sky-400 hover:bg-sky-300 text-zinc-950 font-semibold text-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+                            <ShoppingCart className="w-5 h-5" /> {getAvailableStock(selectedProduct) !== null && cartQtyForProduct(selectedProduct.id) >= getAvailableStock(selectedProduct) ? 'Max in basket' : 'Add to Basket'}
                           </button>
+                          </>
                         );
                       }
                       return (
@@ -6646,11 +6806,11 @@ return (
                       </div>
                       <div className="flex items-center gap-6">
                         <div className="flex items-center gap-3 bg-zinc-950 px-3 py-1.5 rounded-xl border border-zinc-800">
-                          <button onClick={() => updateCartQty(item.id, item.selectedColor, -1)} className="text-zinc-400 hover:text-white cursor-pointer">
+                          <button onClick={() => updateCartQty(item.id, item.selectedColor, -1, item.typeKey || "")} className="text-zinc-400 hover:text-white cursor-pointer">
                             <Minus className="w-4 h-4" />
                           </button>
                           <span className="text-sm font-bold text-white w-6 text-center">{renderSafe(item.qty)}</span>
-                          <button onClick={() => updateCartQty(item.id, item.selectedColor, 1)} className="text-zinc-400 hover:text-white cursor-pointer">
+                          <button onClick={() => updateCartQty(item.id, item.selectedColor, 1, item.typeKey || "")} className="text-zinc-400 hover:text-white cursor-pointer">
                             <Plus className="w-4 h-4" />
                           </button>
                         </div>
